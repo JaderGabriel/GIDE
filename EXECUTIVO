@@ -1,0 +1,37 @@
+O objetivo do sistema é de levar dados de pessoas, do sistema ieducar (alunos matriculados), para o gestor de dados de catraca de acesso. Estudar a API: https://documenter.getpostman.com/view/45341037/2sBXcBmgg5 e também o iEducar (https://github.com/portabilis/i-educar), na versão 2.11 para:
+
+    Ao se matricular uma pessoa, via chamada JSON, com token, enviar dados desta pessoa para o GIDE
+    Ao clicar em um botão específico da matricula da pessoa, abrir um tela no GIDE para enviar o facil.
+    Usando a API acima, puxar dados complementares e enviar para o Gestor de Dados da catraca a imagem do rosto da criança (sem salvar local ou no GIDE)
+    Atualizar ou deletar faciais do Gestor
+    Receber do Gestor a marcação de presença (evento da catraca), filtrar e analisar os dados
+    Marcar presença para o aluno corretamente no iEducar
+
+Haverá cadastro de tokens e URLS de cada sistema destes no GIDE, bem como a chave do GIDE para receber os dados de ambas as pontas (e protocolo). Também haverá criação de usuários, apenas para configuração do GIDE, e todos os dados necessários precisam transitar via API, sem conexão direta com a base de dados.
+
+Produzir uma documentação executiva, com fluxograma e horas estimadas de desenvolvimento, bem como riscos e features para um mínimo para lançamento
+
+criar um menu dropbox, de Autenticações e chamar estas opções, apenas para user admin. Adicionar também a opção de adicionar autenticação e parametros do Porter, que terá url, e os dados necessários. Ler mensagem abaixo para extrair detalhes de uso destes dados:
+
+Em todas as rotas é preciso adicionar no Header da requisição:
+Key: ApplicationKey
+Valor: (valor configurado no GIDE / integração, nunca versionar chaves reais)
+{
+  "id": null,
+  "unityId": "<UNITY_ID configurado no GIDE ou .env>",
+  "name": "<id ieducar>",
+  "start": "2026-01-01T01:00:00Z",  --Data Início
+  "end": "2026-07-30T23:00:00Z",  --Data Fim
+  "accessProfileId": "<ACCESS_PROFILE_ID configurado no GIDE ou .env>",
+  "guests": [
+    {
+      "id": null,
+      "name": "<id ieducar>",
+      ]
+    }
+  ]
+}
+
+Algumas informações padrões que serão usadas na rota (vêm do banco integrations ou variáveis de ambiente):
+accessProfileId, unityId
+No name do objeto do Invite e do Guest tu informará o Id do aluno existente no iEducar;

@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gide-postgres
+    environment:
+      POSTGRES_DB: gide
+      POSTGRES_USER: gide
+      POSTGRES_PASSWORD: gide_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - gide_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gide -d gide"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  gide_pgdata:

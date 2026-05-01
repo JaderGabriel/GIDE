@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+/* Habilita `dark:` via classe `.dark` (toggle por JS) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+    html {
+        color-scheme: light dark;
+    }
+}
+
+@layer utilities {
+    .bg-bridge {
+        background:
+            radial-gradient(900px circle at 15% 10%, rgba(37, 99, 235, 0.20), transparent 55%),
+            radial-gradient(900px circle at 85% 15%, rgba(6, 182, 212, 0.18), transparent 55%),
+            radial-gradient(1200px circle at 50% 90%, rgba(16, 185, 129, 0.10), transparent 55%),
+            linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(248, 250, 252, 1) 100%);
+    }
+
+    .dark .bg-bridge {
+        background:
+            radial-gradient(900px circle at 15% 10%, rgba(37, 99, 235, 0.28), transparent 55%),
+            radial-gradient(900px circle at 85% 15%, rgba(6, 182, 212, 0.24), transparent 55%),
+            radial-gradient(1200px circle at 50% 90%, rgba(16, 185, 129, 0.14), transparent 55%),
+            linear-gradient(180deg, rgba(10, 10, 10, 1) 0%, rgba(7, 10, 18, 1) 100%);
+    }
+
+    .bridge-glow {
+        box-shadow:
+            0 1px 0 rgba(15, 23, 42, 0.06),
+            0 12px 30px rgba(2, 6, 23, 0.08);
+    }
+
+    .dark .bridge-glow {
+        box-shadow:
+            0 1px 0 rgba(255, 255, 255, 0.06),
+            0 18px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    @keyframes floaty {
+        0%,
+        100% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-8px);
+        }
+    }
+
+    .animate-floaty {
+        animation: floaty 6s ease-in-out infinite;
+    }
+}
