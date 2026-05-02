@@ -1,12 +1,14 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Telas;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
-class UserAccountAuditTest extends TestCase
+#[Group('telas-auth')]
+class AuthAndSessionTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -32,16 +34,12 @@ class UserAccountAuditTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_open_user_audit_log_index(): void
+    public function test_authenticated_user_can_logout(): void
     {
-        $admin = User::factory()->create([
-            'username' => 'admin_audit',
-            'is_admin' => true,
-            'is_active' => true,
-        ]);
+        $user = User::factory()->create(['is_admin' => false, 'is_active' => true]);
 
-        $response = $this->actingAs($admin)->get('/admin/auditoria-usuarios');
+        $this->actingAs($user)->post('/logout')->assertRedirect('/');
 
-        $response->assertOk();
+        $this->assertGuest();
     }
 }

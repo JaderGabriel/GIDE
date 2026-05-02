@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Fila no agendador (schedule:run / cron)
+    |--------------------------------------------------------------------------
+    |
+    | Sem worker `queue:work` permanente, o comando agendado
+    | `gide:queue:work-once --drain` usa estes limites com `queue:work
+    | --stop-when-empty --max-time=…` para esvaziar jobs a cada minuto.
+    |
+    */
+
+    'schedule_drain_max_seconds' => (int) env('SCHEDULE_QUEUE_DRAIN_MAX_SECONDS', 55),
+
+    'schedule_drain_max_jobs' => (int) env('SCHEDULE_QUEUE_DRAIN_MAX_JOBS', 0),
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------
     |

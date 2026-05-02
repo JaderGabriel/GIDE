@@ -166,6 +166,46 @@
             .bridge-legend span { color: color-mix(in srgb, var(--text) 88%, var(--muted)); }
             .bridge-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
             .bridge-actions .bridge-btn--ghost { background: transparent; border: 1px dashed var(--border); }
+            /* Botões “Testes rápidos”: ok = funcional, warn = ainda não configurado / atenção, error = falha */
+            .bridge-probe-btn { transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; }
+            .bridge-probe-btn[data-probe-state="ok"] {
+                border-style: solid;
+                border-color: color-mix(in srgb, #059669 52%, var(--border));
+                background: color-mix(in srgb, #059669 16%, var(--surface-2));
+                box-shadow: 0 0 0 1px color-mix(in srgb, #059669 12%, transparent);
+            }
+            .bridge-probe-btn[data-probe-state="warn"] {
+                border-style: solid;
+                border-color: color-mix(in srgb, #64748b 45%, var(--border));
+                background: color-mix(in srgb, #64748b 12%, var(--surface-2));
+                box-shadow: none;
+            }
+            .bridge-probe-btn[data-probe-state="error"] {
+                border-style: solid;
+                border-color: color-mix(in srgb, #dc2626 55%, var(--border));
+                background: color-mix(in srgb, #dc2626 14%, var(--surface-2));
+                box-shadow: 0 0 0 1px color-mix(in srgb, #dc2626 10%, transparent);
+            }
+            html[data-theme="dark"] .bridge-probe-btn[data-probe-state="ok"] {
+                border-color: color-mix(in srgb, #34d399 42%, var(--border));
+                background: color-mix(in srgb, #34d399 12%, rgba(0,0,0,0.2));
+            }
+            html[data-theme="dark"] .bridge-probe-btn[data-probe-state="warn"] {
+                border-color: color-mix(in srgb, #94a3b8 50%, var(--border));
+                background: color-mix(in srgb, #94a3b8 14%, rgba(0,0,0,0.15));
+            }
+            html[data-theme="dark"] .bridge-probe-btn[data-probe-state="error"] {
+                border-color: color-mix(in srgb, #f87171 45%, var(--border));
+                background: color-mix(in srgb, #f87171 12%, rgba(0,0,0,0.2));
+            }
+            .bridge-probe-btn[data-probe-state="warn"] svg[stroke],
+            .bridge-probe-btn[data-probe-state="error"] svg[stroke] { stroke: color-mix(in srgb, var(--text) 88%, var(--muted)); }
+            .bridge-probe-legend { margin-top: 8px; font-size: 11px; color: var(--muted); line-height: 1.45; width: 100%; }
+            .bridge-probe-legend__i { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; margin-top: 4px; }
+            .bridge-probe-legend__dot { width: 9px; height: 9px; border-radius: 999px; flex-shrink: 0; }
+            .bridge-probe-legend__dot--ok { background: #059669; box-shadow: 0 0 0 1px color-mix(in srgb, #059669 35%, var(--border)); }
+            .bridge-probe-legend__dot--warn { background: #64748b; box-shadow: 0 0 0 1px color-mix(in srgb, #64748b 35%, var(--border)); }
+            .bridge-probe-legend__dot--err { background: #dc2626; box-shadow: 0 0 0 1px color-mix(in srgb, #dc2626 35%, var(--border)); }
             .bridge-result { margin-top: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); max-height: 220px; overflow: auto; display: none; }
             .bridge-result.is-open { display: block; }
             .bridge-result pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; }
@@ -287,17 +327,31 @@
                                 </div>
                                 <p class="bridge-map__status-hint" id="bridge-map-status-hint" aria-live="polite">Tom atual: <span class="mono" id="bridge-map-tone-label">{{ $connectionTone ?? 'ok' }}</span> · próxima verificação em <span id="bridge-map-countdown">60</span>s</p>
                                 @if ($integrationsOverviewAdmin ?? false)
+                                    @php
+                                        $segTones = is_array($mapSegmentTones ?? null) ? $mapSegmentTones : [];
+                                        $probeTone = static function (string $t): string {
+                                            return $t === 'bad' ? 'error' : $t;
+                                        };
+                                        $probeBtnIeducar = $probeTone($segTones['ieducar'] ?? 'ok');
+                                        $probeBtnGestor = $probeTone($segTones['gestor'] ?? 'ok');
+                                        $probeBtnSms = ($smsChainReady ?? false) ? 'ok' : 'warn';
+                                    @endphp
                                     <div class="bridge-actions">
-                                        <button type="button" class="bridge-btn bridge-btn--ghost bridge-btn--icononly" id="btn-bridge-ieducar" data-url="{{ route('integrations.bridge.ieducar') }}" title="Testar ponte iEducar" aria-label="Testar ponte iEducar: rede e API catraca-frequência">
+                                        <button type="button" class="bridge-btn bridge-btn--ghost bridge-btn--icononly bridge-probe-btn" id="btn-bridge-ieducar" data-probe-state="{{ $probeBtnIeducar }}" data-url="{{ route('integrations.bridge.ieducar') }}" title="Testar ponte iEducar" aria-label="Testar ponte iEducar: rede e API catraca-frequência">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1b6b3a"/><path fill="#fff" d="M8 9h2.6v14H8V9zm5.3 0h4.2c3.8 0 6.1 2.1 6.1 5.6 0 3.4-2.3 5.5-6.1 5.5h-1.6V23h-2.6V9zm2.6 2.4v6.3h1.4c2.1 0 3.3-1 3.3-3.1 0-2.2-1.2-3.2-3.3-3.2h-1.4z"/></svg>
                                         </button>
-                                        <button type="button" class="bridge-btn bridge-btn--ghost bridge-btn--icononly" id="btn-bridge-gestor" data-url="{{ route('integrations.bridge.gestor') }}" title="Testar ponte Gestor" aria-label="Testar ponte Gestor">
+                                        <button type="button" class="bridge-btn bridge-btn--ghost bridge-btn--icononly bridge-probe-btn" id="btn-bridge-gestor" data-probe-state="{{ $probeBtnGestor }}" data-url="{{ route('integrations.bridge.gestor') }}" title="Testar ponte Gestor" aria-label="Testar ponte Gestor">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                                         </button>
-                                        <button type="button" class="bridge-btn bridge-btn--ghost bridge-btn--icononly" id="btn-bridge-sms" data-url="{{ route('integrations.bridge.sms') }}" title="Testar ponte SMS" aria-label="Testar ponte SMS">
+                                        <button type="button" class="bridge-btn bridge-btn--ghost bridge-btn--icononly bridge-probe-btn" id="btn-bridge-sms" data-probe-state="{{ $probeBtnSms }}" data-url="{{ route('integrations.bridge.sms') }}" title="Testar ponte SMS" aria-label="Testar ponte SMS">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
                                         </button>
                                         <span class="bridge-muted" style="font-size:12px;">Testes rápidos (JSON, timeout 12s).</span>
+                                    </div>
+                                    <div class="bridge-probe-legend" aria-hidden="true">
+                                        <span class="bridge-probe-legend__i"><span class="bridge-probe-legend__dot bridge-probe-legend__dot--ok"></span> conexão OK</span>
+                                        <span class="bridge-probe-legend__i"><span class="bridge-probe-legend__dot bridge-probe-legend__dot--warn"></span> pendente / não configurado</span>
+                                        <span class="bridge-probe-legend__i"><span class="bridge-probe-legend__dot bridge-probe-legend__dot--err"></span> erro no teste</span>
                                     </div>
                                     <div class="bridge-result" id="bridge-result" role="status" aria-live="polite"><pre id="bridge-result-pre"></pre></div>
                                 @endif
@@ -875,6 +929,18 @@
                         .catch(function () {});
                 }
 
+                function applyProbeButtonState(btn, j) {
+                    if (!btn) return;
+                    var st = 'error';
+                    if (j && j.probe_state === 'unconfigured') st = 'warn';
+                    else if (j && j.probe_state === 'ok') st = 'ok';
+                    else if (j && j.probe_state === 'error') st = 'error';
+                    else if (j && j.ok === true) st = 'ok';
+                    else if (j && j.__httpStatus === 422) st = 'warn';
+                    else if (j && j.parse_error) st = 'error';
+                    else if (j && j.ok === false) st = 'error';
+                    btn.setAttribute('data-probe-state', st);
+                }
                 function runBridge(btnId) {
                     var btn = document.getElementById(btnId);
                     if (!btn) return;
@@ -899,13 +965,18 @@
                             body: JSON.stringify({ timeout: 12 })
                         }).then(function (r) {
                             return r.text().then(function (t) {
-                                try { return JSON.parse(t); } catch (_) { return { ok: false, parse_error: true, status: r.status, body: t }; }
+                                var j;
+                                try { j = JSON.parse(t); } catch (_) { j = { ok: false, parse_error: true, body: t }; }
+                                j.__httpStatus = r.status;
+                                return j;
                             });
                         })
                         .then(function (j) {
                             pre.textContent = JSON.stringify(j, null, 2);
+                            applyProbeButtonState(btn, j);
                         }).catch(function (e) {
                             pre.textContent = String(e);
+                            applyProbeButtonState(btn, { ok: false, probe_state: 'error' });
                         }).finally(function () {
                             map.classList.remove('is-probing');
                             refreshBridgeMapStatus();

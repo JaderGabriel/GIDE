@@ -344,6 +344,26 @@ Lançamento no iEducar:
 
 Observação: para lançar efetivamente faltas/presença, é necessário enriquecer o evento com `instituicao_id`, `etapa` e estrutura `turmas[...]` conforme API do iEducar.
 
+## Testes automatizados
+
+- **Requisito**: extensão PHP **`pdo_sqlite`** para qualquer teste que use `RefreshDatabase` (o `phpunit.xml` usa SQLite em memória). Alguns testes de **convidado** (ex.: `GET /login`, redirecionamento de `/integracoes`) não usam base de dados e **executam mesmo sem** `pdo_sqlite`.
+- **Suíte completa** (igual ao CI típico):
+  ```bash
+  php artisan test
+  ```
+  ou `composer test`.
+- **Por tema (telas / API / fluxo)**: comando Artisan **`gide:test`**, que repassa grupos PHPUnit (`--group`):
+  ```bash
+  php artisan gide:test --list
+  php artisan gide:test --theme=telas-auth
+  php artisan gide:test --theme=telas-users,telas-auditoria
+  php artisan gide:test --theme=api-ieducar --theme=fluxo-frequencia
+  ```
+  Temas suportados: `telas-publico`, `telas-auth`, `telas-users`, `telas-auditoria`, `telas-integracoes`, `telas-dashboard`, `telas-sms`, `api-ieducar`, `api-gestor`, `api-catraca`, `api-catraca-webhook`, `fluxo-enrollment`, `fluxo-frequencia`, `unit`.
+- **CI (GitHub Actions)**: workflow `.github/workflows/tests.yml` usa **PHP 8.3** com extensões **`pdo_sqlite` / `sqlite3`** declaradas e corre `php artisan gide:test` (mesmo ambiente que `phpunit.xml`: SQLite em memória).
+- **Relatório por cenário** (testes que usam `reportStructuredTestOutcome` / `assert*WithReport` em `tests/TestCase.php`): na consola aparece um bloco **Resumo do cenário** com *o que se testou*, *objetivo*, *esperado*, *obtido* e *EXITOSO* ou *FALHOU* (este último também antes da mensagem PHPUnit em falhas de HTTP). Controlado por `TEST_STRUCTURED_OUTCOME` no `phpunit.xml` (`0` para desligar). Em `gide:test`: opção **`--testdox`** (frases PHPUnit) e **`--no-structured-outcome`** (equivale a desligar os blocos).
+- **Código**: cenários em `tests/Feature/Telas/`, `tests/Feature/Api/`, `tests/Feature/Fluxo/` e helper `tests/Support/HmacJsonRequest.php`.
+
 ## Comandos úteis
 
 - **Importar Postman (Gestor)**:

@@ -879,7 +879,7 @@ Artisan::command('gide:deliveries:retry-due {--recover-stale : Re-despacha tamb�
     return 0;
 })->purpose('Re-enfileira matrícula→Gestor e SMS com next_retry_at vencido (complementa a fila)');
 
-Artisan::command('gide:queue:work-once', function () {
+Artisan::command('gide:queue:work-once {--drain : Esvazia a fila (até max-time / max-jobs); usado pelo schedule:run}', function () {
     $connection = (string) config('queue.default', 'database');
     if ($connection === 'sync') {
         $this->comment('QUEUE_CONNECTION=sync: fila inline; nada a drenar.');
@@ -887,11 +887,23 @@ Artisan::command('gide:queue:work-once', function () {
         return 0;
     }
 
-    $code = Artisan::call('queue:work', [
-        $connection,
-        '--once' => true,
+    $drain = (bool) $this->option('drain');
+    $params = [
+        'connection' => $connection,
         '--no-ansi' => true,
-    ]);
+    ];
+    if ($drain) {
+        $params['--stop-when-empty'] = true;
+        $params['--max-time'] = max(1, (int) config('queue.schedule_drain_max_seconds', 55));
+        $maxJobs = (int) config('queue.schedule_drain_max_jobs', 0);
+        if ($maxJobs > 0) {
+            $params['--max-jobs'] = $maxJobs;
+        }
+    } else {
+        $params['--once'] = true;
+    }
+
+    $code = Artisan::call('queue:work', $params);
     $this->line(trim((string) Artisan::output()));
     if ($code !== 0) {
         $this->warn('queue:work retornou código '.$code);
@@ -899,7 +911,18 @@ Artisan::command('gide:queue:work-once', function () {
     $this->comment(DateDisplay::cliReferenceLine());
 
     return 0;
-})->purpose('Processa um job da fila (útil em cron sem daemon queue:work)');
+})->purpose('Processa job(s) da fila: uma vez (--once) ou drenagem (--drain) para cron/schedule:run');
 
-Schedule::command('gide:deliveries:retry-due')->everyMinute()->withoutOverlapping(120);
-Schedule::command('gide:queue:work-once')->everyMinute()->withoutOverlapping(120);
+/*
+| O schedule não usa aqui dois `Schedule::command` separados: cada um gera um subprocesso
+| (`php artisan … > /dev/null`), o que em alguns ambientes/cron não processa a fila como
+| um `php artisan gide:queue:work-once` manual no mesmo projeto. Este tick corre no
+| **mesmo processo** que `schedule:run`, com os mesmos env/config que o CLI habitual.
+*/
+Schedule::call(function (): void {
+    Artisan::call('gide:deliveries:retry-due');
+    Artisan::call('gide:queue:work-once', ['--drain' => true]);
+})
+    ->name('gide:schedule-tick-deliveries-and-queue')
+    ->everyMinute()
+    ->withoutOverlapping(120);

@@ -569,6 +569,7 @@ class IntegrationOverviewController extends Controller
 
         return response()->json([
             'ok' => $ok,
+            'probe_state' => $ok ? 'ok' : 'error',
             'steps' => $steps,
             'tested_at' => $now->toIso8601String(),
             'tested_at_display' => DateDisplay::formatHuman($now, true),
@@ -589,6 +590,7 @@ class IntegrationOverviewController extends Controller
 
         return response()->json([
             'ok' => false,
+            'probe_state' => 'unconfigured',
             'steps' => [
                 [
                     'name' => 'Configuração ausente ou integração não persistida',

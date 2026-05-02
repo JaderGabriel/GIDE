@@ -305,6 +305,28 @@ html.dark .bridge-btn--primary:hover { background: color-mix(in srgb, var(--prim
   padding-left: 10px;
   padding-right: 10px;
 }
+.bridge-user-menu__role-trigger {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--accent-a) 8%);
+  color: var(--text);
+}
+.bridge-user-menu__role-trigger svg {
+  width: 14px;
+  height: 14px;
+}
+.bridge-user-menu__role-trigger--admin {
+  background: color-mix(in srgb, var(--surface-2) 88%, #6366f1 14%);
+  color: color-mix(in srgb, var(--text) 70%, #4f46e5);
+}
+.bridge-user-menu__role-trigger--integration {
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--accent-c) 12%);
+}
 .bridge-user-menu__avatar {
   width: 28px;
   height: 28px;
@@ -332,21 +354,131 @@ html.dark .bridge-btn--primary:hover { background: color-mix(in srgb, var(--prim
   transform: rotate(180deg);
 }
 .bridge-user-menu__sub {
+  position: relative;
   margin-top: 4px;
-  padding-top: 6px;
+  padding: 8px 6px 4px 14px;
   border-top: 1px solid var(--border);
 }
+.bridge-user-menu__sub::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 10px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent-a) 55%, var(--border));
+  opacity: 0.9;
+}
 .bridge-user-menu__sub-label {
-  padding: 6px 10px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 6px 2px;
   font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
 }
+.bridge-user-menu__sub-label svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.85;
+  color: color-mix(in srgb, var(--muted) 70%, var(--accent-a));
+}
 .bridge-user-menu__item--sub {
-  padding-left: 16px;
+  padding-left: 10px;
   font-size: 13px;
+}
+.bridge-user-menu__item--sub .bridge-user-menu__item-icon {
+  color: color-mix(in srgb, var(--muted) 35%, var(--text));
+}
+.bridge-user-menu__role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--accent-a) 10%);
+  color: var(--text);
+}
+.bridge-user-menu__role svg {
+  width: 20px;
+  height: 20px;
+}
+.bridge-user-menu__role--admin {
+  background: color-mix(in srgb, var(--surface-2) 85%, #6366f1 18%);
+  color: color-mix(in srgb, var(--text) 65%, #4338ca);
+  border-color: color-mix(in srgb, var(--border) 70%, #6366f1 30%);
+}
+.bridge-user-menu__role--integration {
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--accent-c) 14%);
+}
+.bridge-user-menu__role-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bridge-user-menu__home-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--accent-a) 8%);
+  color: var(--text);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.bridge-user-menu__home-icon:hover {
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--accent-a) 16%);
+  text-decoration: none;
+}
+.bridge-user-menu__home-icon:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-a) 55%, transparent);
+  outline-offset: 2px;
+}
+.bridge-user-menu__home-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.bridge-user-menu__item--row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bridge-user-menu__item-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--muted) 40%, var(--text));
+}
+.bridge-user-menu__item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.bridge-user-menu__item--btn .bridge-user-menu__item-icon {
+  color: #ef4444;
+}
+.bridge-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .bridge-user-menu__panel {
   position: absolute;
@@ -368,7 +500,8 @@ html.dark .bridge-btn--primary:hover { background: color-mix(in srgb, var(--prim
 }
 .bridge-user-menu__meta-line { margin: 0 0 4px; }
 .bridge-user-menu__item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   text-align: left;
   padding: 10px 10px;

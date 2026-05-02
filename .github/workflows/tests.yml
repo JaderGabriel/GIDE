@@ -1,0 +1,37 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  gide-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3']
+
+    name: PHP ${{ matrix.php }} (SQLite + gide:test)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP (pdo_sqlite explícito)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, xml, ctype, json, tokenizer, fileinfo, pdo, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Verificar extensões SQLite
+        run: php -r "if (! extension_loaded('pdo_sqlite')) { fwrite(STDERR, \"pdo_sqlite ausente\n\"); exit(1);} echo \"pdo_sqlite OK\n\";"
+
+      - name: Instalar dependências
+        uses: ramsey/composer-install@v3
+        with:
+          composer-options: '--prefer-dist --no-interaction --no-progress'
+
+      - name: Executar gide:test (phpunit + env testing do phpunit.xml)
+        run: php artisan gide:test
