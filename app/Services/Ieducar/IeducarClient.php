@@ -13,6 +13,8 @@ class IeducarClient
 
     public const CAT_FREQUENCIA_ALUNO_CONSULTA_PATH = '/api/catraca-frequencia/gide/aluno/consulta';
 
+    public const CAT_FREQUENCIA_REGISTRO_PATH = '/api/catraca-frequencia/gide/frequencia/registro';
+
     public const CAT_FREQUENCIA_CONTRACT_VERSION = '1.0';
 
     public function __construct(private readonly Integration $integration) {}
@@ -137,5 +139,34 @@ class IeducarClient
         return $this->requestBearer($token)
             ->acceptJson()
             ->post($this->url(self::CAT_FREQUENCIA_ALUNO_CONSULTA_PATH), $payload);
+    }
+
+    /**
+     * Registro de frequência em lote (GIDE → i-Educar).
+     * Path: /api/catraca-frequencia/gide/frequencia/registro
+     * Auth: mesmo Bearer da confirmação/consulta (confirmacao_token ou auth_token).
+     *
+     * @param  array<string, mixed>  $payload  Corpo v1 plano B (meta, fonte, presente, identificacao+data_ref ou registros[]).
+     */
+    public function postCatracaFrequenciaRegistro(array $payload): Response
+    {
+        $token = (string) data_get($this->integration->extra, 'catraca_frequencia.confirmacao_token', '');
+        if ($token === '') {
+            $token = (string) ($this->integration->auth_token ?? '');
+        }
+
+        if ($token === '') {
+            throw new \RuntimeException('Token Bearer do iEducar não configurado (integrations.extra.catraca_frequencia.confirmacao_token ou integrations.auth_token).');
+        }
+
+        $meta = (array) ($payload['meta'] ?? []);
+        if (! isset($meta['contract_version'])) {
+            $meta['contract_version'] = self::CAT_FREQUENCIA_CONTRACT_VERSION;
+        }
+        $payload['meta'] = $meta;
+
+        return $this->requestBearer($token)
+            ->acceptJson()
+            ->post($this->url(self::CAT_FREQUENCIA_REGISTRO_PATH), $payload);
     }
 }

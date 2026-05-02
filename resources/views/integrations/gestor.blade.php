@@ -34,13 +34,14 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="/dashboard">
+                        <a class="bridge-brand" href="{{ url('/dashboard') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>
                                 <div class="bridge-brand__tagline">Configuração • Gestor</div>
                             </div>
                         </a>
+                        @include('partials.bridge-user-menu')
                     </div>
                 </div>
             </header>
@@ -209,6 +210,41 @@
                                 @csrf
                                 <div class="bridge-form__actions">
                                     <button type="submit" class="bridge-btn">Gerar/rotacionar segredo HMAC</button>
+                                </div>
+                            </form>
+
+                            <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border);" />
+
+                            <div class="bridge-panel__head" style="margin-top: 8px;">
+                                <div class="bridge-panel__title">Webhook JSON da catraca (Bearer)</div>
+                                <div class="bridge-panel__meta">alternativa ao HMAC</div>
+                            </div>
+
+                            <p class="bridge-muted" style="margin-top: 12px;">
+                                Endpoint <strong class="mono">POST {{ $catracaWebhookUrl ?? url('/api/v1/catraca/access-events') }}</strong> com cabeçalho
+                                <span class="mono">Authorization: Bearer &lt;token&gt;</span> e corpo JSON (ver <code>docs/CATRACA_WEBHOOK.md</code>).
+                                O token é guardado apenas como <strong>hash</strong>; depois de gerado, a interface <strong>não mostra</strong> o valor salvo — só é possível ver o texto na hora da geração ou gerar outro (o anterior deixa de valer).
+                            </p>
+
+                            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                                <span class="pill {{ ! empty($catracaWebhookBearerConfigured) ? 'pill--ok' : '' }}">
+                                    {{ ! empty($catracaWebhookBearerConfigured) ? 'Token webhook configurado' : 'Token webhook não configurado' }}
+                                </span>
+                            </div>
+
+                            @if (session('gestor_catraca_webhook_bearer_plaintext'))
+                                <div style="margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 2px solid color-mix(in srgb, var(--accent-c) 45%, var(--border)); background: color-mix(in srgb, var(--accent-c) 10%, var(--surface-1));">
+                                    <div style="font-weight: 800; margin-bottom: 8px;">Copie o token agora</div>
+                                    <label class="bridge-label" for="catraca_wh_once">Bearer (uso único na tela)</label>
+                                    <input class="bridge-input mono" id="catraca_wh_once" type="text" readonly value="{{ session('gestor_catraca_webhook_bearer_plaintext') }}" onclick="this.select()" style="font-size: 13px;" />
+                                    <div class="bridge-muted" style="margin-top: 8px; font-size: 12px;">Este campo some no próximo carregamento. Guarde em cofre ou na configuração da catraca.</div>
+                                </div>
+                            @endif
+
+                            <form method="POST" action="{{ route('integrations.gestor.generate-catraca-webhook-bearer') }}" class="bridge-form" style="margin-top: 12px;" onsubmit="return confirm('Gerar novo token invalida o anterior. Continuar?');">
+                                @csrf
+                                <div class="bridge-form__actions">
+                                    <button type="submit" class="bridge-btn">{{ ! empty($catracaWebhookBearerConfigured) ? 'Gerar novo token (invalida o atual)' : 'Gerar token do webhook' }}</button>
                                 </div>
                             </form>
                         </div>

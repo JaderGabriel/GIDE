@@ -6,7 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\SmsTemplate;
 use App\Services\Gestor\GestorClient;
+use App\Services\UserAuditLogger;
+use App\Support\BrPhoneNormalizer;
+use App\Support\GestorSigninProbeCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class IntegrationController extends Controller
 {
@@ -93,6 +99,11 @@ class IntegrationController extends Controller
             return back()->withErrors(['api_token' => $e->getMessage()]);
         }
 
+        UserAuditLogger::recordAuthenticated('integration.ieducar.updated', [
+            'ieducar_enabled' => (bool) $integration->enabled,
+            'catraca_frequencia_enabled' => (bool) $catracaIntegration->enabled,
+        ], 'integration', $integration->id);
+
         return redirect('/dashboard')->with('status', 'Integração iEducar atualizada.');
     }
 
@@ -103,6 +114,8 @@ class IntegrationController extends Controller
         // 32 bytes => 43/44 chars base64, bom para secret
         $integration->hmac_secret = base64_encode(random_bytes(32));
         $integration->save();
+
+        UserAuditLogger::recordAuthenticated('integration.ieducar.hmac_rotated', [], 'integration', $integration->id);
 
         return back()->with('status', 'Segredo HMAC do iEducar gerado/rotacionado.');
     }
@@ -121,7 +134,32 @@ class IntegrationController extends Controller
 
         return view('integrations.gestor', [
             'integration' => $integration,
+            'catracaWebhookUrl' => url('/api/v1/catraca/access-events'),
+            'catracaWebhookBearerConfigured' => filled(data_get($integration->extra, 'catraca_webhook_bearer_hash')),
         ]);
+    }
+
+    /**
+     * Gera token Bearer para o webhook da catraca; o valor em claro só aparece nesta resposta (flash).
+     */
+    public function generateGestorCatracaWebhookBearer(Request $request)
+    {
+        $integration = Integration::query()->where('key', 'gestor')->firstOrFail();
+
+        $plain = 'gide_cwc_'.Str::lower(Str::random(40));
+
+        $extra = (array) ($integration->extra ?? []);
+        $extra['catraca_webhook_bearer_hash'] = Hash::make($plain);
+        $extra['catraca_webhook_bearer_created_at'] = now()->toIso8601String();
+        $integration->extra = $extra;
+        $integration->save();
+
+        UserAuditLogger::recordAuthenticated('integration.gestor.webhook_bearer_generated', [], 'integration', $integration->id);
+
+        return back()
+            ->with('status', 'Novo token do webhook da catraca gerado. Copie abaixo agora: ele não voltará a ser exibido.')
+            ->with('status_level', 'success')
+            ->with('gestor_catraca_webhook_bearer_plaintext', $plain);
     }
 
     public function updateGestor(Request $request)
@@ -163,6 +201,10 @@ class IntegrationController extends Controller
             return back()->withErrors(['base_url' => $e->getMessage()]);
         }
 
+        UserAuditLogger::recordAuthenticated('integration.gestor.updated', [
+            'enabled' => (bool) $integration->enabled,
+        ], 'integration', $integration->id);
+
         return redirect('/dashboard')->with('status', 'Integração Gestor atualizada.');
     }
 
@@ -173,6 +215,8 @@ class IntegrationController extends Controller
         $integration->hmac_secret = base64_encode(random_bytes(32));
         $integration->save();
 
+        UserAuditLogger::recordAuthenticated('integration.gestor.hmac_rotated', [], 'integration', $integration->id);
+
         return back()->with('status', 'Segredo HMAC do Gestor gerado/rotacionado.');
     }
 
@@ -182,12 +226,24 @@ class IntegrationController extends Controller
 
         try {
             (new GestorClient($integration))->signIn();
+            GestorSigninProbeCache::recordSuccess();
         } catch (\Throwable $e) {
+            GestorSigninProbeCache::recordFailure();
+
+            UserAuditLogger::recordAuthenticated('integration.gestor.test_auth', [
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ], 'integration', $integration->id);
+
             return back()->with([
                 'status' => 'Falha no auth do Gestor: '.$e->getMessage(),
                 'status_level' => 'error',
             ]);
         }
+
+        UserAuditLogger::recordAuthenticated('integration.gestor.test_auth', [
+            'ok' => true,
+        ], 'integration', $integration->id);
 
         return back()->with([
             'status' => 'Auth do Gestor OK (token atualizado).',
@@ -207,6 +263,11 @@ class IntegrationController extends Controller
                 : $client->listUnitiesAll();
 
             if (! $resp->successful()) {
+                UserAuditLogger::recordAuthenticated('integration.gestor.test_unities', [
+                    'ok' => false,
+                    'http_status' => $resp->status(),
+                ], 'integration', $integration->id);
+
                 return back()->with([
                     'status' => 'Falha ao listar Unities. HTTP '.$resp->status(),
                     'status_level' => 'error',
@@ -215,11 +276,21 @@ class IntegrationController extends Controller
 
             $count = is_array($resp->json()) ? count($resp->json()) : null;
         } catch (\Throwable $e) {
+            UserAuditLogger::recordAuthenticated('integration.gestor.test_unities', [
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ], 'integration', $integration->id);
+
             return back()->with([
                 'status' => 'Erro ao listar Unities: '.$e->getMessage(),
                 'status_level' => 'error',
             ]);
         }
+
+        UserAuditLogger::recordAuthenticated('integration.gestor.test_unities', [
+            'ok' => true,
+            'items' => $count,
+        ], 'integration', $integration->id);
 
         return back()->with([
             'status' => 'Unities OK'.($count !== null ? ' (itens: '.$count.')' : '').'.',
@@ -239,9 +310,13 @@ class IntegrationController extends Controller
             ['name' => 'Presença registrada', 'body' => 'Presença registrada em {{date}} às {{time}}. Aluno: {{aluno_id}}. Matrícula: {{matricula_id}}.', 'enabled' => true],
         );
 
+        $testPhones = (array) data_get($integration->extra, 'test_phone_numbers', []);
+        $testPhoneLines = collect($testPhones)->filter(fn ($v) => is_string($v) && $v !== '')->implode("\n");
+
         return view('integrations.sms', [
             'integration' => $integration,
             'template' => $template,
+            'testPhoneNumbersDisplay' => $testPhoneLines,
         ]);
     }
 
@@ -257,6 +332,8 @@ class IntegrationController extends Controller
                 'api_token' => ['nullable', 'string'],
                 'from' => ['nullable', 'string'],
                 'payload_phone_key' => ['nullable', 'string'],
+                'sms_recipient_mode' => ['required', Rule::in(['alunos', 'test_numbers'])],
+                'test_phone_numbers' => ['nullable', 'string'],
                 'template_enabled' => ['nullable'],
                 'template_body' => ['required', 'string', 'min:1'],
             ]);
@@ -272,6 +349,12 @@ class IntegrationController extends Controller
             $extra = (array) ($integration->extra ?? []);
             $extra['provider'] = 'zenvia';
             $extra['from'] = $data['from'] !== '' ? $data['from'] : null;
+            $extra['sms_recipient_mode'] = $data['sms_recipient_mode'];
+            $testPhones = BrPhoneNormalizer::parseLinesToE164((string) ($data['test_phone_numbers'] ?? ''));
+            if ($data['sms_recipient_mode'] === 'test_numbers' && $testPhones === []) {
+                return back()->withErrors(['test_phone_numbers' => 'Informe ao menos um número válido (DDI+DDD+número, um por linha).'])->withInput();
+            }
+            $extra['test_phone_numbers'] = $testPhones;
             $extra['payload_map'] = array_merge((array) ($extra['payload_map'] ?? []), [
                 'phone' => $data['payload_phone_key'] !== '' ? $data['payload_phone_key'] : 'phone',
             ]);
@@ -284,6 +367,11 @@ class IntegrationController extends Controller
         } catch (\Throwable $e) {
             return back()->withErrors(['api_token' => $e->getMessage()]);
         }
+
+        UserAuditLogger::recordAuthenticated('integration.sms.updated', [
+            'enabled' => (bool) $integration->enabled,
+            'recipient_mode' => (string) data_get($integration->extra, 'sms_recipient_mode', ''),
+        ], 'integration', $integration->id);
 
         return redirect('/dashboard')->with('status', 'Configuração de SMS atualizada.');
     }

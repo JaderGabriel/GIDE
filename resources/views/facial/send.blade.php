@@ -89,7 +89,7 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="/dashboard">
+                        <a class="bridge-brand" href="{{ auth()->check() ? url('/dashboard') : url('/') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>

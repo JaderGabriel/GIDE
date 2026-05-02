@@ -34,13 +34,14 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="/dashboard">
+                        <a class="bridge-brand" href="{{ url('/dashboard') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>
                                 <div class="bridge-brand__tagline">Configuração • SMS</div>
                             </div>
                         </a>
+                        @include('partials.bridge-user-menu')
                     </div>
                 </div>
             </header>
@@ -102,7 +103,33 @@
                                         <div class="bridge-error">{{ $message }}</div>
                                     @enderror
                                     <div class="bridge-muted" style="margin-top: 6px;">
-                                        Ex.: <code>phone</code>, <code>responsavel.phone</code>, etc.
+                                        Ex.: <code>phone</code>, <code>responsavel.phone</code>, etc. Usada quando o destino for <strong>alunos</strong>.
+                                    </div>
+                                </div>
+
+                                <div class="bridge-field" style="margin-top: 14px;">
+                                    <div class="bridge-label">Destino das notificações SMS</div>
+                                    <label class="bridge-check" style="margin-top: 8px;">
+                                        <input type="radio" name="sms_recipient_mode" value="alunos" {{ old('sms_recipient_mode', data_get($integration->extra, 'sms_recipient_mode', 'alunos')) === 'alunos' ? 'checked' : '' }} />
+                                        <span>Enviar para o telefone indicado no payload (contatos dos alunos / responsáveis)</span>
+                                    </label>
+                                    <label class="bridge-check" style="margin-top: 8px;">
+                                        <input type="radio" name="sms_recipient_mode" value="test_numbers" {{ old('sms_recipient_mode', data_get($integration->extra, 'sms_recipient_mode')) === 'test_numbers' ? 'checked' : '' }} />
+                                        <span>Modo testes: enviar <strong>todas</strong> as notificações apenas para os números abaixo</span>
+                                    </label>
+                                    @error('sms_recipient_mode')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="test_phone_numbers">Números de teste (um por linha, DDI+DDD+número)</label>
+                                    <textarea class="bridge-input" id="test_phone_numbers" name="test_phone_numbers" rows="4" style="resize: vertical;" placeholder="5511999998888&#10;5511888887777">{{ old('test_phone_numbers', $testPhoneNumbersDisplay ?? '') }}</textarea>
+                                    @error('test_phone_numbers')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="bridge-muted" style="margin-top: 6px;">
+                                        Obrigatório quando o modo testes estiver ativo. Em produção com alunos, estes números são ignorados.
                                     </div>
                                 </div>
 
@@ -126,13 +153,13 @@
                                     @enderror
                                     <div class="bridge-muted" style="margin-top: 10px;">
                                         Tags disponíveis:
-                                        <br />- <code>{{'{{aluno_id}}'}}</code>
-                                        <br />- <code>{{'{{matricula_id}}'}}</code>
-                                        <br />- <code>{{'{{date}}'}}</code> (dd/mm/aaaa)
-                                        <br />- <code>{{'{{time}}'}}</code> (hh:mm)
-                                        <br />- <code>{{'{{window}}'}}</code>
-                                        <br />- <code>{{'{{event_type}}'}}</code>
-                                        <br />- <code>{{'{{event_id}}'}}</code>
+                                        <br />- <code>{!! '{{aluno_id}}' !!}</code>
+                                        <br />- <code>{!! '{{matricula_id}}' !!}</code>
+                                        <br />- <code>{!! '{{date}}' !!}</code> (dd/mm/aaaa)
+                                        <br />- <code>{!! '{{time}}' !!}</code> (hh:mm)
+                                        <br />- <code>{!! '{{window}}' !!}</code>
+                                        <br />- <code>{!! '{{event_type}}' !!}</code>
+                                        <br />- <code>{!! '{{event_id}}' !!}</code>
                                     </div>
                                 </div>
 

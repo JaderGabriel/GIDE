@@ -6,17 +6,26 @@ use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\OutboundDelivery;
 use App\Models\SmsDelivery;
+use App\Models\UserIntegrationOverviewState;
 use App\Services\Gestor\GestorClient;
 use App\Services\Ieducar\IeducarClient;
+use App\Services\UserAuditLogger;
 use App\Support\DateDisplay;
+use App\Support\GestorSigninProbeCache;
+use App\Support\Ieducar\GideFrequenciaRegistroPlanB;
 use App\Support\OutboundDeliveryStatuses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 
 class IntegrationOverviewController extends Controller
 {
+    private const CATRACA_PREVIEW_CACHE_KEY = 'integration.catraca_freq_preview_v1';
+
     public function index(Request $request)
     {
         // “Esperadas” no GIDE hoje (podem não existir no banco ainda).
@@ -80,7 +89,107 @@ class IntegrationOverviewController extends Controller
         $metrics['not_configured'] = max(0, $metrics['total'] - $metrics['configured']);
         $metrics['disabled'] = max(0, $metrics['total'] - $metrics['enabled']);
 
-        $dbMetrics = [];
+        $ov = $this->overviewUserState($request);
+        $storedOverview = $ov['stored'];
+        $laneTests = $ov['lane_tests'];
+
+        $dbMetrics = $this->collectDbMetrics();
+
+        $queueSnapshot = $this->buildQueueSnapshot();
+
+        $ieducarRow = $byKey->get('ieducar');
+        $catracaFrequenciaPreviewProbe = ($ieducarRow && $ieducarRow->exists && empty($laneTests['catraca_frequencia:out']))
+            ? $this->rememberedCatracaFrequenciaPreviewProbe($ieducarRow)
+            : null;
+
+        $laneTestsForBridge = $laneTests;
+        if ($catracaFrequenciaPreviewProbe !== null && empty($laneTests['catraca_frequencia:out'])) {
+            $laneTestsForBridge['catraca_frequencia:out'] = $catracaFrequenciaPreviewProbe;
+        }
+
+        $bridgeHealth = $this->computeBridgeHealth(
+            $dbMetrics,
+            $queueSnapshot,
+            $byKey->get('ieducar'),
+            $byKey->get('gestor'),
+            $byKey->get('sms'),
+            $laneTestsForBridge,
+        );
+
+        $integrationCards = collect(['ieducar', 'gestor', 'sms'])
+            ->map(fn (string $k) => $byKey->get($k))
+            ->filter()
+            ->values();
+
+        $lastTest = session('overview_last_test');
+        if (! is_array($lastTest) && $storedOverview && is_array($storedOverview->last_test)) {
+            $lastTest = $storedOverview->last_test;
+        }
+        $lastTestKey = session('overview_last_test_key');
+        if (! is_string($lastTestKey) || $lastTestKey === '') {
+            $lastTestKey = ($storedOverview && is_string($storedOverview->last_test_key)) ? $storedOverview->last_test_key : null;
+        }
+
+        return view('integrations.overview', [
+            'items' => $items,
+            'integrationCards' => $integrationCards,
+            'catracaFrequencia' => $byKey->get('catraca_frequencia'),
+            'lastTest' => is_array($lastTest) ? $lastTest : null,
+            'lastTestKey' => $lastTestKey !== null && $lastTestKey !== '' ? $lastTestKey : null,
+            'laneTests' => $laneTests,
+            'catracaFrequenciaPreviewProbe' => $catracaFrequenciaPreviewProbe,
+            'metrics' => $metrics,
+            'dbMetrics' => $dbMetrics,
+            'queueSnapshot' => $queueSnapshot,
+            'connectionTone' => $bridgeHealth['tone'],
+            'mapSegmentTones' => $bridgeHealth['tones'],
+            'smsChainReady' => $smsChainReady,
+            'smsConfigured' => $smsConfigured,
+            'gestorConfigured' => $gestorConfigured,
+            'gestorEnabled' => $gestorEnabled,
+            'smsEnabled' => $smsEnabled,
+            'integrationsOverviewAdmin' => (bool) $request->user()->is_admin,
+        ]);
+    }
+
+    public function status(Request $request): JsonResponse
+    {
+        $laneTests = $this->overviewUserState($request)['lane_tests'];
+
+        $dbMetrics = $this->collectDbMetrics();
+        $queueSnapshot = $this->buildQueueSnapshot();
+        $byKey = Integration::query()->whereIn('key', ['ieducar', 'gestor', 'sms'])->get()->keyBy('key');
+
+        $ieducar = $byKey->get('ieducar');
+        $laneTestsForBridge = $laneTests;
+        if ($ieducar && $ieducar->exists && empty($laneTests['catraca_frequencia:out'])) {
+            $probe = $this->rememberedCatracaFrequenciaPreviewProbe($ieducar);
+            if (is_array($probe) && array_key_exists('ok', $probe)) {
+                $laneTestsForBridge['catraca_frequencia:out'] = $probe;
+            }
+        }
+
+        $health = $this->computeBridgeHealth(
+            $dbMetrics,
+            $queueSnapshot,
+            $ieducar,
+            $byKey->get('gestor'),
+            $byKey->get('sms'),
+            $laneTestsForBridge,
+        );
+
+        return response()->json([
+            'tone' => $health['tone'],
+            'tones' => $health['tones'],
+            'checked_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectDbMetrics(): array
+    {
         try {
             $maxAttempts = max(1, (int) config('gide.deliveries.max_attempts', 3));
 
@@ -91,7 +200,7 @@ class IntegrationOverviewController extends Controller
                 ->where('next_retry_at', '<=', now())
                 ->count();
 
-            $dbMetrics = [
+            return [
                 'gide_facial_inbounds' => (int) DB::table('gide_facial_inbounds')->count(),
                 'facial_send_requests' => (int) DB::table('facial_send_requests')->count(),
                 'facial_enroll_attempts' => (int) DB::table('facial_enroll_attempts')->count(),
@@ -107,31 +216,134 @@ class IntegrationOverviewController extends Controller
                 'gestor_guest_links' => (int) DB::table('gestor_guest_links')->count(),
             ];
         } catch (\Throwable $e) {
-            $dbMetrics = ['error' => $e->getMessage()];
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Estado persistido + sessão (mesma base dos cartões de teste por faixa).
+     *
+     * @return array{stored: UserIntegrationOverviewState|null, lane_tests: array<string, mixed>}
+     */
+    private function overviewUserState(Request $request): array
+    {
+        $stored = null;
+        $user = $request->user();
+        if ($user) {
+            $stored = UserIntegrationOverviewState::query()->where('user_id', $user->getKey())->first();
         }
 
-        $queueSnapshot = $this->buildQueueSnapshot();
+        $dbLanes = $stored && is_array($stored->lane_tests) ? $stored->lane_tests : [];
+        $laneTests = array_merge($dbLanes, session('overview_lane_tests', []));
 
-        $integrationCards = collect(['ieducar', 'gestor', 'sms'])
-            ->map(fn (string $k) => $byKey->get($k))
-            ->filter()
-            ->values();
+        return ['stored' => $stored, 'lane_tests' => $laneTests];
+    }
 
-        return view('integrations.overview', [
-            'items' => $items,
-            'integrationCards' => $integrationCards,
-            'catracaFrequencia' => $byKey->get('catraca_frequencia'),
-            'lastTest' => session('overview_last_test'),
-            'lastTestKey' => session('overview_last_test_key'),
-            'metrics' => $metrics,
-            'dbMetrics' => $dbMetrics,
-            'queueSnapshot' => $queueSnapshot,
-            'smsChainReady' => $smsChainReady,
-            'smsConfigured' => $smsConfigured,
-            'gestorConfigured' => $gestorConfigured,
-            'gestorEnabled' => $gestorEnabled,
-            'smsEnabled' => $smsEnabled,
-        ]);
+    /**
+     * @param  array<string, mixed>  $laneTests
+     * @param  list<string>  $keys
+     */
+    private function bridgeSegmentReflectsLaneFailures(array $laneTests, array $keys): bool
+    {
+        foreach ($keys as $key) {
+            $entry = $laneTests[$key] ?? null;
+            if (is_array($entry) && array_key_exists('ok', $entry) && $entry['ok'] === false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function bridgeToneMax(string $a, string $b): string
+    {
+        $r = max($this->bridgeToneRank($a), $this->bridgeToneRank($b));
+
+        return $this->bridgeToneFromRank($r);
+    }
+
+    /**
+     * @param  array<string, mixed>  $laneTests  Resultados dos botões “testar” por faixa (cartões), mesclados DB+sessão.
+     * @return array{tone: string, tones: array{ieducar: string, gestor: string}}
+     */
+    private function computeBridgeHealth(array $dbMetrics, array $queueSnapshot, ?Integration $ieducar, ?Integration $gestor, ?Integration $sms, array $laneTests = []): array
+    {
+        $bad = static function (): array {
+            return ['tone' => 'bad', 'tones' => ['ieducar' => 'bad', 'gestor' => 'bad']];
+        };
+
+        if (! empty($dbMetrics['error'])) {
+            return $bad();
+        }
+
+        if (count($queueSnapshot['failed_jobs'] ?? []) > 0) {
+            return $bad();
+        }
+
+        $configured = function (?Integration $i): bool {
+            if (! $i) {
+                return false;
+            }
+            $hasBase = is_string($i->base_url ?? null) && (string) $i->base_url !== '';
+            $hasAuthToken = is_string($i->auth_token ?? null) && (string) $i->auth_token !== '';
+            $hasHmac = is_string($i->hmac_secret ?? null) && (string) $i->hmac_secret !== '';
+
+            return $hasBase || $hasAuthToken || $hasHmac || ! empty($i->extra);
+        };
+
+        $pendingJobs = (int) ($dbMetrics['jobs_pending'] ?? 0);
+        $jobBacklogWarn = $pendingJobs > 8;
+
+        $outboundRetryDue = (int) ($dbMetrics['outbound_retry_due'] ?? 0) > 0;
+        $outboundFailed = (int) ($dbMetrics['outbound_failed'] ?? 0) > 0;
+        $gestorProbeWarn = GestorSigninProbeCache::hasRecentFailure();
+
+        // iEducar: não misturar fila genérica de jobs com o tronco GIDE↔iEducar (gerava aviso no mapa com cartões OK).
+        $segIeducarBase = ! $configured($ieducar) ? 'warn' : 'ok';
+        $ieducarLanesFailed = $this->bridgeSegmentReflectsLaneFailures($laneTests, ['ieducar:in', 'ieducar:out', 'catraca_frequencia:out']);
+        $segIeducar = $ieducarLanesFailed ? $this->bridgeToneMax($segIeducarBase, 'bad') : $segIeducarBase;
+
+        $segGestorBase = (! $configured($gestor) || $jobBacklogWarn || $gestorProbeWarn || $outboundFailed > 0 || $outboundRetryDue) ? 'warn' : 'ok';
+        $gestorLanesFailed = $this->bridgeSegmentReflectsLaneFailures($laneTests, ['gestor:in', 'gestor:out']);
+        $segGestor = $gestorLanesFailed ? $this->bridgeToneMax($segGestorBase, 'bad') : $segGestorBase;
+
+        $smsSurfaceWarn = ($sms && (bool) ($sms->enabled ?? false) && ! $configured($sms))
+            || ((int) ($dbMetrics['sms_retry_due'] ?? 0) > 0);
+
+        $opsBacklogRank = $jobBacklogWarn ? 1 : 0;
+
+        $surfaceRank = max(
+            $this->bridgeToneRank($segIeducar),
+            $this->bridgeToneRank($segGestor),
+            $smsSurfaceWarn ? 1 : 0,
+            $opsBacklogRank,
+        );
+
+        return [
+            'tone' => $this->bridgeToneFromRank($surfaceRank),
+            'tones' => [
+                'ieducar' => $segIeducar,
+                'gestor' => $segGestor,
+            ],
+        ];
+    }
+
+    private function bridgeToneRank(string $tone): int
+    {
+        return match ($tone) {
+            'bad' => 2,
+            'warn' => 1,
+            default => 0,
+        };
+    }
+
+    private function bridgeToneFromRank(int $rank): string
+    {
+        return match (true) {
+            $rank >= 2 => 'bad',
+            $rank >= 1 => 'warn',
+            default => 'ok',
+        };
     }
 
     /**
@@ -142,7 +354,7 @@ class IntegrationOverviewController extends Controller
         $timeout = $this->clampTimeout((int) $request->input('timeout', 12));
         $integration = Integration::query()->where('key', 'ieducar')->first();
         if (! $integration) {
-            return $this->bridgeErrorJson('Integração ieducar não existe no banco.');
+            return $this->bridgeErrorJson('Integração ieducar não existe no banco.', 'ieducar');
         }
 
         $steps = [];
@@ -205,6 +417,13 @@ class IntegrationOverviewController extends Controller
             'message' => 'Valide com o cliente iEducar, Postman ou os endpoints documentados; este painel só testa saída GIDE→iEducar.',
         ];
 
+        UserAuditLogger::recordAuthenticated('integration.bridge.probe', [
+            'target' => 'ieducar',
+            'ok' => $okAll,
+            'timeout' => $timeout,
+            'steps' => count($steps),
+        ], 'integration', $integration->id);
+
         return $this->bridgeJsonResponse($okAll, $steps);
     }
 
@@ -216,7 +435,7 @@ class IntegrationOverviewController extends Controller
         $timeout = $this->clampTimeout((int) $request->input('timeout', 12));
         $integration = Integration::query()->where('key', 'gestor')->first();
         if (! $integration) {
-            return $this->bridgeErrorJson('Integração gestor não existe no banco.');
+            return $this->bridgeErrorJson('Integração gestor não existe no banco.', 'gestor');
         }
 
         $steps = [];
@@ -264,6 +483,19 @@ class IntegrationOverviewController extends Controller
             'message' => 'Valide com o ambiente Gestor ou documentação de webhook.',
         ];
 
+        if ($okAll) {
+            GestorSigninProbeCache::recordSuccess();
+        } else {
+            GestorSigninProbeCache::recordFailure();
+        }
+
+        UserAuditLogger::recordAuthenticated('integration.bridge.probe', [
+            'target' => 'gestor',
+            'ok' => $okAll,
+            'timeout' => $timeout,
+            'steps' => count($steps),
+        ], 'integration', $integration->id);
+
         return $this->bridgeJsonResponse($okAll, $steps);
     }
 
@@ -275,7 +507,7 @@ class IntegrationOverviewController extends Controller
         $timeout = $this->clampTimeout((int) $request->input('timeout', 12));
         $integration = Integration::query()->where('key', 'sms')->first();
         if (! $integration) {
-            return $this->bridgeErrorJson('Integração sms não existe no banco.');
+            return $this->bridgeErrorJson('Integração sms não existe no banco.', 'sms');
         }
 
         $steps = [];
@@ -321,6 +553,13 @@ class IntegrationOverviewController extends Controller
             $okAll = false;
         }
 
+        UserAuditLogger::recordAuthenticated('integration.bridge.probe', [
+            'target' => 'sms',
+            'ok' => $okAll,
+            'timeout' => $timeout,
+            'steps' => count($steps),
+        ], 'integration', $integration->id);
+
         return $this->bridgeJsonResponse($okAll, $steps);
     }
 
@@ -336,8 +575,16 @@ class IntegrationOverviewController extends Controller
         ]);
     }
 
-    private function bridgeErrorJson(string $message): JsonResponse
+    private function bridgeErrorJson(string $message, ?string $probeTarget = null): JsonResponse
     {
+        if ($probeTarget !== null) {
+            UserAuditLogger::recordAuthenticated('integration.bridge.probe', [
+                'target' => $probeTarget,
+                'ok' => false,
+                'error' => $message,
+            ], 'integration', null);
+        }
+
         $now = now();
 
         return response()->json([
@@ -499,14 +746,31 @@ class IntegrationOverviewController extends Controller
 
         $integration = Integration::query()->where('key', $key)->first();
         if (! $integration) {
+            $now = now();
+            UserAuditLogger::recordAuthenticated('integration.overview.test', [
+                'key' => $key,
+                'lane' => $lane,
+                'ok' => false,
+                'timeout' => $timeout,
+                'reason' => 'integration_missing',
+            ], 'integration', null);
+            $this->mergeOverviewLaneTestRecord($key, $lane, false, $now);
+
+            $lastPayload = [
+                'ok' => false,
+                'timeout' => $timeout,
+                'lane' => $lane,
+                'steps' => [
+                    ['name' => 'Carregar integração', 'ok' => false, 'message' => 'Integração não existe no banco.'],
+                ],
+                'tested_at' => $now->toIso8601String(),
+                'tested_at_display' => DateDisplay::formatHuman($now, true),
+            ];
+            $this->persistUserOverviewTestState($key, $lastPayload);
+
             return back()->with([
                 'overview_last_test_key' => $key,
-                'overview_last_test' => [
-                    'ok' => false,
-                    'steps' => [
-                        ['name' => 'Carregar integração', 'ok' => false, 'message' => 'Integração não existe no banco.'],
-                    ],
-                ],
+                'overview_last_test' => $lastPayload,
             ]);
         }
 
@@ -540,6 +804,7 @@ class IntegrationOverviewController extends Controller
                 } else {
                     $client = new GestorClient($integration);
                     $token = $client->signIn();
+                    GestorSigninProbeCache::recordSuccess();
                     $steps[] = ['name' => 'Saída: Signin (GIDE → Gestor)', 'ok' => true, 'message' => 'token='.mb_substr($token, 0, 12).'…'];
                 }
             } elseif ($key === 'ieducar') {
@@ -591,36 +856,227 @@ class IntegrationOverviewController extends Controller
                     }
                 }
             } elseif ($key === 'catraca_frequencia') {
-                $token = (string) ($integration->auth_token ?? '');
+                $inboundTok = (string) ($integration->auth_token ?? '');
                 $steps[] = [
-                    'name' => 'Saída: Bearer API catraca-frequência (GIDE → iEducar)',
-                    'ok' => $token !== '',
-                    'message' => $token !== '' ? 'configurado' : 'não configurado',
+                    'name' => 'Integração dedicada catraca_frequencia (token inbound, opcional)',
+                    'ok' => true,
+                    'message' => $inboundTok !== ''
+                        ? 'Bearer inbound configurado (recepção iEducar → GIDE).'
+                        : 'Sem token inbound: só a saída GIDE→iEducar é necessária para o preview.',
                 ];
-                if ($token === '') {
+                $ieducar = Integration::query()->where('key', 'ieducar')->first();
+                if (! $ieducar || ! $ieducar->exists) {
+                    $steps[] = [
+                        'name' => 'POST frequencia/registro (preview)',
+                        'ok' => false,
+                        'message' => 'Integração ieducar não encontrada no banco.',
+                    ];
                     $okAll = false;
+                } else {
+                    $preview = $this->runCatracaFrequenciaPreviewAgainstIeducar($ieducar);
+                    $steps[] = [
+                        'name' => 'POST frequencia/registro (preview, plano B — mesmo payload da fila admin)',
+                        'ok' => $preview['ok'],
+                        'message' => $preview['message'],
+                    ];
+                    if (! $preview['ok']) {
+                        $okAll = false;
+                    }
                 }
+                Cache::forget(self::CATRACA_PREVIEW_CACHE_KEY);
             } else {
                 $steps[] = ['name' => 'Teste', 'ok' => false, 'message' => 'Sem teste automático para esta integração.'];
                 $okAll = false;
             }
         } catch (\Throwable $e) {
+            if ($key === 'gestor' && $lane === 'out') {
+                GestorSigninProbeCache::recordFailure();
+            }
             $steps[] = ['name' => 'Teste', 'ok' => false, 'message' => $e->getMessage()];
             $okAll = false;
         }
 
         $now = now();
+        UserAuditLogger::recordAuthenticated('integration.overview.test', [
+            'key' => $key,
+            'lane' => $lane,
+            'ok' => $okAll,
+            'timeout' => $timeout,
+            'steps' => count($steps),
+        ], 'integration', $integration->id);
+        $this->mergeOverviewLaneTestRecord($key, $lane, $okAll, $now);
+
+        $lastPayload = [
+            'ok' => $okAll,
+            'timeout' => $timeout,
+            'lane' => $lane,
+            'steps' => $steps,
+            'tested_at' => $now->toIso8601String(),
+            'tested_at_display' => DateDisplay::formatHuman($now, true),
+        ];
+        $this->persistUserOverviewTestState($key, $lastPayload);
 
         return back()->with([
             'overview_last_test_key' => $key,
-            'overview_last_test' => [
-                'ok' => $okAll,
-                'timeout' => $timeout,
-                'lane' => $lane,
-                'steps' => $steps,
-                'tested_at' => $now->toIso8601String(),
-                'tested_at_display' => DateDisplay::formatHuman($now, true),
-            ],
+            'overview_last_test' => $lastPayload,
         ]);
+    }
+
+    /**
+     * Guarda na sessão o resultado do último teste manual por direção (in/out) e por chave de integração.
+     *
+     * @param  string  $integrationKey  ex.: ieducar, gestor, sms, catraca_frequencia
+     */
+    private function mergeOverviewLaneTestRecord(string $integrationKey, string $lane, bool $ok, Carbon $at): void
+    {
+        $mapKey = $integrationKey === 'catraca_frequencia'
+            ? 'catraca_frequencia:out'
+            : $integrationKey.':'.(in_array($lane, ['in', 'out'], true) ? $lane : 'out');
+
+        $uid = auth()->id();
+        $dbLanes = [];
+        if (is_int($uid)) {
+            $row = UserIntegrationOverviewState::query()->where('user_id', $uid)->first();
+            $dbLanes = $row && is_array($row->lane_tests) ? $row->lane_tests : [];
+        }
+
+        $prev = array_merge($dbLanes, session('overview_lane_tests', []));
+        $prev[$mapKey] = [
+            'ok' => $ok,
+            'tested_at' => $at->toIso8601String(),
+            'tested_at_short' => $at->timezone((string) config('app.timezone', 'America/Sao_Paulo'))->format('d/m H:i'),
+        ];
+        session(['overview_lane_tests' => $prev]);
+
+        if (is_int($uid)) {
+            UserIntegrationOverviewState::query()->updateOrCreate(
+                ['user_id' => $uid],
+                ['lane_tests' => $prev],
+            );
+        }
+
+        if ($mapKey === 'catraca_frequencia:out') {
+            Cache::forget(self::CATRACA_PREVIEW_CACHE_KEY);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $lastTestPayload
+     */
+    private function persistUserOverviewTestState(string $lastTestKey, array $lastTestPayload): void
+    {
+        $uid = auth()->id();
+        if (! is_int($uid)) {
+            return;
+        }
+
+        $laneTests = session('overview_lane_tests', []);
+        UserIntegrationOverviewState::query()->updateOrCreate(
+            ['user_id' => $uid],
+            [
+                'lane_tests' => $laneTests,
+                'last_test' => $lastTestPayload,
+                'last_test_key' => $lastTestKey,
+            ],
+        );
+    }
+
+    /**
+     * Mesmo contrato unitário da tela Integrações → frequência e do job (preview): cod_aluno 211, meta.preview=true.
+     *
+     * @return array{ok: bool, message: string, http: int|null}
+     */
+    private function runCatracaFrequenciaPreviewAgainstIeducar(Integration $ieducar): array
+    {
+        $base = rtrim((string) ($ieducar->base_url ?? ''), '/');
+        if ($base === '') {
+            return ['ok' => false, 'message' => 'base_url do iEducar vazia.', 'http' => null];
+        }
+        $confirm = (string) data_get($ieducar->extra, 'catraca_frequencia.confirmacao_token', '');
+        $bearer = $confirm !== '' ? $confirm : (string) ($ieducar->auth_token ?? '');
+        if ($bearer === '') {
+            return ['ok' => false, 'message' => 'Bearer ausente: defina o token da API iEducar ou extra.catraca_frequencia.confirmacao_token.', 'http' => null];
+        }
+
+        $payload = [
+            'meta' => [
+                'contract_version' => IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION,
+            ],
+            'fonte' => 'gide',
+            'presente' => true,
+            'identificacao' => [
+                'cod_aluno' => 211,
+            ],
+            'data_ref' => now()->toIso8601String(),
+        ];
+
+        try {
+            $payload = GideFrequenciaRegistroPlanB::validateAndNormalize($payload);
+        } catch (ValidationException $e) {
+            $msg = $e->getMessage();
+            if ($e->errors()) {
+                $msg = collect($e->errors())->flatten()->implode(' ');
+            }
+
+            return ['ok' => false, 'message' => 'Validação do payload: '.$msg, 'http' => null];
+        }
+
+        $payload = GideFrequenciaRegistroPlanB::refreshDataRefsWithRandomClock($payload);
+        $payload['meta']['contract_version'] = IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION;
+        $payload['meta']['preview'] = true;
+
+        try {
+            $resp = (new IeducarClient($ieducar))->postCatracaFrequenciaRegistro($payload);
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage(), 'http' => null];
+        }
+
+        $http = $resp->status();
+        $body = (string) $resp->body();
+        $snippet = mb_substr(trim(preg_replace('/\s+/', ' ', $body !== '' ? $body : '')), 0, 280);
+
+        return [
+            'ok' => $http < 500,
+            'http' => $http,
+            'message' => 'HTTP '.$http.($snippet !== '' ? ' · '.$snippet : ''),
+        ];
+    }
+
+    private function canRunCatracaFrequenciaPreviewOutbound(?Integration $ieducar): bool
+    {
+        if (! $ieducar || ! $ieducar->exists) {
+            return false;
+        }
+        $base = rtrim((string) ($ieducar->base_url ?? ''), '/');
+        if ($base === '') {
+            return false;
+        }
+        $confirm = (string) data_get($ieducar->extra, 'catraca_frequencia.confirmacao_token', '');
+        $bearer = $confirm !== '' ? $confirm : (string) ($ieducar->auth_token ?? '');
+
+        return $bearer !== '';
+    }
+
+    /**
+     * Sonda em cache (15 min) para preencher o estado do Bearer catraca-frequência quando ainda não houve teste manual na sessão.
+     *
+     * @return array{ok: bool, tested_at_short: string, auto: true, http?: int|null}|null
+     */
+    private function rememberedCatracaFrequenciaPreviewProbe(?Integration $ieducar): ?array
+    {
+        if (! $this->canRunCatracaFrequenciaPreviewOutbound($ieducar)) {
+            return null;
+        }
+
+        return Cache::remember(self::CATRACA_PREVIEW_CACHE_KEY, now()->addMinutes(15), function () use ($ieducar) {
+            $r = $this->runCatracaFrequenciaPreviewAgainstIeducar($ieducar);
+
+            return [
+                'ok' => $r['ok'],
+                'tested_at_short' => now()->timezone((string) config('app.timezone', 'America/Sao_Paulo'))->format('d/m H:i'),
+                'auto' => true,
+                'http' => $r['http'] ?? null,
+            ];
+        });
     }
 }

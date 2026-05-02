@@ -17,6 +17,11 @@
   --radius-sm: 14px;
   /* Mais espaço em telas grandes (admin/config) */
   --container: 1360px;
+  /* Cabeçalho sticky em tabelas com scroll (filas / listagens) */
+  --sticky-table-head-shadow:
+    0 1px 0 color-mix(in srgb, var(--text) 22%, var(--border)),
+    0 18px 44px -12px color-mix(in srgb, var(--text) 28%, transparent),
+    0 9px 24px -8px color-mix(in srgb, var(--text) 22%, transparent);
 }
 
 html.dark {
@@ -285,4 +290,159 @@ html.dark .bridge-btn--primary:hover { background: color-mix(in srgb, var(--prim
   .bridge-brand__tagline { display: none; }
   .bridge-cards { grid-template-columns: 1fr; }
   .bridge-btn { height: 44px; }
+}
+
+.bridge-header__end {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.bridge-user-menu {
+  position: relative;
+}
+.bridge-user-menu__trigger {
+  gap: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.bridge-user-menu__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--accent-c) 22%, var(--surface-2));
+  border: 1px solid var(--border);
+}
+.bridge-user-menu__name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+}
+.bridge-user-menu__chev {
+  opacity: 0.75;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.bridge-user-menu.is-open .bridge-user-menu__chev {
+  transform: rotate(180deg);
+}
+.bridge-user-menu__sub {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.bridge-user-menu__sub-label {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bridge-user-menu__item--sub {
+  padding-left: 16px;
+  font-size: 13px;
+}
+.bridge-user-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 248px;
+  max-width: min(320px, 92vw);
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card-strong);
+  box-shadow: var(--shadow-soft);
+  z-index: 50;
+}
+.bridge-user-menu__meta {
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.bridge-user-menu__meta-line { margin: 0 0 4px; }
+.bridge-user-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.bridge-user-menu__item:hover {
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  text-decoration: none;
+}
+.bridge-user-menu__item--btn {
+  color: #ef4444;
+  font-weight: 650;
+}
+.bridge-user-menu__logout {
+  margin: 0;
+  padding: 0;
+}
+
+/* Paginação admin (resources/views/pagination/fac-admin.blade.php + admin/partials/list-pagination) */
+.fac-pagination {
+  display: block;
+  min-width: 0;
+}
+.fac-pagination__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.fac-pagination__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg0) 78%, var(--card));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.fac-pagination__link:hover {
+  background: color-mix(in srgb, var(--bg0) 65%, var(--card-strong));
+  text-decoration: none;
+}
+.fac-pagination__link--active {
+  border-color: color-mix(in srgb, var(--accent-a) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent-a) 12%, var(--card-strong));
+  color: var(--text);
+}
+.fac-pagination__gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 36px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
 }

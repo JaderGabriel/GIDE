@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CatracaAccessWebhookController;
 use App\Http\Controllers\Api\GestorWebhookController;
 use App\Http\Controllers\Api\GideFacialInboundController;
 use App\Http\Controllers\Api\IeducarFacialRequestController;
@@ -18,6 +19,11 @@ Route::prefix('v1')->group(function () {
     Route::post('/gestor/access-events', [GestorWebhookController::class, 'store'])
         ->middleware('verify.hmac:gestor')
         ->name('api.gestor.access-events.store');
+
+    /** Catraca → GIDE: JSON com Bearer (token gerado na tela Gestor; hash na base). */
+    Route::post('/catraca/access-events', [CatracaAccessWebhookController::class, 'store'])
+        ->middleware('verify.catraca.webhook.bearer')
+        ->name('api.catraca.access-events.store');
 
     // iEducar → GIDE (Catraca/Frequência): endpoints fixos, auth Bearer por integração.
     Route::post('/catraca-frequencia/gide/facial/nova', [GideFacialInboundController::class, 'nova'])

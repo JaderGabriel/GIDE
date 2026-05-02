@@ -90,4 +90,20 @@ final class DateDisplay
 
         return 'Referência: '.$c->isoFormat('D [de] MMMM [de] YYYY, HH:mm:ss').' — '.$c->diffForHumans().' · '.self::timezoneLabel();
     }
+
+    /**
+     * Exibição compacta de data_ref (payload) em listagens: DD/MM/YYYY HH:MM no fuso da app.
+     */
+    public static function formatDataRefTable(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+        $c = self::carbon(is_string($value) ? $value : (string) $value);
+        if ($c === null) {
+            return is_scalar($value) ? (string) $value : '—';
+        }
+
+        return $c->format('d/m/Y H:i');
+    }
 }

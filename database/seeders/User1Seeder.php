@@ -26,6 +26,7 @@ class User1Seeder extends Seeder
                 'email' => $email,
                 'password' => Hash::make($password),
                 'is_admin' => (bool) env('USER1_IS_ADMIN', true),
+                'is_active' => (bool) env('USER1_IS_ACTIVE', true),
                 'email_verified_at' => env('USER1_EMAIL_VERIFIED', true) ? now() : null,
             ],
         );

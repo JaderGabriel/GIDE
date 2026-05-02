@@ -35,3 +35,5 @@ Valor: (valor configurado no GIDE / integração, nunca versionar chaves reais)
 Algumas informações padrões que serão usadas na rota (vêm do banco integrations ou variáveis de ambiente):
 accessProfileId, unityId
 No name do objeto do Invite e do Guest tu informará o Id do aluno existente no iEducar;
+
+php artisan ieducar:catraca-frequencia:frequencia-registro --cod-aluno=211

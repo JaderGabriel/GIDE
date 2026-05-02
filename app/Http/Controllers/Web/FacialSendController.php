@@ -34,7 +34,9 @@ class FacialSendController extends Controller
             abort(404);
         }
         if ($facialRequest->expires_at && $facialRequest->expires_at->isPast()) {
-            abort(404);
+            return response()->view('facial.token_expired', [
+                'expired_at' => $facialRequest->expires_at,
+            ], 410);
         }
         if ($facialRequest->used_at) {
             abort(404);

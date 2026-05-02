@@ -34,22 +34,14 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="/dashboard">
+                        <a class="bridge-brand" href="{{ url('/dashboard') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>
                                 <div class="bridge-brand__tagline">Configuração • iEducar</div>
                             </div>
                         </a>
-
-                        <div class="bridge-actions">
-                            <button type="button" class="bridge-btn bridge-iconbtn" data-theme-toggle aria-pressed="false" title="Mudar tema">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                    <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </button>
-                        </div>
+                        @include('partials.bridge-user-menu')
                     </div>
                 </div>
             </header>
@@ -155,6 +147,18 @@
                                     @enderror
                                     <div class="bridge-muted" style="margin-top: 6px;">
                                         Se deixar em branco, o token atual não é alterado. Se não houver token dedicado, o GIDE usa o token principal acima como fallback.
+                                    </div>
+                                </div>
+
+                                <div class="bridge-field" style="margin-top: 12px;">
+                                    <label class="bridge-label">Registro de frequência (lotes GIDE → iEducar)</label>
+                                    <div class="bridge-muted" style="margin-top: 6px;">
+                                        Endpoint no iEducar: <code class="mono">POST /api/catraca-frequencia/gide/frequencia/registro</code> (Bearer acima).
+                                        Contrato <strong>por aluno</strong> (<code class="mono">cod_aluno</code> + <code class="mono">data_ref</code>). Preview e gravação entram na <strong>fila</strong> e podem ser acompanhados pelo ID da entrega.
+                                    </div>
+                                    <div class="bridge-form__actions" style="margin-top: 10px;">
+                                        <a class="bridge-btn" href="{{ route('integrations.ieducar.frequencia-registro') }}">Abrir envio de frequência</a>
+                                        <a class="bridge-btn bridge-btn--primary" href="{{ route('integrations.docs.ieducar-frequencia-registro') }}" target="_blank" rel="noreferrer">Documentação</a>
                                     </div>
                                 </div>
 

@@ -58,6 +58,10 @@
 
             .dash-flow { display: grid; gap: 12px; }
             .dash-node { border: 1px solid var(--border); border-radius: 16px; padding: 14px; background: var(--surface-2); }
+            .dash-node--notify {
+                border-left: 3px solid color-mix(in srgb, #0ea5e9 70%, var(--border));
+                background: color-mix(in srgb, #0ea5e9 6%, var(--surface-2));
+            }
             .dash-node__k { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
             .dash-node__t { font-size: 14px; font-weight: 600; margin-top: 4px; }
             .dash-node__d { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.35; }
@@ -172,6 +176,28 @@
                 background: color-mix(in srgb, #0d9488 15%, var(--surface-1));
                 border-color: color-mix(in srgb, #0d9488 52%, var(--border));
             }
+
+            .dash-qbtn--freq {
+                border-color: color-mix(in srgb, #7c3aed 40%, var(--border));
+                background: color-mix(in srgb, #7c3aed 10%, var(--surface-1));
+                color: color-mix(in srgb, var(--text) 85%, #7c3aed);
+                box-shadow: 0 0 0 1px color-mix(in srgb, #7c3aed 7%, transparent);
+            }
+            .dash-qbtn--freq:hover {
+                background: color-mix(in srgb, #7c3aed 16%, var(--surface-1));
+                border-color: color-mix(in srgb, #7c3aed 52%, var(--border));
+            }
+
+            .dash-qbtn--useraudit {
+                border-color: color-mix(in srgb, #b45309 38%, var(--border));
+                background: color-mix(in srgb, #b45309 9%, var(--surface-1));
+                color: color-mix(in srgb, var(--text) 88%, #b45309);
+                box-shadow: 0 0 0 1px color-mix(in srgb, #b45309 6%, transparent);
+            }
+            .dash-qbtn--useraudit:hover {
+                background: color-mix(in srgb, #b45309 14%, var(--surface-1));
+                border-color: color-mix(in srgb, #b45309 48%, var(--border));
+            }
         </style>
     </head>
     <body>
@@ -179,7 +205,7 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="/">
+                        <a class="bridge-brand" href="{{ url('/dashboard') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>
@@ -187,19 +213,7 @@
                             </div>
                         </a>
 
-                        <div class="bridge-actions">
-                            <button type="button" class="bridge-btn bridge-iconbtn" data-theme-toggle aria-pressed="false" title="Mudar tema">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                    <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </button>
-
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="bridge-btn">Sair</button>
-                            </form>
-                        </div>
+                        @include('partials.bridge-user-menu')
                     </div>
                 </div>
             </header>
@@ -239,7 +253,7 @@
                                                 </div>
                                                 <div style="min-width: 0;">
                                                     <div class="bridge-panel__title">Fluxo de dados</div>
-                                                    <div class="bridge-panel__meta">iEducar ↔ GIDE ↔ Catraca</div>
+                                                    <div class="bridge-panel__meta">iEducar ↔ GIDE ↔ Catraca · GIDE → notify</div>
                                                 </div>
                                             </div>
                                             <div class="dash-badge" title="Visão geral do fluxo">
@@ -291,6 +305,34 @@
                                                             <path d="M7 9h10M7 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                                         </svg>
                                                         enroll
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="dash-node dash-node--notify">
+                                                <div class="dash-node__k">GIDE → notify</div>
+                                                <div class="dash-node__t">SMS (e futuros canais) após presença</div>
+                                                <div class="dash-node__d">
+                                                    Eventos de acesso vindos do <strong>Gestor</strong> chegam ao GIDE; quando a regra de presença dispara, o GIDE <strong>monta a mensagem</strong>, grava auditoria na fila e chama o provedor de SMS (ex.: Zenvia). O telefone vem do payload (responsável/aluno) ou, em modo testes, dos números configurados na integração — sem passar pela catraca de novo.
+                                                </div>
+                                                <div class="dash-node__meta">
+                                                    <span class="dash-chip">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                                        </svg>
+                                                        SMS
+                                                    </span>
+                                                    <span class="dash-chip">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                            <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                        </svg>
+                                                        fila assíncrona
+                                                    </span>
+                                                    <span class="dash-chip">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/>
+                                                        </svg>
+                                                        ramo paralelo
                                                     </span>
                                                 </div>
                                             </div>
@@ -388,12 +430,29 @@
                                                         </svg>
                                                         Solicitações faciais (admin)
                                                     </a>
+                                                    <a class="bridge-btn dash-qbtn dash-qbtn--freq" href="{{ route('admin.ieducar-frequencia-deliveries.index') }}">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M8 2v4M16 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                            <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+                                                            <path d="M8 14h.01M12 14h.01M16 14h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                        </svg>
+                                                        Fila frequência iEducar (admin)
+                                                    </a>
                                                     <a class="bridge-btn dash-qbtn dash-qbtn--smslog" href="{{ route('sms.index') }}">
                                                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                                             <path d="M6 3h12v18H6z" stroke="currentColor" stroke-width="2"/>
                                                             <path d="M9 7h6M9 11h6M9 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                                         </svg>
                                                         Histórico de envios SMS
+                                                    </a>
+                                                    <a class="bridge-btn dash-qbtn dash-qbtn--useraudit" href="{{ route('admin.user-audit-logs.index') }}">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+                                                            <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/>
+                                                            <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+                                                            <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+                                                        </svg>
+                                                        Auditoria de usuários
                                                     </a>
                                                 </div>
                                             </div>

@@ -1,11 +1,15 @@
 <?php
 
+use App\Jobs\SendIeducarFrequenciaRegistroJob;
 use App\Models\GestorGuestLink;
+use App\Models\IeducarFrequenciaRegistroDelivery;
 use App\Models\Integration;
 use App\Services\Gestor\GestorClient;
 use App\Services\Ieducar\IeducarClient;
 use App\Services\Integrations\DeliveryRetryDispatcher;
 use App\Support\DateDisplay;
+use App\Support\Ieducar\GideFrequenciaRegistroPlanB;
+use App\Support\PostgresUsersIdSequence;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Carbon;
@@ -14,10 +18,24 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Validation\ValidationException;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('db:repair-users-id-sequence', function () {
+    if (DB::getDriverName() !== 'pgsql') {
+        $this->error('Este comando só se aplica a PostgreSQL (conexão atual: '.DB::getDriverName().').');
+
+        return 1;
+    }
+
+    PostgresUsersIdSequence::sync();
+    $this->info('Sequência de users.id sincronizada com o maior id existente (ou reiniciada se a tabela estiver vazia).');
+
+    return 0;
+})->purpose('Corrige sequência de users.id após import/restore (evita duplicate key em users_pkey)');
 
 Artisan::command('gestor:import-postman {path : Caminho para a collection JSON v2.1}', function () {
     $path = (string) $this->argument('path');
@@ -201,6 +219,238 @@ Artisan::command('ieducar:catraca-frequencia:aluno-consulta {cod_aluno? : Códig
 
     return $resp->successful() ? 0 : 2;
 })->purpose('Testa consulta de aluno (GIDE → iEducar)');
+
+Artisan::command(
+    'ieducar:catraca-frequencia:frequencia-registro
+    {--cod-aluno= : cod_aluno (obrigatório sem --json; formato B por aluno)}
+    {--idpes= : idpes opcional (inteiro)}
+    {--data= : data_ref base Y-m-d (default: hoje); na série o comando varia o dia}
+    {--fonte=gide : gide ou outras (só 1 tentativa; na série alterna)}
+    {--ausente : presente=false (só 1 tentativa; na série alterna padrões)}
+    {--json= : Arquivo JSON (plano B); uma requisição; --tentativas>1 ignorado}
+    {--tentativas=12 : Requisições HTTP em série (mínimo 1; default 12)}
+    {--intervalo=0 : Segundos entre uma resposta e a próxima chamada}
+    {--apply : meta.preview=false (gravação); senão preview}
+    {--dry-run : Só imprime JSON de envio; sem HTTP}',
+    function () {
+        $integration = Integration::query()->where('key', 'ieducar')->first();
+        if (! $integration) {
+            $this->error('Integração iEducar não encontrada (key=ieducar). Configure em /integracoes/ieducar.');
+
+            return 1;
+        }
+
+        $tentativas = (int) ($this->option('tentativas') ?? 12);
+        if ($tentativas < 1) {
+            $tentativas = 1;
+        }
+        if ($tentativas > 500) {
+            $this->error('--tentativas aceita no máximo 500.');
+
+            return 1;
+        }
+
+        $jsonPath = (string) ($this->option('json') ?? '');
+        $payloads = [];
+
+        if ($jsonPath !== '') {
+            if ($tentativas > 1) {
+                $this->warn('Com --json apenas uma requisição é enviada. --tentativas>1 ignorado.');
+                $tentativas = 1;
+            }
+            if (! is_file($jsonPath)) {
+                $this->error("Arquivo não encontrado: {$jsonPath}");
+
+                return 1;
+            }
+            $raw = file_get_contents($jsonPath);
+            if ($raw === false || $raw === '') {
+                $this->error('Não foi possível ler o arquivo JSON.');
+
+                return 1;
+            }
+            $decoded = json_decode($raw, true);
+            if (! is_array($decoded)) {
+                $this->error('JSON inválido (esperado objeto na raiz).');
+
+                return 1;
+            }
+            try {
+                $payloads[] = GideFrequenciaRegistroPlanB::validateAndNormalize($decoded);
+            } catch (ValidationException $e) {
+                foreach ($e->errors() as $msgs) {
+                    foreach ($msgs as $m) {
+                        $this->error($m);
+                    }
+                }
+
+                return 1;
+            }
+        } else {
+            $cod = (string) ($this->option('cod-aluno') ?? '');
+            if ($cod === '' || ! ctype_digit($cod)) {
+                $this->error('Informe --cod-aluno inteiro positivo ou use --json=/caminho/arquivo.json.');
+
+                return 1;
+            }
+            $idpesOpt = (string) ($this->option('idpes') ?? '');
+            if ($idpesOpt !== '' && ! ctype_digit($idpesOpt)) {
+                $this->error('--idpes deve ser um inteiro positivo.');
+
+                return 1;
+            }
+
+            $anchor = (string) ($this->option('data') ?? '');
+            if ($anchor === '') {
+                $anchor = now()->format('Y-m-d');
+            }
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $anchor)) {
+                $this->error('--data deve estar no formato Y-m-d.');
+
+                return 1;
+            }
+
+            $fonteFixa = strtolower((string) ($this->option('fonte') ?? 'gide'));
+            if (! in_array($fonteFixa, ['gide', 'outras'], true)) {
+                $this->error('--fonte deve ser gide ou outras.');
+
+                return 1;
+            }
+
+            $codAluno = (int) $cod;
+            $anchorCarbon = Carbon::parse($anchor)->startOfDay();
+
+            for ($i = 0; $i < $tentativas; $i++) {
+                if ($tentativas === 1) {
+                    $fonte = $fonteFixa;
+                    $presente = ! (bool) $this->option('ausente');
+                    $dataRef = $anchorCarbon->format('Y-m-d');
+                } else {
+                    $dayOffset = (int) floor($i * 1.7) % 21;
+                    $dataRef = $anchorCarbon->copy()->subDays($dayOffset)->format('Y-m-d');
+                    $fonte = ($i % 3 === 0) ? 'outras' : 'gide';
+                    $presente = match ($i % 5) {
+                        0, 1, 4 => true,
+                        default => false,
+                    };
+                }
+
+                $ident = ['cod_aluno' => $codAluno];
+                if ($idpesOpt !== '') {
+                    $ident['idpes'] = (int) $idpesOpt;
+                }
+
+                $row = [
+                    'meta' => [
+                        'contract_version' => IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION,
+                    ],
+                    'fonte' => $fonte,
+                    'presente' => $presente,
+                    'identificacao' => $ident,
+                    'data_ref' => $dataRef,
+                ];
+
+                try {
+                    $payloads[] = GideFrequenciaRegistroPlanB::validateAndNormalize($row);
+                } catch (ValidationException $e) {
+                    foreach ($e->errors() as $msgs) {
+                        foreach ($msgs as $m) {
+                            $this->error($m);
+                        }
+                    }
+
+                    return 1;
+                }
+            }
+        }
+
+        $apply = (bool) $this->option('apply');
+        $dryRun = (bool) $this->option('dry-run');
+        $intervalo = (float) ($this->option('intervalo') ?? 0);
+        if ($intervalo < 0) {
+            $intervalo = 0;
+        }
+
+        foreach ($payloads as $idx => &$payload) {
+            $meta = (array) ($payload['meta'] ?? []);
+            $meta['contract_version'] = IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION;
+            $meta['preview'] = $apply ? false : true;
+            $payload['meta'] = $meta;
+        }
+        unset($payload);
+
+        $this->comment('Modo: '.($apply ? 'gravação (persiste no i-Educar)' : 'preview (sem gravar no i-Educar)'));
+        $this->comment('Requisições planejadas: '.count($payloads).($dryRun ? ' (dry-run)' : '').($intervalo > 0 ? sprintf(' · intervalo %.3fs entre chamadas', $intervalo) : ''));
+
+        if ($dryRun) {
+            foreach ($payloads as $i => $payload) {
+                $this->newLine();
+                $this->warn('── Tentativa '.($i + 1).'/'.count($payloads).' (dry-run) · envio em '.now()->toIso8601String());
+                $enc = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                $this->line($enc !== false ? $enc : '{}');
+            }
+            $this->info('Dry-run: nenhuma requisição HTTP nem registro na fila.');
+
+            return 0;
+        }
+
+        if (! $integration->enabled) {
+            $this->error('Integração iEducar desabilitada. Habilite em /integracoes/ieducar (o job exige integração ativa).');
+
+            return 1;
+        }
+
+        $anyFailed = false;
+
+        foreach ($payloads as $i => $payload) {
+            $this->newLine();
+            $this->warn('═══ Tentativa '.($i + 1).'/'.count($payloads).' · disparo em '.now()->toIso8601String().' ═══');
+            $reqJson = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            $this->comment('→ Corpo persistido (request):');
+            $this->line($reqJson !== false ? $reqJson : '{}');
+
+            $delivery = IeducarFrequenciaRegistroDelivery::query()->create([
+                'user_id' => null,
+                'mode' => $apply ? IeducarFrequenciaRegistroDelivery::MODE_APPLY : IeducarFrequenciaRegistroDelivery::MODE_PREVIEW,
+                'status' => IeducarFrequenciaRegistroDelivery::STATUS_PENDING,
+                'payload' => $payload,
+            ]);
+
+            $trackUrl = route('admin.ieducar-frequencia-deliveries.show', ['id' => $delivery->id], true);
+            $this->comment('Rastreamento: entrega #'.$delivery->id.' · '.$trackUrl);
+
+            SendIeducarFrequenciaRegistroJob::dispatchSync($delivery->id);
+
+            $delivery->refresh();
+
+            $http = $delivery->http_status;
+            $this->info('← HTTP '.($http !== null ? (string) $http : '—').' · status entrega: '.$delivery->status);
+
+            $this->comment('← Corpo (response gravado na entrega):');
+            if (is_array($delivery->response_json)) {
+                $pretty = json_encode($delivery->response_json, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                $this->line($pretty !== false ? $pretty : '{}');
+            } elseif ($delivery->error_message) {
+                $this->line($delivery->error_message);
+            } else {
+                $this->line('(sem corpo de resposta)');
+            }
+
+            if ($delivery->status === IeducarFrequenciaRegistroDelivery::STATUS_FAILED
+                || ! is_numeric($http)
+                || $http < 200
+                || $http >= 300) {
+                $anyFailed = true;
+            }
+
+            if ($i < count($payloads) - 1 && $intervalo > 0) {
+                usleep((int) round($intervalo * 1_000_000));
+            }
+        }
+
+        return $anyFailed ? 2 : 0;
+    }
+)->purpose('Registros de frequência (GIDE → iEducar): grava em fila/entregas, executa job síncrono e URL de monitoramento; preview na API iEducar');
 
 Artisan::command('gestor:auth:test-config', function () {
     $integration = Integration::query()->where('key', 'gestor')->first();

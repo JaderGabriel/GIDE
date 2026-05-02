@@ -64,10 +64,10 @@
             .fac-kpi__v--warn { color: var(--fac-warn); }
             .fac-kpi__v--info { color: var(--fac-info); }
 
-            .fac-table-wrap { margin-top: 18px; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 18px; background: var(--card-strong); box-shadow: var(--shadow-soft); }
+            .fac-table-wrap { margin-top: 0; width: 100%; max-height: min(72vh, 720px); overflow: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 18px; background: var(--card-strong); box-shadow: var(--shadow-soft); }
             .fac-table { width: 100%; border-collapse: collapse; min-width: 1020px; table-layout: fixed; }
             .fac-table th, .fac-table td { border-bottom: 1px solid var(--border); padding: 12px 12px; vertical-align: top; text-align: left; }
-            .fac-table th { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; background: color-mix(in srgb, var(--surface-1) 88%, transparent); position: sticky; top: 0; z-index: 1; }
+            .fac-table th { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; background: var(--surface-2); position: sticky; top: 0; z-index: 4; box-shadow: var(--sticky-table-head-shadow, 0 10px 28px -8px rgba(2, 6, 23, 0.28)); }
             .fac-table th .th-inner { display: inline-flex; align-items: center; gap: 6px; }
             .fac-table th svg { width: 14px; height: 14px; opacity: .9; }
             .fac-table tbody tr { transition: background .12s ease; }
@@ -93,6 +93,12 @@
             .fac-badge-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
             .fac-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+            .fac-btn { appearance: none; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; min-height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 650; cursor: pointer; text-decoration: none; transition: background .12s ease, border-color .12s ease, box-shadow .12s ease, transform .08s ease; font-family: inherit; }
+            .fac-btn:hover { background: color-mix(in srgb, var(--bg0) 82%, transparent); border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); text-decoration: none; }
+            .fac-btn:active { transform: translateY(1px); }
+            .fac-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+            .fac-btn--queue { border-color: color-mix(in srgb, #7c3aed 42%, var(--border)); background: color-mix(in srgb, #7c3aed 11%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, #7c3aed); box-shadow: 0 0 0 1px color-mix(in srgb, #7c3aed 7%, transparent); }
+            .fac-btn--queue:hover { background: color-mix(in srgb, #7c3aed 18%, var(--surface-1)); border-color: color-mix(in srgb, #7c3aed 52%, var(--border)); }
             .fac-btn-ico { appearance: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); cursor: pointer; text-decoration: none; transition: background .12s ease, border-color .12s ease, transform .08s ease; }
             .fac-btn-ico:hover { background: color-mix(in srgb, var(--bg0) 80%, transparent); border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); text-decoration: none; }
             .fac-btn-ico:active { transform: translateY(1px); }
@@ -103,6 +109,26 @@
             details.fac-details { margin-top: 8px; }
             details.fac-details summary { cursor: pointer; font-size: 11px; font-weight: 650; color: var(--accent-a); user-select: none; }
             details.fac-details pre { margin: 8px 0 0; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg0) 70%, transparent); max-height: 200px; overflow: auto; }
+
+            .fac-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-strong); box-shadow: var(--shadow-soft); }
+            .fac-pager--above { margin-top: 0; margin-bottom: 12px; }
+            .fac-pager--below { margin-top: 16px; }
+            .fac-pager__left { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+            .fac-pager__meta { font-size: 13px; color: var(--muted); line-height: 1.4; }
+            .fac-pager__form { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; }
+            .fac-pager__label { font-size: 13px; font-weight: 650; color: var(--text); }
+            .fac-pager__select { appearance: none; padding: 8px 34px 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 650; font-family: inherit; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 14px) calc(50% + 2px), calc(100% - 9px) calc(50% + 2px); background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+            .fac-pager__select:hover { border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); }
+            .fac-pager__links { flex: 1 1 auto; min-width: 0; display: flex; justify-content: flex-end; }
+            .fac-pagination { display: flex; justify-content: flex-end; width: 100%; }
+            .fac-pagination__list { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin: 0; padding: 0; list-style: none; }
+            .fac-pagination__list li { margin: 0; padding: 0; list-style: none; }
+            .fac-pagination__link { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 650; text-decoration: none; transition: background .12s ease, border-color .12s ease; }
+            .fac-pagination__link:hover { background: color-mix(in srgb, var(--bg0) 82%, transparent); border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); text-decoration: none; }
+            .fac-pagination__link--active { border-color: color-mix(in srgb, var(--accent-a) 38%, var(--border)); background: color-mix(in srgb, var(--accent-a) 12%, var(--surface-1)); color: color-mix(in srgb, var(--text) 82%, var(--accent-a)); font-weight: 750; }
+            .fac-pagination__gap { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 36px; padding: 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+            .fac-list-block { margin-top: 3rem; }
+            .fac-list-block__title { margin: 0 0 14px; padding: 11px 16px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: color-mix(in srgb, var(--text) 52%, var(--muted)); box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--bg0) 88%, transparent), 0 3px 10px -3px color-mix(in srgb, var(--bg0) 70%, transparent); position: relative; z-index: 4; }
         </style>
     </head>
     <body>
@@ -110,13 +136,14 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="/dashboard">
+                        <a class="bridge-brand" href="{{ url('/dashboard') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>
                                 <div class="bridge-brand__tagline">Admin • Solicitações de facial</div>
                             </div>
                         </a>
+                        @include('partials.bridge-user-menu')
                     </div>
                 </div>
             </header>
@@ -136,6 +163,12 @@
                                             <p class="fac-admin__lead">Tokens do iEducar, tentativas de envio ao Gestor (catraca) e consultas de matrícula. Indicadores e cores refletem o estado operacional de cada etapa.</p>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="fac-actions" style="align-self: flex-start;">
+                                    <a class="fac-btn fac-btn--queue" href="{{ route('admin.ieducar-frequencia-deliveries.index') }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/></svg>
+                                        Fila de envios (frequência)
+                                    </a>
                                 </div>
                             </div>
 
@@ -181,7 +214,7 @@
                                 <div class="fac-kpi">
                                     <div class="fac-kpi__k">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                        Total (lista)
+                                        Total geral
                                     </div>
                                     <div class="fac-kpi__v">{{ (int) $st['total'] }}</div>
                                 </div>
@@ -222,7 +255,11 @@
                                 </div>
                             </div>
 
-                            <div class="fac-table-wrap">
+                            <section class="fac-list-block" aria-labelledby="fac-list-facial-title">
+                                <h2 class="fac-list-block__title" id="fac-list-facial-title">Lista de solicitações faciais</h2>
+                                @include('admin.partials.list-pagination', ['paginator' => $items, 'perPage' => $perPage, 'position' => 'top'])
+
+                                <div class="fac-table-wrap">
                                 <table class="fac-table">
                                     <thead>
                                         <tr>
@@ -250,7 +287,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($items as $it)
+                                        @forelse ($items as $it)
                                             @php
                                                 $payload = is_array($it->payload) ? $it->payload : [];
                                                 $codAluno = data_get($payload, 'aluno_id');
@@ -403,10 +440,15 @@
                                                     </div>
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                        @empty
+                                            <tr>
+                                                <td colspan="7" class="fac-muted" style="padding: 22px;">Nenhuma solicitação facial registrada.</td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
-                            </div>
+                                </div>
+                            </section>
                         </div>
                     </div>
                 </div>

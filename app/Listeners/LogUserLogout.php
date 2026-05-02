@@ -3,6 +3,8 @@
 namespace App\Listeners;
 
 use App\Models\AuthLog;
+use App\Models\UserAuditLog;
+use App\Services\UserAuditLogger;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Carbon;
 
@@ -32,13 +34,21 @@ class LogUserLogout
             // Ignore when request() isn't available (e.g. console context)
         }
 
+        $userId = $event->user?->getAuthIdentifier();
+
         AuthLog::create([
-            'user_id' => $event->user?->getAuthIdentifier(),
+            'user_id' => $userId,
             'event' => 'logout',
             'guard' => $event->guard,
             'ip_address' => $ip,
             'user_agent' => $userAgent,
             'occurred_at' => Carbon::now(),
         ]);
+
+        if (is_int($userId) || (is_string($userId) && ctype_digit($userId))) {
+            UserAuditLogger::record((int) $userId, 'auth.logout', [
+                'guard' => $event->guard,
+            ], UserAuditLog::SUBJECT_USER, (int) $userId);
+        }
     }
 }

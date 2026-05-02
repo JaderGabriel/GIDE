@@ -99,13 +99,14 @@
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
-                        <a class="bridge-brand" href="{{ route('admin.facial-requests.index') }}">
+                        <a class="bridge-brand" href="{{ url('/dashboard') }}">
                             <img src="/favicon.svg" alt="" class="bridge-brand__logo" />
                             <div class="bridge-brand__text">
                                 <div class="bridge-brand__name">{{ config('app.name', 'Bridge ERP') }}</div>
                                 <div class="bridge-brand__tagline">Admin • Detalhe facial</div>
                             </div>
                         </a>
+                        @include('partials.bridge-user-menu')
                     </div>
                 </div>
             </header>

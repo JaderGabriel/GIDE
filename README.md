@@ -11,6 +11,73 @@ Premissa central: **todo o tráfego é via API** (sem conexão direta ao banco d
 
 - **Fluxo ponta-a-ponta**: `docs/FLUXO_DO_SISTEMA.md`
 - **Análise técnica (melhorias/gargalos)**: `docs/ANALISE_TECNICA_MELHORIAS.md`
+- **Catraca / webhook Gestor**: `docs/CATRACA_WEBHOOK.md`
+- **Frequência iEducar ↔ GIDE (registro / fila)**: `docs/IEDUCAR_FREQUENCIA_REGISTRO_GIDE.md`
+
+## Instalação
+
+### Requisitos
+
+- **PHP 8.3+** com extensões usuais do Laravel (`openssl`, `pdo`, `mbstring`, `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`, etc.).
+- **Base de dados**: em produção costuma ser **PostgreSQL** (`pdo_pgsql`). Para testes automatizados com SQLite em memória, é necessário **`pdo_sqlite`** habilitado no PHP do ambiente de CI/local.
+- **Node.js + npm** apenas se for compilar ou desenvolver assets front-end (Vite).
+- **Composer 2.x** — no servidor pode não existir o binário `composer` global; nesse caso use o **PHAR** oficial (ver passo 2).
+
+### Passos rápidos
+
+1. Clonar o repositório e entrar na pasta do projeto.
+2. **Instalar dependências PHP** (escolha conforme o ambiente):
+   - Com Composer no `PATH`:
+     ```bash
+     composer install
+     ```
+   - **Sem** `composer` no `PATH` (ex.: hospedagem mínima): obter `composer.phar` em [getcomposer.org](https://getcomposer.org/download/) e executar:
+     ```bash
+     php composer.phar install
+     ```
+3. **Configurar `.env`** (na primeira vez, a partir do modelo versionado):
+   ```bash
+   test -f .env || cp .env.example .env
+   php artisan key:generate
+   ```
+   Preencha `APP_URL`, `DB_*`, `QUEUE_CONNECTION`, `APP_TIMEZONE`, etc.
+4. **Migrações e (opcional) seed**:
+   ```bash
+   php artisan migrate
+   php artisan db:seed
+   ```
+   O seed padrão cria integrações base e o utilizador de teste descrito em [Seed de admin (teste)](#seed-de-admin-teste).
+5. **Assets front-end** (produção ou CI):
+   ```bash
+   npm ci
+   npm run build
+   ```
+   Em desenvolvimento local, `npm run dev` em paralelo ao servidor PHP.
+6. **Servidor de desenvolvimento**:
+   ```bash
+   php artisan serve
+   ```
+   Em produção, aponte o virtual host para `public/` e configure o agendador (`schedule:run`) e workers de fila conforme [Fila, retries e cron](#fila-retries-e-cron).
+
+> **Nota:** o script `composer setup` definido em `composer.json` encadeia `composer install`, criação de `.env`, `key:generate`, `migrate` e build npm — exige o binário **`composer`** disponível. Em ambientes só com PHAR, reproduza os passos 2–5 manualmente com `php composer.phar install`, etc.
+
+### PostgreSQL — sequência `users.id` após restore
+
+Se após import/restore ocorrer erro de chave duplicada em `users_pkey` (sequência atrás do `MAX(id)`):
+
+```bash
+php artisan db:repair-users-id-sequence
+```
+
+## Administração de utilizadores e auditoria
+
+- **Rotas** (middleware `auth` + `admin`): gestão em `/usuarios` (listar, criar, desativar/reativar, promover/rebaixar administrador) e **auditoria** em `/admin/auditoria-usuarios` (filtros por ação, utilizador auditado, paginação).
+- **Autorização**: `App\Policies\UserPolicy` e *Form Requests* em `app/Http/Requests/` (`StoreUserRequest`, `DeactivateUserRequest`, `ReactivateUserRequest`, `PromoteAdminRequest`, `DemoteAdminRequest`). Nas rotas nomeadas `users.*`, falhas de autorização voltam com `redirect()->back()->withErrors(['user' => …])` para manter o mesmo fluxo das views.
+- **Auditoria**: login/logout e alterações de conta escrevem em `user_audit_logs` (`App\Models\UserAuditLog`, constante `SUBJECT_USER` para alvo do tipo utilizador).
+
+## Integrações — visão geral (`/integracoes`)
+
+- Painel com **mapa da ponte**, fila/entregas e testes por conector. O tom dos trechos **iEducar** e **Gestor** combina configuração mínima, sinais operacionais e os **últimos testes por faixa** (persistidos em `user_integration_overview_states` + sessão). O backlog genérico de jobs entra no **resumo geral** e no segmento Gestor, **sem** pintar o iEducar apenas por fila — alinhado aos badges dos cartões de teste.
 
 ## Variáveis de ambiente
 
@@ -30,11 +97,7 @@ Premissa central: **todo o tráfego é via API** (sem conexão direta ao banco d
 
 ## Documento executivo (plano)
 
-O plano base desta integração está em:
-
-- `/home/jadergabriel/.cursor/plans/integração_ieducar↔gide↔gestor_04d86995.plan.md`
-
-Inclui objetivo, fluxograma (Mermaid), MVP, riscos e estimativa executiva de horas.
+O plano executivo detalhado (objetivo, fluxograma, MVP, riscos, estimativa) é mantido **fora do repositório** (ferramentas internas / planeamento local). O ficheiro `EXECUTIVO` na raiz resume requisitos e comandos úteis para o contexto do projeto.
 
 ## Fluxo ponta-a-ponta (resumo)
 
@@ -77,11 +140,12 @@ flowchart TD
 - **`GET /login` / `POST /login`**: login (por `username`)
 - **`POST /logout`**
 - **`GET /dashboard`** (protegida por `auth`)
+- **`GET /integracoes`**: visão geral das integrações, fila e mapa da ponte (`auth`)
 - **`GET /facial/enviar`** (protegida por `auth`): tela alvo do botão no iEducar
 - **`POST /facial/enviar`** (protegida por `auth`): executa envio (stream)
-- **`GET /integracoes/ieducar`** (protegida por `auth` + `admin`)
-- **`GET /integracoes/gestor`** (protegida por `auth` + `admin`)
-- **`GET /integracoes/sms`** (protegida por `auth` + `admin`)
+- **`GET /usuarios`**, **`GET /usuarios/novo`**, **`POST /usuarios`**, ações POST em `usuarios/{user}/…` (protegidas por `auth` + `admin`): gestão de utilizadores GIDE
+- **`GET /admin/auditoria-usuarios`** (`auth` + `admin`): auditoria de contas e sessões
+- **`GET /integracoes/ieducar`**, **`GET /integracoes/gestor`**, **`GET /integracoes/sms`**, **`GET /integracoes/ieducar/frequencia-registro`**, painéis admin de facial e de entregas de frequência (`auth` + `admin` onde aplicável — ver `routes/web.php`)
 
 ### API (v1)
 

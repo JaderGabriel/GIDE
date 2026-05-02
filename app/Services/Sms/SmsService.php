@@ -5,6 +5,7 @@ namespace App\Services\Sms;
 use App\Models\Integration;
 use App\Models\SmsDelivery;
 use App\Models\SmsTemplate;
+use App\Support\BrPhoneNormalizer;
 use Carbon\CarbonInterface;
 
 class SmsService
@@ -26,13 +27,62 @@ class SmsService
             throw new \RuntimeException('Template de SMS (presence_notification) não configurado/ativo.');
         }
 
+        $recipients = $this->resolvePresenceSmsRecipients($smsIntegration, $payload);
+        if ($recipients === []) {
+            throw new \RuntimeException('Nenhum destinatário válido para SMS (verifique telefone no payload ou números de teste na configuração).');
+        }
+
+        $last = null;
+        foreach ($recipients as $to) {
+            $last = $this->sendPresenceSmsToRecipient($smsIntegration, $template, $eventId, $payload, $analysis, $occurredAt, $to);
+        }
+
+        return $last ?? throw new \RuntimeException('Falha interna ao enviar SMS.');
+    }
+
+    /**
+     * @return list<string> E.164 digits without +
+     */
+    private function resolvePresenceSmsRecipients(Integration $smsIntegration, array $payload): array
+    {
+        $mode = (string) data_get($smsIntegration->extra, 'sms_recipient_mode', 'alunos');
+        if ($mode === 'test_numbers') {
+            $raw = data_get($smsIntegration->extra, 'test_phone_numbers', []);
+            $list = is_array($raw) ? $raw : [];
+            $out = [];
+            foreach ($list as $item) {
+                $n = BrPhoneNormalizer::toE164Digits((string) $item);
+                if ($n !== '') {
+                    $out[] = $n;
+                }
+            }
+            $out = array_values(array_unique($out));
+            if ($out === []) {
+                throw new \RuntimeException('Modo de testes SMS ativo, mas nenhum número de teste válido cadastrado.');
+            }
+
+            return $out;
+        }
+
         $phoneKey = (string) data_get($smsIntegration->extra, 'payload_map.phone', 'phone');
         $toRaw = data_get($payload, $phoneKey);
-        $to = $this->normalizeBrPhone((string) ($toRaw ?? ''));
+        $to = BrPhoneNormalizer::toE164Digits((string) ($toRaw ?? ''));
         if ($to === '') {
             throw new \RuntimeException('Telefone do responsável não encontrado no payload.');
         }
 
+        return [$to];
+    }
+
+    private function sendPresenceSmsToRecipient(
+        Integration $smsIntegration,
+        SmsTemplate $template,
+        string $eventId,
+        array $payload,
+        array $analysis,
+        ?CarbonInterface $occurredAt,
+        string $to,
+    ): SmsDelivery {
         $from = (string) data_get($smsIntegration->extra, 'from', '');
         if ($from === '') {
             throw new \RuntimeException('Remetente do SMS não configurado (integrations.extra.from).');
@@ -113,29 +163,6 @@ class SmsService
         $delivery->save();
 
         return $delivery;
-    }
-
-    private function normalizeBrPhone(string $input): string
-    {
-        $digits = preg_replace('/\D+/', '', $input) ?? '';
-        if ($digits === '') {
-            return '';
-        }
-
-        // Se vier com 0 inicial, remove.
-        $digits = ltrim($digits, '0');
-
-        // Se vier sem DDI e tiver 10/11 dígitos (DDD + número), prefixa 55.
-        if (strlen($digits) === 10 || strlen($digits) === 11) {
-            $digits = '55'.$digits;
-        }
-
-        // E.164 numérico (DDI + número), ex.: 5511988887777
-        if (strlen($digits) < 12) {
-            return '';
-        }
-
-        return $digits;
     }
 
     private function backoffSeconds(int $attempts): int
