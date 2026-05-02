@@ -4,7 +4,6 @@
         $isAdmin = (bool) $u->is_admin;
         $roleTitle = $isAdmin ? 'Administrador' : 'Acesso a integrações';
         $roleTriggerClass = $isAdmin ? 'bridge-user-menu__role-trigger--admin' : 'bridge-user-menu__role-trigger--integration';
-        $rolePanelClass = $isAdmin ? 'bridge-user-menu__role--admin' : 'bridge-user-menu__role--integration';
     @endphp
     <div class="bridge-actions bridge-header__end">
         @if ($showThemeToggle ?? true)
@@ -34,49 +33,29 @@
                     <div class="bridge-user-menu__meta-line"><strong>{{ $u->name }}</strong></div>
                     <div class="bridge-user-menu__meta-line bridge-muted mono" style="font-size:12px;">{{ $u->username }}</div>
                     <div class="bridge-user-menu__meta-line bridge-muted" style="font-size:12px;">{{ $u->email }}</div>
-                    <div class="bridge-user-menu__meta-line bridge-user-menu__role-row" style="margin-top:10px;">
-                        <span class="bridge-user-menu__role {{ $rolePanelClass }}" title="{{ $roleTitle }}">
-                            <span class="bridge-sr-only">Tipo de acesso: {{ $roleTitle }}</span>
-                            @if ($isAdmin)
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            @else
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                            @endif
-                        </span>
-                        <a href="{{ url('/') }}" class="bridge-user-menu__home-icon" role="menuitem" title="Início" aria-label="Início">
+                    <div class="bridge-user-menu__toolbar" role="group" aria-label="Atalhos da conta">
+                        <a href="{{ url('/') }}" class="bridge-user-menu__toolbar-btn bridge-user-menu__toolbar-btn--home" role="menuitem" title="Início" aria-label="Início">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                         </a>
+                        <a href="{{ url('/dashboard') }}" class="bridge-user-menu__toolbar-btn bridge-user-menu__toolbar-btn--dashboard" role="menuitem" title="Dashboard" aria-label="Dashboard">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        </a>
+                        @if ($isAdmin)
+                            <a href="{{ route('users.index') }}" class="bridge-user-menu__toolbar-btn bridge-user-menu__toolbar-btn--users" role="menuitem" title="Gerenciar usuários" aria-label="Gerenciar usuários">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                            </a>
+                            <a href="{{ route('admin.user-audit-logs.index') }}" class="bridge-user-menu__toolbar-btn bridge-user-menu__toolbar-btn--audit" role="menuitem" title="Auditoria de contas" aria-label="Auditoria de contas">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+                            </a>
+                        @endif
+                        <form method="POST" action="{{ route('logout') }}" class="bridge-user-menu__toolbar-logout">
+                            @csrf
+                            <button type="submit" class="bridge-user-menu__toolbar-btn bridge-user-menu__toolbar-btn--danger" role="menuitem" title="Sair" aria-label="Sair">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            </button>
+                        </form>
                     </div>
                 </div>
-                @if ($isAdmin)
-                    <div class="bridge-user-menu__sub" role="group" aria-labelledby="bridge-user-menu-users-label">
-                        <div class="bridge-user-menu__sub-label" id="bridge-user-menu-users-label">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <span>Usuários</span>
-                        </div>
-                        <a href="{{ route('users.index') }}" class="bridge-user-menu__item bridge-user-menu__item--sub bridge-user-menu__item--row" role="menuitem">
-                            <span class="bridge-user-menu__item-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                            </span>
-                            <span>Gerenciar</span>
-                        </a>
-                        <a href="{{ route('admin.user-audit-logs.index') }}" class="bridge-user-menu__item bridge-user-menu__item--sub bridge-user-menu__item--row" role="menuitem">
-                            <span class="bridge-user-menu__item-icon" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
-                            </span>
-                            <span>Auditoria</span>
-                        </a>
-                    </div>
-                @endif
-                <form method="POST" action="{{ route('logout') }}" class="bridge-user-menu__logout">
-                    @csrf
-                    <button type="submit" class="bridge-user-menu__item bridge-user-menu__item--btn bridge-user-menu__item--row" role="menuitem">
-                        <span class="bridge-user-menu__item-icon" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                        </span>
-                        <span>Sair</span>
-                    </button>
-                </form>
             </div>
         </div>
     </div>
