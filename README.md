@@ -13,6 +13,7 @@ Premissa central: **todo o tráfego é via API** (sem conexão direta ao banco d
 - **Análise técnica (melhorias/gargalos)**: `docs/ANALISE_TECNICA_MELHORIAS.md`
 - **Catraca / webhook Gestor**: `docs/CATRACA_WEBHOOK.md`
 - **Frequência iEducar ↔ GIDE (registro / fila)**: `docs/IEDUCAR_FREQUENCIA_REGISTRO_GIDE.md`
+- **WhatsApp (planeado) e notificações / referência SMS**: `docs/WHATSAPP_INTEGRACAO_NOTIFICACOES.md`
 
 ## Instalação
 
