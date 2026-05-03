@@ -82,6 +82,55 @@
                 color: #ef4444;
             }
             .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+
+            /* Coleta facial: telas estreitas e toque */
+            .facial-send > .bridge-panel {
+                width: min(980px, 100%);
+            }
+            @media (max-width: 640px) {
+                .facial-send > .bridge-panel { padding: 16px; }
+                .facial-send .bridge-panel__head {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 6px;
+                }
+                .facial-send .info-row { gap: 8px; }
+                .facial-send .info-ico { width: 30px; height: 30px; border-radius: 10px; }
+            }
+            .facial-cam-wrap video,
+            .facial-cam-wrap img {
+                width: 100%;
+                max-width: min(520px, 100%);
+                height: auto;
+                max-height: min(70vh, 520px);
+                object-fit: contain;
+            }
+            .facial-cam-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: stretch;
+            }
+            .facial-cam-actions .bridge-btn {
+                min-height: 44px;
+            }
+            @media (max-width: 480px) {
+                .facial-cam-actions .bridge-btn {
+                    flex: 1 1 100%;
+                    width: 100%;
+                }
+            }
+            .facial-submit-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            @media (max-width: 480px) {
+                .facial-submit-actions .bridge-btn {
+                    flex: 1 1 auto;
+                    min-width: min(100%, 160px);
+                }
+            }
         </style>
     </head>
     <body>
@@ -111,7 +160,7 @@
 
             <main class="bridge-main">
                 <div class="bridge-container">
-                    <div class="bridge-auth">
+                    <div class="bridge-auth facial-send">
                         <div class="bridge-panel">
                             <div class="bridge-panel__head">
                                 <div class="bridge-panel__title">Coleta de foto para biometria facial</div>
@@ -849,13 +898,13 @@
                                         Se aparecer uma pergunta de permissão, escolha <strong>Permitir</strong>.
                                     </div>
 
-                                    <div style="margin-top: 10px; display: grid; gap: 10px;">
-                                        <video id="camVideo" autoplay playsinline muted style="width: 100%; max-width: 520px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2);"></video>
+                                    <div class="facial-cam-wrap" style="margin-top: 10px; display: grid; gap: 10px;">
+                                        <video id="camVideo" autoplay playsinline muted style="border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2);"></video>
                                         <canvas id="camCanvas" style="display:none;"></canvas>
-                                        <img id="camPreview" alt="" style="display:none; width: 100%; max-width: 520px; border-radius: 12px; border: 1px solid var(--border);" />
+                                        <img id="camPreview" alt="" style="display:none; border-radius: 12px; border: 1px solid var(--border);" />
                                     </div>
 
-                                    <div class="bridge-form__actions" style="margin-top: 10px;">
+                                    <div class="bridge-form__actions facial-cam-actions" style="margin-top: 10px;">
                                         <button type="button" class="bridge-btn" id="btnStartCam">Ativar câmera</button>
                                         <button type="button" class="bridge-btn" id="btnCapture" disabled>Capturar foto</button>
                                         <button type="button" class="bridge-btn" id="btnRetake" style="display:none;">Refazer</button>
@@ -864,7 +913,7 @@
                                     <div class="bridge-muted" id="camStatus" style="margin-top: 10px;"></div>
                                 </div>
 
-                                <div class="bridge-form__actions">
+                                <div class="bridge-form__actions facial-submit-actions">
                                     <button type="submit" class="bridge-btn bridge-btn--primary">Enviar foto</button>
                                     <a class="bridge-btn" href="/dashboard">Voltar</a>
                                 </div>
@@ -872,8 +921,37 @@
 
                             <script>
                                 (function () {
+                                    function polyfillMediaDevicesGetUserMedia() {
+                                        if (typeof navigator === 'undefined') {
+                                            return;
+                                        }
+                                        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+                                            return;
+                                        }
+                                        var legacy =
+                                            navigator.getUserMedia ||
+                                            navigator.webkitGetUserMedia ||
+                                            navigator.mozGetUserMedia ||
+                                            navigator.msGetUserMedia;
+                                        if (!legacy) {
+                                            return;
+                                        }
+                                        navigator.mediaDevices = navigator.mediaDevices || {};
+                                        navigator.mediaDevices.getUserMedia = function (constraints) {
+                                            return new Promise(function (resolve, reject) {
+                                                legacy.call(navigator, constraints, resolve, reject);
+                                            });
+                                        };
+                                    }
+
+                                    polyfillMediaDevicesGetUserMedia();
+
                                     const form = document.getElementById('facial-form');
                                     const video = document.getElementById('camVideo');
+                                    if (video) {
+                                        video.setAttribute('playsinline', 'true');
+                                        video.setAttribute('webkit-playsinline', 'true');
+                                    }
                                     const canvas = document.getElementById('camCanvas');
                                     const preview = document.getElementById('camPreview');
                                     const btnStart = document.getElementById('btnStartCam');
@@ -887,23 +965,80 @@
                                         status.textContent = text || '';
                                     }
 
+                                    function cameraSupportMessage() {
+                                        if (typeof window.isSecureContext === 'boolean' && !window.isSecureContext) {
+                                            return 'A câmera exige conexão segura (HTTPS). Abra o link com https:// (ou localhost). Em redes locais, use um certificado ou túnel HTTPS.';
+                                        }
+                                        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                                            return 'Este navegador não expõe acesso à câmera (API ausente). Atualize o sistema, use Chrome, Firefox, Safari recente ou outro dispositivo. Se estiver dentro de um app (WebView), abra o link no navegador.';
+                                        }
+                                        return '';
+                                    }
+
+                                    function mapGetUserMediaError(err) {
+                                        var name = err && err.name ? err.name : '';
+                                        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                                            return 'Permissão da câmera negada. Toque no cadeado da barra de endereço, permita a câmera e tente de novo.';
+                                        }
+                                        if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+                                            return 'Nenhuma câmera encontrada neste aparelho.';
+                                        }
+                                        if (name === 'NotReadableError' || name === 'TrackStartError') {
+                                            return 'A câmera está em uso por outro aplicativo ou não pôde ser aberta. Feche outros apps que usem câmera e tente novamente.';
+                                        }
+                                        if (name === 'SecurityError') {
+                                            return 'O navegador bloqueou o acesso à câmera por política de segurança (HTTPS, iframe ou permissões do site).';
+                                        }
+                                        if (name === 'AbortError') {
+                                            return 'A abertura da câmera foi interrompida. Tente novamente.';
+                                        }
+                                        return 'Não foi possível acessar a câmera. Verifique permissões e tente outro navegador se o problema continuar.';
+                                    }
+
+                                    async function requestVideoStream() {
+                                        var attempts = [
+                                            { video: { facingMode: { ideal: 'user' } }, audio: false },
+                                            { video: { facingMode: 'user' }, audio: false },
+                                            { video: true, audio: false },
+                                        ];
+                                        var lastErr = null;
+                                        for (var i = 0; i < attempts.length; i++) {
+                                            try {
+                                                return await navigator.mediaDevices.getUserMedia(attempts[i]);
+                                            } catch (e) {
+                                                lastErr = e;
+                                                var n = e && e.name ? e.name : '';
+                                                if (
+                                                    n === 'NotAllowedError' ||
+                                                    n === 'PermissionDeniedError' ||
+                                                    n === 'SecurityError' ||
+                                                    n === 'NotFoundError' ||
+                                                    n === 'DevicesNotFoundError' ||
+                                                    n === 'NotReadableError' ||
+                                                    n === 'TrackStartError'
+                                                ) {
+                                                    throw e;
+                                                }
+                                            }
+                                        }
+                                        throw lastErr || new Error('getUserMedia failed');
+                                    }
+
                                     async function startCamera() {
-                                        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                                            setStatus('Este navegador não permite usar a câmera. Tente em outro navegador/dispositivo.');
+                                        var blocked = cameraSupportMessage();
+                                        if (blocked) {
+                                            setStatus(blocked);
                                             return;
                                         }
 
                                         try {
-                                            stream = await navigator.mediaDevices.getUserMedia({
-                                                video: { facingMode: 'user' },
-                                                audio: false,
-                                            });
+                                            stream = await requestVideoStream();
                                             video.srcObject = stream;
                                             await video.play();
                                             btnCapture.disabled = false;
                                             setStatus('Câmera ativa. Enquadre o rosto e toque em “Capturar foto”.');
                                         } catch (e) {
-                                            setStatus('Não foi possível acessar a câmera. Verifique se a permissão foi concedida.');
+                                            setStatus(mapGetUserMediaError(e));
                                         }
                                     }
 

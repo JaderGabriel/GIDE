@@ -292,6 +292,14 @@ html.dark .bridge-btn--primary:hover { background: color-mix(in srgb, var(--prim
   .bridge-btn { height: 44px; }
 }
 
+@media (max-width: 480px) {
+  .bridge-container { padding: 0 14px; }
+  .bridge-main { padding: 22px 0 36px; }
+  .bridge-auth > .bridge-panel { padding: 16px; }
+  .bridge-header__inner { padding: 12px 0; flex-wrap: wrap; }
+  .bridge-brand__name { font-size: 15px; }
+}
+
 .bridge-header__end {
   flex-shrink: 0;
   margin-left: auto;
