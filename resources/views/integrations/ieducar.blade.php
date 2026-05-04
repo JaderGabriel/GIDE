@@ -55,6 +55,8 @@
                                 <div class="bridge-panel__meta">tokens • autenticação • inbound</div>
                             </div>
 
+                            <x-audit-toolbar style="margin-top: 12px;" />
+
                             @if (session('status'))
                                 <p class="bridge-muted" style="margin-top: 12px;">
                                     <strong>{{ session('status') }}</strong>
@@ -72,7 +74,8 @@
                                 </div>
 
                                 <p class="bridge-muted" style="margin-top: 12px;">
-                                    O iEducar chama o GIDE (endpoints fixos) para registrar <strong>nova coleta</strong> e <strong>exclusão</strong>.
+                                    <strong>Fluxo de dados (resumo):</strong> o iEducar chama o GIDE (endpoints fixos) para criar um <strong>token de coleta</strong> (abrir <code>/facial/enviar</code>) e para registar operações de exclusão.
+                                    Em seguida, a coleta/“enroll” é feita pelo GIDE junto do Gestor; o GIDE pode ainda chamar o iEducar para <strong>consulta</strong> e <strong>confirmação</strong>.
                                 </p>
 
                                 <div class="bridge-field" style="margin-top: 12px;">

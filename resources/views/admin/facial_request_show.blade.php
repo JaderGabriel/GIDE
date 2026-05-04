@@ -27,12 +27,9 @@
         </script>
 
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
-            .bridge-container { max-width: 1400px; }
-            .bridge-auth { max-width: none; }
-            .bridge-panel { width: 100%; }
-
             .fac-admin {
                 --fac-ok: #059669;
                 --fac-ok-bg: color-mix(in srgb, #059669 14%, transparent);
@@ -43,12 +40,9 @@
                 --fac-info: #0284c7;
                 --fac-info-bg: color-mix(in srgb, #0284c7 12%, transparent);
             }
-            .fac-show__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-top: 8px; }
             .fac-show__id { display: flex; align-items: center; gap: 12px; }
             .fac-show__id-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; border: 1px solid var(--border); background: linear-gradient(145deg, color-mix(in srgb, var(--accent-c) 20%, var(--surface-1)), var(--surface-1)); color: var(--accent-c); }
             .fac-show__id-ico svg { width: 22px; height: 22px; }
-            .fac-show__title { font-weight: 850; font-size: 1.25rem; margin: 0; letter-spacing: -0.02em; }
-            .fac-show__sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
             .fac-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
             .fac-btn { appearance: none; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .12s ease, border-color .12s ease; font-family: inherit; }
             .fac-btn:hover { background: color-mix(in srgb, var(--bg0) 82%, transparent); border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); text-decoration: none; }
@@ -95,7 +89,7 @@
         </style>
     </head>
     <body>
-        <div class="bridge-shell fac-admin">
+        <div class="bridge-shell fac-admin integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -120,14 +114,15 @@
                                 $expired = $item->expires_at && $item->expires_at->isPast();
                             @endphp
 
-                            <div class="fac-show__bar">
+                            <div class="integr-page-hero">
+                                <div class="integr-page-hero__main">
                                 <div class="fac-show__id">
                                     <div class="fac-show__id-ico" aria-hidden="true">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M6 22v-2a6 6 0 0 1 12 0v2"/></svg>
                                     </div>
                                     <div>
-                                        <h1 class="fac-show__title">Solicitação #{{ $item->id }}</h1>
-                                        <p class="fac-show__sub mono clip" style="max-width: min(560px, 92vw);" title="{{ $item->event_id }}">{{ $item->event_id }}</p>
+                                        <h1 class="integr-section__title">Solicitação #{{ $item->id }}</h1>
+                                        <p class="integr-section__lead mono clip" style="max-width: min(560px, 92vw);" title="{{ $item->event_id }}">{{ $item->event_id }}</p>
                                         <div class="fac-badge-row">
                                             @if ($item->used_at)
                                                 <span class="fac-badge fac-badge--success"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Token usado</span>
@@ -144,7 +139,10 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="fac-actions">
+                                </div>
+                            </div>
+                            <x-audit-toolbar style="margin-top: 12px;">
+                                <x-slot:left>
                                     <a class="fac-btn" href="{{ route('admin.facial-requests.index') }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                                         Lista
@@ -167,8 +165,8 @@
                                             Atualizar iEducar
                                         </button>
                                     </form>
-                                </div>
-                            </div>
+                                </x-slot:left>
+                            </x-audit-toolbar>
 
                             @if (session('status'))
                                 <p class="bridge-muted" style="margin-top: 14px;"><strong>{{ session('status') }}</strong></p>

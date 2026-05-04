@@ -11,6 +11,7 @@ use App\Http\Controllers\Web\IntegrationOverviewController;
 use App\Http\Controllers\Web\SmsDeliveryController;
 use App\Http\Controllers\Web\UserAuditLogController;
 use App\Http\Controllers\Web\UserManagementController;
+use App\Models\Integration;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -31,7 +32,99 @@ Route::get('/dashboard', function () {
         return redirect()->route('integrations.overview');
     }
 
-    return view('dashboard');
+    $byKey = Integration::query()->get()->keyBy(fn (Integration $i) => (string) $i->key);
+    $ieducar = $byKey->get('ieducar');
+    $gestor = $byKey->get('gestor');
+    $sms = $byKey->get('sms');
+
+    $integrationConfigured = function (?Integration $i): bool {
+        if (! $i) {
+            return false;
+        }
+        $hasBase = is_string($i->base_url ?? null) && (string) $i->base_url !== '';
+        $hasAuthToken = is_string($i->auth_token ?? null) && (string) $i->auth_token !== '';
+        $hasHmac = is_string($i->hmac_secret ?? null) && (string) $i->hmac_secret !== '';
+
+        return $hasBase || $hasAuthToken || $hasHmac || ! empty($i->extra);
+    };
+
+    $ieducarInboundReady = (bool) ($ieducar
+        && $ieducar->base_url
+        && ($ieducar->auth_token || data_get($ieducar->extra, 'catraca_frequencia.confirmacao_token')));
+
+    $gestorConfigured = $integrationConfigured($gestor);
+    $gestorEnabled = (bool) ($gestor?->enabled ?? false);
+    $gestorChainOk = $gestorConfigured && $gestorEnabled;
+
+    $smsConfigured = $integrationConfigured($sms);
+    $smsEnabled = (bool) ($sms?->enabled ?? false);
+    $smsChainReady = $smsConfigured && $gestorChainOk && $smsEnabled;
+
+    $dashFlowLanes = [
+        'ieducar_in' => $ieducarInboundReady
+            ? [
+                'tone' => 'ok',
+                'label' => 'Ingresso pronto (API + token)',
+                'hint' => 'A integração iEducar tem URL base e token de API (ou token de confirmação em extra). O ERP pode chamar as rotas inbound do GIDE e obter o link de coleta facial com token.',
+            ]
+            : [
+                'tone' => 'warn',
+                'label' => 'Configurar iEducar (URL base e token)',
+                'hint' => 'Em Integrações → iEducar, defina a URL base e o Bearer da API, ou o token em catraca_frequencia, para o GIDE aceitar pedidos inbound e devolver URLs assinadas.',
+            ],
+        'gestor' => $gestorChainOk
+            ? [
+                'tone' => 'ok',
+                'label' => 'Gestor activo para enroll',
+                'hint' => 'A integração Gestor está configurada e habilitada: a coleta facial pode ser enviada para enroll na catraca.',
+            ]
+            : ($gestorConfigured
+                ? [
+                    'tone' => 'warn',
+                    'label' => 'Gestor configurado — habilitar',
+                    'hint' => 'Os dados da integração Gestor existem, mas a integração está desligada. Habilite-a para permitir envio de fotos ao enroll.',
+                ]
+                : [
+                    'tone' => 'warn',
+                    'label' => 'Configurar Gestor (SDK / catraca)',
+                    'hint' => 'Registe a integração Gestor (URL, credenciais/SDK) para o GIDE encaminhar capturas à catraca após a coleta.',
+                ]),
+        'notify' => match (true) {
+            $smsChainReady => [
+                'tone' => 'ok',
+                'label' => 'Cadeia Gestor + SMS pronta',
+                'hint' => 'Gestor e SMS estão configurados e activos: eventos de presença podem disparar notificações SMS conforme as regras e fila assíncrona.',
+            ],
+            $gestorChainOk && ! $smsConfigured => [
+                'tone' => 'warn',
+                'label' => 'Configure a integração SMS',
+                'hint' => 'O Gestor está pronto, mas falta configurar a integração SMS (provedor, credenciais). Sem isso o ramo notify não envia mensagens.',
+            ],
+            $gestorChainOk && $smsConfigured && ! $smsEnabled => [
+                'tone' => 'warn',
+                'label' => 'Habilite o SMS',
+                'hint' => 'A integração SMS está preenchida mas desligada. Habilite-a para processar envios após presença.',
+            ],
+            default => [
+                'tone' => 'neutral',
+                'label' => 'Ramo em espera (Gestor / SMS)',
+                'hint' => 'O ramo paralelo ao SMS depende do Gestor operacional e, em seguida, do SMS. Este estado resume o que falta na cadeia.',
+            ],
+        },
+        'ieducar_out' => $ieducarInboundReady
+            ? [
+                'tone' => 'ok',
+                'label' => 'Consulta e confirmação disponíveis',
+                'hint' => 'Com o mesmo token/API do iEducar, o GIDE pode confirmar a coleta facial e consultar situação de matrícula no ERP.',
+            ]
+            : [
+                'tone' => 'warn',
+                'label' => 'Depende do token iEducar',
+                'hint' => 'Saídas para o iEducar (confirmação, consulta) usam as credenciais do conector iEducar. Complete URL e token para activar este percurso.',
+            ],
+    ];
+
+    return view('dashboard', compact('dashFlowLanes'));
 })->middleware('auth');
 
 // Fluxo de coleta facial: somente via token do iEducar (sem modo manual).
@@ -56,7 +149,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/integracoes/ieducar/frequencia-registro/preview', [IeducarFrequenciaRegistroController::class, 'preview'])->name('integrations.ieducar.frequencia-registro.preview');
         Route::post('/integracoes/ieducar/frequencia-registro/enfileirar', [IeducarFrequenciaRegistroController::class, 'enqueue'])->name('integrations.ieducar.frequencia-registro.enqueue');
         Route::post('/integracoes/ieducar/frequencia-registro/{id}/enviar', [IeducarFrequenciaRegistroController::class, 'forceSend'])->name('integrations.ieducar.frequencia-registro.force-send');
-        Route::get('/integracoes/ieducar/frequencia-registro/{id}', [IeducarFrequenciaRegistroController::class, 'show'])->name('integrations.ieducar.frequencia-registro.show');
 
         Route::get('/docs/ieducar-frequencia-registro-gide', function () {
             $path = base_path('docs/IEDUCAR_FREQUENCIA_REGISTRO_GIDE.md');

@@ -22,12 +22,9 @@
             })();
         </script>
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
-            .bridge-container { max-width: 1400px; }
-            .bridge-auth { max-width: none; }
-            .bridge-panel { width: 100%; }
-
             .gae-admin {
                 --gae-ok: #059669;
                 --gae-ok-bg: color-mix(in srgb, #059669 14%, transparent);
@@ -38,12 +35,9 @@
                 --gae-info: #0284c7;
                 --gae-info-bg: color-mix(in srgb, #0284c7 12%, transparent);
             }
-            .gae-show__bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px; margin-top: 8px; }
             .gae-show__id { display: flex; align-items: center; gap: 12px; }
             .gae-show__id-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; border: 1px solid var(--border); background: linear-gradient(145deg, color-mix(in srgb, var(--accent-a) 18%, var(--surface-1)), var(--surface-1)); color: var(--accent-a); }
             .gae-show__id-ico svg { width: 22px; height: 22px; }
-            .gae-show__title { font-weight: 850; font-size: 1.25rem; margin: 0; letter-spacing: -0.02em; }
-            .gae-show__sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
             .gae-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
             .gae-btn { appearance: none; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .12s ease, border-color .12s ease; font-family: inherit; }
             .gae-btn:hover { background: color-mix(in srgb, var(--bg0) 82%, transparent); border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); text-decoration: none; }
@@ -84,7 +78,7 @@
             $analysisAction = data_get($delivery->analysis_json, 'action');
             $st = $delivery->processing_status;
         @endphp
-        <div class="bridge-shell gae-admin">
+        <div class="bridge-shell gae-admin integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -104,14 +98,15 @@
                 <div class="bridge-container">
                     <div class="bridge-auth">
                         <div class="bridge-panel">
-                            <div class="gae-show__bar">
+                            <div class="integr-page-hero">
+                                <div class="integr-page-hero__main">
                                 <div class="gae-show__id">
                                     <div class="gae-show__id-ico" aria-hidden="true">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
                                     </div>
                                     <div>
-                                        <h1 class="gae-show__title">Entrega #{{ $delivery->id }}</h1>
-                                        <p class="gae-show__sub">Auditoria Gestor/catraca → motor de presença → preview catraca-frequência (se aplicável)</p>
+                                        <h1 class="integr-section__title">Entrega #{{ $delivery->id }}</h1>
+                                        <p class="integr-section__lead">Auditoria Gestor/catraca → motor de presença → preview catraca-frequência (se aplicável)</p>
                                         <div class="gae-badge-row">
                                             <span class="gae-badge gae-badge--neutral mono">{{ $delivery->inbound_channel ?? 'gestor_hmac' }}</span>
                                             @if ($st === \App\Models\GestorAccessEventDelivery::STATUS_COMPLETED)
@@ -130,7 +125,10 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="gae-actions">
+                                </div>
+                            </div>
+                            <x-audit-toolbar style="margin-top: 12px;">
+                                <x-slot:left>
                                     <a class="gae-btn" href="{{ route('admin.gestor-access-events.index') }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                                         Lista
@@ -148,8 +146,8 @@
                                             </button>
                                         </form>
                                     @endif
-                                </div>
-                            </div>
+                                </x-slot:left>
+                            </x-audit-toolbar>
 
                             @if (session('status'))
                                 <div class="gae-callout gae-callout--info" style="margin-top: 12px;" role="status">{{ session('status') }}</div>

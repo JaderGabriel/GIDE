@@ -21,18 +21,13 @@
             })();
         </script>
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
-            .bridge-container { max-width: 1400px; }
-            .bridge-auth { max-width: none; }
-            .bridge-panel { width: 100%; }
             .fac-admin { --fac-ok: #059669; --fac-ok-bg: color-mix(in srgb, #059669 14%, transparent); --fac-bad: #dc2626; --fac-bad-bg: color-mix(in srgb, #dc2626 12%, transparent); --fac-warn: #d97706; --fac-warn-bg: color-mix(in srgb, #d97706 14%, transparent); --fac-info: #0284c7; --fac-info-bg: color-mix(in srgb, #0284c7 12%, transparent); }
-            .fac-admin__hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 4px; }
             .fac-admin__title { display: flex; align-items: center; gap: 14px; }
             .fac-admin__title-ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(145deg, color-mix(in srgb, var(--accent-a) 22%, var(--surface-1)), var(--surface-1)); border: 1px solid var(--border); color: var(--accent-a); flex-shrink: 0; }
             .fac-admin__title-ico svg { width: 26px; height: 26px; }
-            .fac-admin__h1 { font-weight: 850; font-size: 1.35rem; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
-            .fac-admin__lead { margin: 6px 0 0; font-size: 14px; color: var(--muted); max-width: 760px; line-height: 1.5; }
             .fac-kpis { margin-top: 18px; display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
             @media (min-width: 720px) { .fac-kpis { grid-template-columns: repeat(3, 1fr); } }
             .fac-kpi { border: 1px solid var(--border); border-radius: 16px; padding: 14px; background: var(--card-strong); box-shadow: var(--shadow-soft); min-height: 88px; }
@@ -86,7 +81,7 @@
         </style>
     </head>
     <body>
-        <div class="bridge-shell fac-admin">
+        <div class="bridge-shell fac-admin integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -105,15 +100,15 @@
                 <div class="bridge-container">
                     <div class="bridge-auth">
                         <div class="bridge-panel">
-                            <div class="fac-admin__hero">
-                                <div>
+                            <div class="integr-page-hero">
+                                <div class="integr-page-hero__main">
                                     <div class="fac-admin__title">
                                         <div class="fac-admin__title-ico" aria-hidden="true">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                                         </div>
                                         <div>
-                                            <h1 class="fac-admin__h1">Auditoria de ações</h1>
-                                            <p class="fac-admin__lead">
+                                            <h1 class="integr-section__title">Auditoria de ações</h1>
+                                            <p class="integr-section__lead">
                                                 @if (! empty($auditUserId))
                                                     Mostrando apenas eventos em que este usuário foi o <strong>autor</strong> da ação ou o <strong>alvo</strong> (conta <span class="mono">user #{{ $auditUserId }}</span>@if ($auditUser) — {{ $auditUser->name }}, <span class="mono">{{ $auditUser->username }}</span>@endif).
                                                 @else
@@ -124,11 +119,12 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="fac-actions">
-                                    <a class="fac-btn" href="{{ route('users.index') }}">Gerenciar usuários</a>
-                                    <a class="fac-btn fac-btn--primary" href="{{ route('admin.ieducar-frequencia-deliveries.index') }}">Fila frequência iEducar</a>
-                                </div>
                             </div>
+                            <x-audit-toolbar style="margin-top: 12px;">
+                                <x-slot:left>
+                                    <a class="fac-btn fac-btn--primary" href="{{ route('users.index') }}">Gerenciar usuários</a>
+                                </x-slot:left>
+                            </x-audit-toolbar>
 
                             @php
                                 $st = is_array($stats ?? null) ? $stats : ['total' => 0, 'today' => 0, 'logins_today' => 0];

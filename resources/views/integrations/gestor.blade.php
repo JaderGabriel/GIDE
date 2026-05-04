@@ -114,6 +114,8 @@
                                 <div class="bridge-panel__meta">tudo nesta página grava na linha <span class="mono">integrations</span> (<span class="mono">key=gestor</span>)</div>
                             </div>
 
+                            <x-audit-toolbar style="margin-top: 12px;" />
+
                             @if ($errors->any())
                                 <div class="bridge-error" style="margin-top: 12px;">
                                     @foreach ($errors->all() as $err)

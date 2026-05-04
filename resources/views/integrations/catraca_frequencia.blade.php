@@ -55,6 +55,8 @@
                                 <div class="bridge-panel__meta">endpoints fixos • token bearer</div>
                             </div>
 
+                            <x-audit-toolbar style="margin-top: 12px;" />
+
                             @if (session('status'))
                                 <p class="bridge-muted" style="margin-top: 12px;">
                                     <strong>{{ session('status') }}</strong>

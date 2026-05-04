@@ -28,6 +28,7 @@
 
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
             .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
@@ -70,10 +71,6 @@
             .kpi { border: 1px solid var(--border); border-radius: 18px; padding: 14px 16px; background: var(--surface-2); display: flex; flex-direction: column; min-height: 108px; }
             .kpi__k { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
             .kpi__v { font-size: 22px; font-weight: 850; margin-top: 8px; line-height: 1.1; }
-            .integr-section__title { font-weight: 850; font-size: 15px; letter-spacing: -0.02em; margin: 0; line-height: 1.25; color: var(--text); }
-            .integr-section__lead { margin: 6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 960px; }
-            .integr-section-card { border: 1px solid var(--border); border-radius: 18px; background: var(--card-strong); box-shadow: var(--shadow-soft); padding: 16px 16px 14px; }
-            .integr-section-card .row { align-items: flex-start; }
             .integr-details { margin-top: 14px; padding: 16px 16px 14px; border-radius: 18px; border: 1px solid var(--border); background: color-mix(in srgb, var(--card-strong) 94%, var(--bg0)); box-shadow: var(--shadow-soft); }
             .integr-details__head { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
             .integr-details__kpi { margin-top: 0; }
@@ -210,10 +207,34 @@
             .bridge-result.is-open { display: block; }
             .bridge-result pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; }
             .queue-panel { margin-top: 14px; padding: 16px 16px 14px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-strong); box-shadow: var(--shadow-soft); }
-            .queue-panel__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-            .queue-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-            .queue-tab { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; font-size: 12px; cursor: pointer; color: var(--muted); }
+            .queue-panel__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 18px; }
+            .queue-panel__aside { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: 0 1 auto; min-width: min(100%, 320px); }
+            .queue-pill {
+                display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+                border: 1px solid color-mix(in srgb, var(--accent-a) 35%, var(--border));
+                background: color-mix(in srgb, var(--accent-a) 8%, var(--surface-2));
+                font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--text) 88%, var(--accent-a));
+                white-space: nowrap;
+            }
+            .queue-pill .mono { font-size: 11.5px; }
+            .queue-legend {
+                margin-top: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border);
+                background: color-mix(in srgb, var(--surface-2) 92%, var(--bg0));
+                display: grid; gap: 8px;
+            }
+            .queue-legend__item { font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+            .queue-legend__item strong { color: var(--text); font-weight: 750; }
+            .queue-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+            .queue-tab {
+                padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+                font-size: 12px; font-weight: 650; cursor: pointer; color: var(--muted);
+                transition: background .14s ease, border-color .14s ease, color .14s ease, transform .08s ease;
+            }
+            .queue-tab:hover { border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); color: var(--text); background: color-mix(in srgb, var(--bg0) 55%, transparent); }
+            .queue-tab:active { transform: translateY(1px); }
+            .queue-tab:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent-c) 45%, transparent); outline-offset: 2px; }
             .queue-tab.is-on { border-color: color-mix(in srgb, var(--accent-c) 45%, var(--border)); color: color-mix(in srgb, var(--text) 90%, var(--accent-c)); background: color-mix(in srgb, var(--accent-c) 10%, transparent); }
+            .queue-foot { margin-top: 10px; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
             .queue-table-wrap { margin-top: 10px; overflow: auto; max-height: 280px; border-radius: 14px; border: 1px solid var(--border); }
             .queue-table { width: 100%; border-collapse: collapse; font-size: 12px; }
             .queue-table th, .queue-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
@@ -225,7 +246,7 @@
         </style>
     </head>
     <body>
-        <div class="bridge-shell">
+        <div class="bridge-shell integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -249,6 +270,10 @@
                                 <div class="bridge-panel__title">Integrações</div>
                                 <div class="bridge-panel__meta">pontes ida e volta • fila e entregas • testes rápidos</div>
                             </div>
+
+                            @if ($integrationsOverviewAdmin ?? false)
+                                <x-audit-toolbar style="margin-top: 12px;" />
+                            @endif
 
                             @php
                                 $qs = is_array($queueSnapshot ?? null) ? $queueSnapshot : ['jobs' => [], 'failed_jobs' => [], 'outbound' => [], 'sms' => [], 'gestor_access_events' => []];
@@ -358,22 +383,44 @@
                             </section>
 
                             <section class="queue-panel" aria-labelledby="queue-panel-title">
+                                @php $queueDriver = (string) config('queue.default', 'sync'); @endphp
                                 <div class="queue-panel__head">
-                                    <div>
-                                        <h2 class="integr-section__title" id="queue-panel-title">Fila e status de entregas</h2>
-                                        <p class="integr-section__lead" style="margin-top:6px;">Jobs pendentes, falhas de job, outbound para o Gestor, fila de preview iEducar a partir dos webhooks de access-event e SMS — com HTTP, tentativas e último erro. Horários em <strong>{{ \App\Support\DateDisplay::timezoneLabel() }}</strong>.@if ($integrationsOverviewAdmin ?? false) Detalhe por SMS: <a href="{{ route('sms.index') }}">lista de envios</a>; access-events: <a href="{{ route('admin.gestor-access-events.index') }}">auditoria</a>.@endif</p>
+                                    <div style="flex: 1 1 320px; min-width: 0;">
+                                        <h2 class="integr-section__title" id="queue-panel-title">Fila e entregas</h2>
+                                        <p class="integr-section__lead" style="margin-top:6px;">
+                                            <strong>O que é isto:</strong> um painel de <strong>operação</strong> que junta duas camadas: a fila do Laravel (<span class="mono">jobs</span> / <span class="mono">failed_jobs</span>)
+                                            e as <strong>entregas persistidas</strong> no GIDE (outbound para o Gestor, SMS após presença, preview catraca-frequência disparado por webhooks de access-events).
+                                            Mostram-se apenas as linhas mais recentes; para auditoria completa use as telas dedicadas.
+                                            Horários em <strong>{{ \App\Support\DateDisplay::timezoneLabel() }}</strong>.
+                                        </p>
+                                        <div class="queue-legend" aria-label="O que cada separador mostra">
+                                            <div class="queue-legend__item"><strong>Jobs</strong> — trabalhos ainda na fila (aguardam <span class="mono">queue:work</span> ou execução síncrona).</div>
+                                            <div class="queue-legend__item"><strong>Falhas</strong> — jobs que falharam e ficaram registados em <span class="mono">failed_jobs</span>.</div>
+                                            <div class="queue-legend__item"><strong>Outbound</strong> — envios do GIDE para o Gestor (ex.: sincronização de matrícula), com tentativas e último erro.</div>
+                                            <div class="queue-legend__item"><strong>SMS</strong> — tentativas de envio ao provedor após o fluxo de presença (HTTP, retries).</div>
+                                            <div class="queue-legend__item"><strong>Eventos</strong> — processamento de cada POST de access-event (preview iEducar quando aplicável).</div>
+                                        </div>
+                                    </div>
+                                    <div class="queue-panel__aside">
+                                        <span class="queue-pill" title="Driver configurado em QUEUE_CONNECTION">Driver de fila: <span class="mono">{{ $queueDriver }}</span></span>
                                     </div>
                                 </div>
                                 <div class="queue-tabs" role="tablist">
-                                    <button type="button" class="queue-tab is-on" data-tab="jobs">Jobs ({{ count($qs['jobs'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" data-tab="failed">Falhas ({{ count($qs['failed_jobs'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" data-tab="outbound">Outbound Gestor ({{ count($qs['outbound'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" data-tab="sms">SMS ({{ count($qs['sms'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" data-tab="gae">Access-event → iEducar ({{ count($qs['gestor_access_events'] ?? []) }})</button>
+                                    <button type="button" class="queue-tab is-on" role="tab" aria-selected="true" data-tab="jobs" title="Tabela jobs — trabalhos pendentes na fila Laravel">Jobs ({{ count($qs['jobs'] ?? []) }})</button>
+                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="failed" title="Tabela failed_jobs — exceções após esgotar tentativas">Falhas ({{ count($qs['failed_jobs'] ?? []) }})</button>
+                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="outbound" title="Outbound para o Gestor (tabela outbound_deliveries)">Outbound ({{ count($qs['outbound'] ?? []) }})</button>
+                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="sms" title="Entregas SMS (tabela sms_deliveries)">SMS ({{ count($qs['sms'] ?? []) }})</button>
+                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="gae" title="Access-events e preview iEducar (gestor_access_event_deliveries)">Eventos ({{ count($qs['gestor_access_events'] ?? []) }})</button>
                                 </div>
+                                <p class="queue-foot">
+                                    <strong>Nota:</strong> com <span class="mono">QUEUE_CONNECTION=sync</span> é normal ver poucos ou nenhum job em <span class="mono">jobs</span>, porque o processamento ocorre na mesma requisição HTTP.
+                                    @if ($integrationsOverviewAdmin ?? false)
+                                        Ligações rápidas: <a href="{{ route('sms.index') }}">SMS</a>, <a href="{{ route('admin.gestor-access-events.index') }}">Eventos</a>, <a href="{{ route('admin.ieducar-frequencia-deliveries.index') }}">Frequência</a>.
+                                    @endif
+                                </p>
                                 <div class="queue-table-wrap" data-panel="jobs">
                                     <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Fila</th><th>Job</th><th>Tent.</th><th>Criado</th><th>Disponível</th></tr></thead>
+                                        <thead><tr><th>ID</th><th>Fila</th><th>Trabalho</th><th>Tentativas</th><th>Criado</th><th>Disponível em</th></tr></thead>
                                         <tbody>
                                             @forelse ($qs['jobs'] ?? [] as $j)
                                                 <tr>
@@ -392,7 +439,7 @@
                                 </div>
                                 <div class="queue-table-wrap" data-panel="failed" hidden>
                                     <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Fila</th><th>Job</th><th>Falhou em</th><th>Exceção (início)</th></tr></thead>
+                                        <thead><tr><th>ID</th><th>Fila</th><th>Trabalho</th><th>Falhou em</th><th>Início da exceção</th></tr></thead>
                                         <tbody>
                                             @forelse ($qs['failed_jobs'] ?? [] as $j)
                                                 <tr>
@@ -410,7 +457,7 @@
                                 </div>
                                 <div class="queue-table-wrap" data-panel="outbound" hidden>
                                     <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Event id</th><th>Status</th><th>Tent.</th><th>HTTP</th><th>Entregue</th><th>Próximo retry</th><th>Erro</th></tr></thead>
+                                        <thead><tr><th>ID</th><th>ID do evento</th><th>Estado</th><th>Tentativas</th><th>HTTP</th><th>Entregue em</th><th>Próximo reenvio</th><th>Erro</th></tr></thead>
                                         <tbody>
                                             @forelse ($qs['outbound'] ?? [] as $r)
                                                 @php
@@ -435,7 +482,7 @@
                                 </div>
                                 <div class="queue-table-wrap" data-panel="sms" hidden>
                                     <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Event id</th><th>Status</th><th>Tent.</th><th>HTTP</th><th>Enviado</th><th>Próximo retry</th><th>Erro</th></tr></thead>
+                                        <thead><tr><th>ID</th><th>ID do evento</th><th>Estado</th><th>Tentativas</th><th>HTTP</th><th>Enviado em</th><th>Próximo reenvio</th><th>Erro</th></tr></thead>
                                         <tbody>
                                             @forelse ($qs['sms'] ?? [] as $r)
                                                 @php
@@ -460,7 +507,7 @@
                                 </div>
                                 <div class="queue-table-wrap" data-panel="gae" hidden>
                                     <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Event id</th><th>Canal</th><th>Status</th><th>Tent. iE.</th><th>HTTP</th><th>Processado</th><th>Erro</th></tr></thead>
+                                        <thead><tr><th>ID</th><th>ID do evento</th><th>Canal</th><th>Estado</th><th>Tentativas (iEducar)</th><th>HTTP</th><th>Processado em</th><th>Erro</th></tr></thead>
                                         <tbody>
                                             @forelse ($qs['gestor_access_events'] ?? [] as $r)
                                                 @php
@@ -914,7 +961,13 @@
                 tabs.forEach(function (tab) {
                     tab.addEventListener('click', function () {
                         var name = tab.getAttribute('data-tab');
-                        tabs.forEach(function (t) { t.classList.toggle('is-on', t === tab); });
+                        tabs.forEach(function (t) {
+                            var on = t === tab;
+                            t.classList.toggle('is-on', on);
+                            if (t.getAttribute('role') === 'tab') {
+                                t.setAttribute('aria-selected', on ? 'true' : 'false');
+                            }
+                        });
                         panels.forEach(function (p) {
                             p.hidden = p.getAttribute('data-panel') !== name;
                         });

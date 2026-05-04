@@ -22,7 +22,7 @@ class IeducarFrequenciaRegistroController extends Controller
 
         $recent = IeducarFrequenciaRegistroDelivery::query()
             ->orderByDesc('id')
-            ->limit(40)
+            ->limit(3)
             ->get();
 
         $defaultPayload = [
@@ -43,15 +43,6 @@ class IeducarFrequenciaRegistroController extends Controller
             'recent' => $recent,
             'defaultPayloadJson' => json_encode($defaultPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'targetPath' => IeducarClient::CAT_FREQUENCIA_REGISTRO_PATH,
-        ]);
-    }
-
-    public function show(int $id): View
-    {
-        $delivery = IeducarFrequenciaRegistroDelivery::query()->findOrFail($id);
-
-        return view('integrations.ieducar_frequencia_registro_show', [
-            'delivery' => $delivery,
         ]);
     }
 
@@ -94,7 +85,7 @@ class IeducarFrequenciaRegistroController extends Controller
     }
 
     /**
-     * Preview: enfileira envio com meta.preview=true (acompanhar na mesma tela de detalhe).
+     * Preview: enfileira envio com meta.preview=true (detalhe em admin/frequencia-ieducar/{id}).
      */
     public function preview(Request $request): RedirectResponse
     {
@@ -123,7 +114,7 @@ class IeducarFrequenciaRegistroController extends Controller
         ], 'ieducar_frequencia_delivery', $delivery->id);
 
         return redirect()
-            ->route('integrations.ieducar.frequencia-registro.show', ['id' => $delivery->id])
+            ->route('admin.ieducar-frequencia-deliveries.show', ['id' => $delivery->id])
             ->with('status', 'Preview enfileirado (#'.$delivery->id.'). Atualize a página após o worker processar.');
     }
 
@@ -157,7 +148,7 @@ class IeducarFrequenciaRegistroController extends Controller
         ], 'ieducar_frequencia_delivery', $delivery->id);
 
         return redirect()
-            ->route('integrations.ieducar.frequencia-registro.show', ['id' => $delivery->id])
+            ->route('admin.ieducar-frequencia-deliveries.show', ['id' => $delivery->id])
             ->with('status', 'Lote enfileirado. O worker vai enviar ao i-Educar e atualizar o status (#'.$delivery->id.').');
     }
 

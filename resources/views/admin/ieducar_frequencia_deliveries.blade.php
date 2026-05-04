@@ -27,19 +27,13 @@
         </script>
 
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
-            .bridge-container { max-width: 1400px; }
-            .bridge-auth { max-width: none; }
-            .bridge-panel { width: 100%; }
-
             .fac-admin { --fac-ok: #059669; --fac-ok-bg: color-mix(in srgb, #059669 14%, transparent); --fac-bad: #dc2626; --fac-bad-bg: color-mix(in srgb, #dc2626 12%, transparent); --fac-warn: #d97706; --fac-warn-bg: color-mix(in srgb, #d97706 14%, transparent); --fac-info: #0284c7; --fac-info-bg: color-mix(in srgb, #0284c7 12%, transparent); --fac-muted: #64748b; }
-            .fac-admin__hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 4px; }
             .fac-admin__title { display: flex; align-items: center; gap: 14px; }
             .fac-admin__title-ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(145deg, color-mix(in srgb, var(--accent-c) 22%, var(--surface-1)), var(--surface-1)); border: 1px solid var(--border); color: var(--accent-c); flex-shrink: 0; }
             .fac-admin__title-ico svg { width: 26px; height: 26px; }
-            .fac-admin__h1 { font-weight: 850; font-size: 1.35rem; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
-            .fac-admin__lead { margin: 6px 0 0; font-size: 14px; color: var(--muted); max-width: 720px; line-height: 1.5; }
 
             .fac-alert { margin-top: 14px; padding: 12px 14px; border-radius: 14px; display: flex; align-items: flex-start; gap: 10px; border: 1px solid color-mix(in srgb, var(--accent-c) 35%, var(--border)); background: color-mix(in srgb, var(--accent-c) 8%, var(--surface-1)); font-size: 14px; }
             .fac-alert svg { flex: 0 0 20px; margin-top: 1px; color: var(--accent-c); }
@@ -128,7 +122,7 @@
         </style>
     </head>
     <body>
-        <div class="bridge-shell fac-admin">
+        <div class="bridge-shell fac-admin integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -148,33 +142,27 @@
                 <div class="bridge-container">
                     <div class="bridge-auth">
                         <div class="bridge-panel">
-                            <div class="fac-admin__hero">
-                                <div>
+                            <div class="integr-page-hero">
+                                <div class="integr-page-hero__main">
                                     <div class="fac-admin__title">
                                         <div class="fac-admin__title-ico" aria-hidden="true">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
                                         </div>
                                         <div>
-                                            <h1 class="fac-admin__h1">Fila de frequência (GIDE → iEducar)</h1>
-                                            <p class="fac-admin__lead">Itens enfileirados pela ferramenta de integração (preview ou gravação). O worker atualiza status, HTTP e JSON de resposta. Formato por aluno (<span class="mono">cod_aluno</span> + <span class="mono">data_ref</span>).</p>
+                                            <h1 class="integr-section__title">Fila de frequência (GIDE → iEducar)</h1>
+                                            <p class="integr-section__lead">Itens enfileirados pela ferramenta de integração (preview ou gravação). O worker atualiza status, HTTP e JSON de resposta. Formato por aluno (<span class="mono">cod_aluno</span> + <span class="mono">data_ref</span>).</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="fac-actions">
-                                    <a class="fac-btn" href="{{ route('integrations.ieducar.frequencia-registro') }}">
+                            </div>
+                            <x-audit-toolbar style="margin-top: 12px;">
+                                <x-slot:left>
+                                    <a class="fac-btn fac-btn--primary" href="{{ route('integrations.ieducar.frequencia-registro') }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                                         Novo envio
                                     </a>
-                                    <a class="fac-btn fac-btn--primary" href="{{ route('admin.facial-requests.index') }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M6 22v-2a6 6 0 0 1 12 0v2"/></svg>
-                                        Solicitações faciais
-                                    </a>
-                                    <a class="fac-btn" href="{{ route('admin.user-audit-logs.index') }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                        Auditoria usuários
-                                    </a>
-                                </div>
-                            </div>
+                                </x-slot:left>
+                            </x-audit-toolbar>
 
                             @if (session('status'))
                                 <div class="fac-alert" role="status">
@@ -258,10 +246,10 @@
                                         <tr>
                                             <th style="width: 12%;">ID</th>
                                             <th style="width: 12%;">Modo</th>
-                                            <th style="width: 14%;">Status</th>
+                                            <th style="width: 14%;">Estado</th>
                                             <th style="width: 8%;">HTTP</th>
                                             <th style="width: 30%;">Resumo</th>
-                                            <th style="width: 14%;">DATAS</th>
+                                            <th style="width: 14%;">Datas</th>
                                             <th style="width: 14%; text-align: right;">Ações</th>
                                         </tr>
                                     </thead>

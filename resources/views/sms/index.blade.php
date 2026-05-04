@@ -27,10 +27,11 @@
         </script>
 
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
     </head>
     <body>
-        <div class="bridge-shell">
+        <div class="bridge-shell integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -50,19 +51,23 @@
                 <div class="bridge-container">
                     <div class="bridge-auth">
                         <div class="bridge-panel">
-                            <div class="bridge-panel__head">
-                                <div class="bridge-panel__title">Mensagens SMS</div>
-                                <div class="bridge-panel__meta">logs • status • filtros</div>
+                            <div class="integr-page-hero" style="margin-top: 0;">
+                                <div class="integr-page-hero__main">
+                                    <h1 class="integr-section__title">Mensagens SMS</h1>
+                                    <p class="integr-section__lead">Logs de envio, estado e filtros. Vista plana ou agrupada por aluno (evento → disparos).</p>
+                                </div>
                             </div>
 
                             @php
                                 $smsQueryBase = request()->except('page');
                             @endphp
-                            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                                <span class="bridge-muted" style="font-size: 12px;">Vista:</span>
-                                <a class="bridge-btn {{ ($filters['layout'] ?? 'flat') === 'flat' ? 'bridge-btn--primary' : '' }}" href="{{ route('sms.index', array_merge($smsQueryBase, ['layout' => 'flat'])) }}">Lista plana</a>
-                                <a class="bridge-btn {{ ($filters['layout'] ?? '') === 'grouped' ? 'bridge-btn--primary' : '' }}" href="{{ route('sms.index', array_merge($smsQueryBase, ['layout' => 'grouped'])) }}">Por aluno (evento → disparos)</a>
-                            </div>
+                            <x-audit-toolbar style="margin-top: 10px;">
+                                <x-slot:left>
+                                    <span class="bridge-muted" style="font-size: 12px;">Vista:</span>
+                                    <a class="bridge-btn {{ ($filters['layout'] ?? 'flat') === 'flat' ? 'bridge-btn--primary' : '' }}" href="{{ route('sms.index', array_merge($smsQueryBase, ['layout' => 'flat'])) }}">Lista plana</a>
+                                    <a class="bridge-btn {{ ($filters['layout'] ?? '') === 'grouped' ? 'bridge-btn--primary' : '' }}" href="{{ route('sms.index', array_merge($smsQueryBase, ['layout' => 'grouped'])) }}">Por aluno (evento → disparos)</a>
+                                </x-slot:left>
+                            </x-audit-toolbar>
 
                             <form method="GET" action="{{ route('sms.index') }}" class="bridge-form" style="margin-top: 12px;">
                                 @if (($filters['layout'] ?? 'flat') === 'grouped')
@@ -140,10 +145,10 @@
                                                     <thead>
                                                         <tr>
                                                             <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">ID</th>
-                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Template</th>
-                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Status</th>
-                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Tel.</th>
-                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Enviado</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Modelo</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Estado</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Telefone</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Enviado em</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -170,14 +175,14 @@
                                     <thead>
                                         <tr>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">ID</th>
-                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Template</th>
-                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Status</th>
+                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Modelo</th>
+                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Estado</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Telefone</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Aluno</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Matrícula</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Evento</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Criado</th>
-                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Enviado</th>
+                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Enviado em</th>
                                         </tr>
                                     </thead>
                                     <tbody>

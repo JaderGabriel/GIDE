@@ -27,19 +27,13 @@
         </script>
 
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
-            .bridge-container { max-width: 1400px; }
-            .bridge-auth { max-width: none; }
-            .bridge-panel { width: 100%; }
-
             .fac-admin { --fac-ok: #059669; --fac-ok-bg: color-mix(in srgb, #059669 14%, transparent); --fac-bad: #dc2626; --fac-bad-bg: color-mix(in srgb, #dc2626 12%, transparent); --fac-warn: #d97706; --fac-warn-bg: color-mix(in srgb, #d97706 14%, transparent); --fac-info: #0284c7; --fac-info-bg: color-mix(in srgb, #0284c7 12%, transparent); --fac-muted: #64748b; }
-            .fac-admin__hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 4px; }
             .fac-admin__title { display: flex; align-items: center; gap: 14px; }
             .fac-admin__title-ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(145deg, color-mix(in srgb, var(--accent-c) 22%, var(--surface-1)), var(--surface-1)); border: 1px solid var(--border); color: var(--accent-c); flex-shrink: 0; }
             .fac-admin__title-ico svg { width: 26px; height: 26px; }
-            .fac-admin__h1 { font-weight: 850; font-size: 1.35rem; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
-            .fac-admin__lead { margin: 6px 0 0; font-size: 14px; color: var(--muted); max-width: 640px; line-height: 1.5; }
 
             .fac-alert { margin-top: 14px; padding: 12px 14px; border-radius: 14px; display: flex; align-items: flex-start; gap: 10px; border: 1px solid color-mix(in srgb, var(--accent-c) 35%, var(--border)); background: color-mix(in srgb, var(--accent-c) 8%, var(--surface-1)); font-size: 14px; }
             .fac-alert svg { flex: 0 0 20px; margin-top: 1px; color: var(--accent-c); }
@@ -129,10 +123,20 @@
             .fac-pagination__gap { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 36px; padding: 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
             .fac-list-block { margin-top: 3rem; }
             .fac-list-block__title { margin: 0 0 14px; padding: 11px 16px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: color-mix(in srgb, var(--text) 52%, var(--muted)); box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--bg0) 88%, transparent), 0 3px 10px -3px color-mix(in srgb, var(--bg0) 70%, transparent); position: relative; z-index: 4; }
+
+            .fac-filters { margin: 14px 0 12px; padding: 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-strong); box-shadow: var(--shadow-soft); }
+            .fac-filters__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+            .fac-filters__field { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+            .fac-filters__field--wide { flex: 1 1 320px; min-width: 240px; }
+            .fac-filters__label { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+            .fac-filters__input, .fac-filters__select { appearance: none; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 650; font-family: inherit; }
+            .fac-filters__input:focus, .fac-filters__select:focus { outline: 2px solid color-mix(in srgb, var(--accent-a) 30%, transparent); outline-offset: 1px; }
+            .fac-filters__actions { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+            .fac-filters__hint { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.4; }
         </style>
     </head>
     <body>
-        <div class="bridge-shell fac-admin">
+        <div class="bridge-shell fac-admin integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -152,25 +156,20 @@
                 <div class="bridge-container">
                     <div class="bridge-auth">
                         <div class="bridge-panel">
-                            <div class="fac-admin__hero">
-                                <div>
+                            <div class="integr-page-hero">
+                                <div class="integr-page-hero__main">
                                     <div class="fac-admin__title">
                                         <div class="fac-admin__title-ico" aria-hidden="true">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M6 22v-2a6 6 0 0 1 12 0v2"/></svg>
                                         </div>
                                         <div>
-                                            <h1 class="fac-admin__h1">Solicitações faciais</h1>
-                                            <p class="fac-admin__lead">Tokens do iEducar, tentativas de envio ao Gestor (catraca) e consultas de matrícula. Indicadores e cores refletem o estado operacional de cada etapa.</p>
+                                            <h1 class="integr-section__title">Solicitações faciais</h1>
+                                            <p class="integr-section__lead">Tokens do iEducar, tentativas de envio ao Gestor (catraca) e consultas de matrícula. Indicadores e cores refletem o estado operacional de cada etapa.</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="fac-actions" style="align-self: flex-start;">
-                                    <a class="fac-btn fac-btn--queue" href="{{ route('admin.ieducar-frequencia-deliveries.index') }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/></svg>
-                                        Fila de envios (frequência)
-                                    </a>
-                                </div>
                             </div>
+                            <x-audit-toolbar style="margin-top: 12px;"></x-audit-toolbar>
 
                             @if (session('status'))
                                 <div class="fac-alert" role="status">
@@ -257,6 +256,64 @@
 
                             <section class="fac-list-block" aria-labelledby="fac-list-facial-title">
                                 <h2 class="fac-list-block__title" id="fac-list-facial-title">Lista de solicitações faciais</h2>
+
+                                @php
+                                    $f = is_array($filters ?? null) ? $filters : [];
+                                @endphp
+                                <form method="GET" action="{{ route('admin.facial-requests.index') }}" class="fac-filters">
+                                    <div class="fac-filters__row">
+                                        <input type="hidden" name="per_page" value="{{ $perPage ?? '' }}" />
+                                        <div class="fac-filters__field fac-filters__field--wide">
+                                            <label class="fac-filters__label" for="q">Busca (token ou event_id)</label>
+                                            <input class="fac-filters__input" id="q" name="q" value="{{ $f['q'] ?? '' }}" placeholder="ex.: 7dA... ou catraca-frequencia:..." />
+                                        </div>
+
+                                        <div class="fac-filters__field">
+                                            <label class="fac-filters__label" for="cod_aluno">cod_aluno</label>
+                                            <input class="fac-filters__input" id="cod_aluno" name="cod_aluno" value="{{ $f['cod_aluno'] ?? '' }}" placeholder="ex.: 211" />
+                                        </div>
+
+                                        <div class="fac-filters__field">
+                                            <label class="fac-filters__label" for="idpes">idpes</label>
+                                            <input class="fac-filters__input" id="idpes" name="idpes" value="{{ $f['idpes'] ?? '' }}" placeholder="ex.: 630" />
+                                        </div>
+
+                                        <div class="fac-filters__field">
+                                            <label class="fac-filters__label" for="token_status">Token</label>
+                                            <select class="fac-filters__select" id="token_status" name="token_status">
+                                                <option value="" {{ ($f['token_status'] ?? '') === '' ? 'selected' : '' }}>Todos</option>
+                                                <option value="valid" {{ ($f['token_status'] ?? '') === 'valid' ? 'selected' : '' }}>Válido (pendente)</option>
+                                                <option value="expired" {{ ($f['token_status'] ?? '') === 'expired' ? 'selected' : '' }}>Expirado</option>
+                                                <option value="used" {{ ($f['token_status'] ?? '') === 'used' ? 'selected' : '' }}>Usado</option>
+                                                <option value="pending" {{ ($f['token_status'] ?? '') === 'pending' ? 'selected' : '' }}>Não usado</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="fac-filters__field">
+                                            <label class="fac-filters__label" for="catraca">Catraca</label>
+                                            <select class="fac-filters__select" id="catraca" name="catraca">
+                                                <option value="" {{ ($f['catraca'] ?? '') === '' ? 'selected' : '' }}>Todos</option>
+                                                <option value="ok" {{ ($f['catraca'] ?? '') === 'ok' ? 'selected' : '' }}>OK</option>
+                                                <option value="fail" {{ ($f['catraca'] ?? '') === 'fail' ? 'selected' : '' }}>Falha</option>
+                                                <option value="none" {{ ($f['catraca'] ?? '') === 'none' ? 'selected' : '' }}>Sem registro</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="fac-filters__actions">
+                                            <button type="submit" class="fac-btn fac-btn--queue" style="min-height: 42px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                                Filtrar
+                                            </button>
+                                            <a class="fac-btn" href="{{ route('admin.facial-requests.index') }}" style="min-height: 42px;">
+                                                Limpar
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="fac-filters__hint">
+                                        Dica: “Token = válido” significa <span class="mono">used_at</span> vazio e <span class="mono">expires_at</span> ainda no futuro.
+                                    </div>
+                                </form>
+
                                 @include('admin.partials.list-pagination', ['paginator' => $items, 'perPage' => $perPage, 'position' => 'top'])
 
                                 <div class="fac-table-wrap">
@@ -302,11 +359,13 @@
                                                 $expired = $it->expires_at && $it->expires_at->isPast();
                                                 $histRows = ($gestorHistoriesByRequest[$it->id] ?? collect());
                                                 $solCount = $histRows->where('event_type', \App\Models\FacialGestorCatracaHistory::EVENT_SOLICITACAO)->count();
+                                                $lastSolHist = $histRows->where('event_type', \App\Models\FacialGestorCatracaHistory::EVENT_SOLICITACAO)->sortByDesc('id')->first();
                                                 $lastEnrollHist = $histRows->where('event_type', \App\Models\FacialGestorCatracaHistory::EVENT_ENROLL_RESPONSE)->sortByDesc('id')->first();
                                                 $guestLinkRow = $codAlunoKey !== '' ? ($guestLinksByCod[$codAlunoKey] ?? null) : null;
                                                 $inviteForInspect = $guestLinkRow?->invite_id ?? $lastEnrollHist?->invite_id;
                                                 $showVerifyInvite = $inviteForInspect && ($it->used_at || $lastEnrollHist);
                                                 $canOpenSend = ! $it->used_at && ! $expired;
+                                                $usedOk = (bool) ($it->used_at && (($attempt && $attempt->ok) || ($lastEnrollHist && $lastEnrollHist->ok === true)));
                                             @endphp
                                             <tr>
                                                 <td>
@@ -331,6 +390,12 @@
                                                 <td>
                                                     <div class="mono clip" title="{{ $it->token }}">{{ $it->token }}</div>
                                                     <div class="fac-badge-row" style="margin-top:8px;">
+                                                        @if ($usedOk)
+                                                            <span class="fac-badge fac-badge--success">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                                                Usado e OK
+                                                            </span>
+                                                        @endif
                                                         @if ($expired)
                                                             <span class="fac-badge fac-badge--warn">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -346,17 +411,23 @@
                                                     </div>
                                                 </td>
                                                 <td>
+                                                    <div class="fac-badge-row">
+                                                        @if ($usedOk)
+                                                            <span class="fac-badge fac-badge--success">Consumo OK</span>
+                                                        @elseif ($it->used_at)
+                                                            <span class="fac-badge fac-badge--warn">Consumido (ver catraca)</span>
+                                                        @else
+                                                            <span class="fac-badge fac-badge--neutral">Pendente</span>
+                                                        @endif
+                                                        @if ($solCount > 0)
+                                                            <span class="fac-badge fac-badge--neutral">{{ $solCount }} abertura(s)</span>
+                                                        @endif
+                                                    </div>
                                                     @if ($it->used_at)
-                                                        <span class="fac-badge fac-badge--success">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                                            Usado
-                                                        </span>
-                                                        <div class="mono fac-muted">{{ \App\Support\DateDisplay::formatHuman($it->used_at, true) }}</div>
-                                                    @else
-                                                        <span class="fac-badge fac-badge--neutral">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                                                            Não usado
-                                                        </span>
+                                                        <div class="mono fac-muted" style="margin-top:6px;">Consumido: <strong>{{ \App\Support\DateDisplay::formatHuman($it->used_at, true) }}</strong></div>
+                                                    @endif
+                                                    @if ($lastSolHist && $lastSolHist->created_at)
+                                                        <div class="mono fac-muted" style="margin-top:4px;">Última abertura: <strong>{{ \App\Support\DateDisplay::formatHuman($lastSolHist->created_at, true) }}</strong></div>
                                                     @endif
                                                 </td>
                                                 <td>
@@ -375,6 +446,12 @@
                                                             @endif
                                                             <span class="fac-badge fac-badge--neutral">HTTP {{ $attempt->http_status ?? '—' }}</span>
                                                             <span class="fac-badge fac-badge--neutral">{{ $attemptCount }} tent.</span>
+                                                            @if ($guestLinkRow?->guest_id)
+                                                                <span class="fac-badge fac-badge--info">guest {{ $guestLinkRow->guest_id }}</span>
+                                                            @endif
+                                                            @if ($inviteForInspect)
+                                                                <span class="fac-badge fac-badge--info">invite {{ $inviteForInspect }}</span>
+                                                            @endif
                                                         </div>
                                                         @if ($attempt->error_message)
                                                             <div class="mono wrap fac-muted" style="color: color-mix(in srgb, var(--fac-bad) 85%, var(--text));">{{ $attempt->error_message }}</div>
@@ -391,42 +468,31 @@
                                                             Sem registro
                                                         </span>
                                                         <div class="fac-muted">Nenhuma tentativa na catraca.</div>
-                                                    @endif
-                                                    @if ($histRows->isNotEmpty())
-                                                        <div class="fac-muted" style="margin-top:10px;font-weight:650;">Histórico Gestor (persistido)</div>
-                                                        @if ($solCount > 0)
-                                                            <div class="mono fac-muted" style="margin-top:4px;">Pedidos de link (facial): <strong>{{ $solCount }}</strong></div>
-                                                        @endif
-                                                        @if ($lastEnrollHist)
-                                                            <div class="fac-badge-row" style="margin-top:6px;">
-                                                                <span class="fac-badge fac-badge--neutral">Último POST Face</span>
-                                                                @if ($lastEnrollHist->ok === true)
-                                                                    <span class="fac-badge fac-badge--success">OK</span>
-                                                                @elseif ($lastEnrollHist->ok === false)
-                                                                    <span class="fac-badge fac-badge--danger">Falha</span>
+                                                        @if ($guestLinkRow?->guest_id || $inviteForInspect)
+                                                            <div class="fac-badge-row" style="margin-top:8px;">
+                                                                @if ($guestLinkRow?->guest_id)
+                                                                    <span class="fac-badge fac-badge--info">guest {{ $guestLinkRow->guest_id }}</span>
                                                                 @endif
-                                                                <span class="fac-badge fac-badge--neutral">HTTP {{ $lastEnrollHist->http_status ?? '—' }}</span>
-                                                                @if ($lastEnrollHist->invite_id)
-                                                                    <span class="fac-badge fac-badge--info">invite {{ $lastEnrollHist->invite_id }}</span>
-                                                                @endif
-                                                                @if ($lastEnrollHist->guest_id)
-                                                                    <span class="fac-badge fac-badge--info">guest {{ $lastEnrollHist->guest_id }}</span>
+                                                                @if ($inviteForInspect)
+                                                                    <span class="fac-badge fac-badge--info">invite {{ $inviteForInspect }}</span>
                                                                 @endif
                                                             </div>
-                                                            <div class="mono fac-muted" style="margin-top:4px;">{{ $lastEnrollHist->created_at ? \App\Support\DateDisplay::formatHuman($lastEnrollHist->created_at, true) : '' }}</div>
-                                                            @if ($lastEnrollHist->effective_url)
-                                                                <details class="fac-details">
-                                                                    <summary>URL do POST (facial)</summary>
-                                                                    <pre class="mono wrap">{{ $lastEnrollHist->effective_url }}</pre>
-                                                                </details>
-                                                            @endif
-                                                            @if ($lastEnrollHist->response_body)
-                                                                <details class="fac-details">
-                                                                    <summary>JSON/corpo catraca (último enroll)</summary>
-                                                                    <pre class="mono wrap">{{ mb_substr($lastEnrollHist->response_body, 0, 12000) }}</pre>
-                                                                </details>
-                                                            @endif
                                                         @endif
+                                                    @endif
+                                                    @if ($histRows->isNotEmpty())
+                                                        <details class="fac-details">
+                                                            <summary>Histórico Gestor</summary>
+                                                            <pre class="mono wrap">{{ json_encode($histRows->take(12)->map(fn ($h) => [
+                                                                'id' => $h->id,
+                                                                'type' => $h->event_type,
+                                                                'ok' => $h->ok,
+                                                                'http_status' => $h->http_status,
+                                                                'guest_id' => $h->guest_id,
+                                                                'invite_id' => $h->invite_id,
+                                                                'at' => $h->created_at?->toIso8601String(),
+                                                                'url' => $h->effective_url,
+                                                            ])->values()->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                                        </details>
                                                     @endif
                                                 </td>
                                                 <td>

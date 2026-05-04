@@ -27,10 +27,11 @@
         </script>
 
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
     </head>
     <body>
-        <div class="bridge-shell">
+        <div class="bridge-shell integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -50,9 +51,11 @@
                 <div class="bridge-container">
                     <div class="bridge-auth">
                         <div class="bridge-panel">
-                            <div class="bridge-panel__head">
-                                <div class="bridge-panel__title">Mensagem #{{ $delivery->id }}</div>
-                                <div class="bridge-panel__meta">{{ $delivery->status }} • {{ $delivery->provider }}</div>
+                            <div class="integr-page-hero" style="margin-top: 0;">
+                                <div class="integr-page-hero__main">
+                                    <h1 class="integr-section__title">Mensagem #{{ $delivery->id }}</h1>
+                                    <p class="integr-section__lead"><span class="mono">{{ $delivery->status }}</span> · {{ $delivery->provider }}@if ($delivery->template_key) · template <span class="mono">{{ $delivery->template_key }}</span>@endif</p>
+                                </div>
                             </div>
 
                             <div style="display:grid; gap: 10px; margin-top: 12px;">
@@ -93,11 +96,13 @@
                                 <textarea class="bridge-input" rows="8" readonly style="resize: vertical;">{{ json_encode($delivery->provider_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</textarea>
                             </div>
 
-                            <div class="bridge-form__actions" style="margin-top: 12px;">
-                                <a class="bridge-btn bridge-btn--primary" href="{{ route('sms.index') }}">Voltar</a>
-                                <a class="bridge-btn" href="{{ route('integrations.sms') }}">Configurar SMS</a>
-                                <a class="bridge-btn" href="/dashboard">Dashboard</a>
-                            </div>
+                            <x-audit-toolbar style="margin-top: 12px;">
+                                <x-slot:left>
+                                    <a class="bridge-btn bridge-btn--primary" href="{{ route('sms.index') }}">Voltar</a>
+                                    <a class="bridge-btn" href="{{ route('integrations.sms') }}">Configurar SMS</a>
+                                    <a class="bridge-btn" href="/dashboard">Dashboard</a>
+                                </x-slot:left>
+                            </x-audit-toolbar>
                         </div>
                     </div>
                 </div>

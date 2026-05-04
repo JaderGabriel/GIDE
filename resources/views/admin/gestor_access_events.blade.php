@@ -7,14 +7,24 @@
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+        <script>
+            (function () {
+                try {
+                    const stored = localStorage.getItem('theme');
+                    const theme =
+                        stored === 'light' || stored === 'dark'
+                            ? stored
+                            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                    document.documentElement.classList.toggle('dark', theme === 'dark');
+                    document.documentElement.dataset.theme = theme;
+                } catch (_) {}
+            })();
+        </script>
         <link rel="stylesheet" href="/home.css">
+        @include('partials.integr-visual-kit')
         <script defer src="/home.js"></script>
         <style>
-            .bridge-container { max-width: 1400px; }
             .gae-admin { --gae-ok: #059669; --gae-bad: #dc2626; --gae-warn: #d97706; --gae-info: #0284c7; }
-            .gae-hero { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-top: 8px; align-items: flex-start; }
-            .gae-h1 { font-weight: 850; font-size: 1.3rem; margin: 0; }
-            .gae-lead { margin: 6px 0 0; font-size: 14px; color: var(--muted); max-width: 720px; line-height: 1.5; }
             .gae-alert { margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--gae-warn) 40%, var(--border)); background: color-mix(in srgb, var(--gae-warn) 10%, var(--surface-1)); font-size: 14px; }
             .gae-filters { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
             .gae-filters select { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); font-family: inherit; }
@@ -33,7 +43,7 @@
         </style>
     </head>
     <body>
-        <div class="bridge-shell gae-admin">
+        <div class="bridge-shell gae-admin integr-app">
             <header class="bridge-header">
                 <div class="bridge-container">
                     <div class="bridge-header__inner">
@@ -50,31 +60,33 @@
             </header>
             <main class="bridge-main">
                 <div class="bridge-container">
-                    <div class="bridge-panel" style="padding: 20px;">
-                        <div class="gae-hero">
-                            <div>
-                                <h1 class="gae-h1">Fila / auditoria — access-events</h1>
-                                <p class="gae-lead">Cada linha é um POST: canal <span class="mono">gestor_hmac</span> (<span class="mono">/api/v1/gestor/access-events</span>) ou <span class="mono">catraca_bearer</span> (<span class="mono">/api/v1/catraca/access-events</span>). O JSON bruto fica em <span class="mono">inbound_payload</span>. O iEducar é chamado <strong>somente</strong> em preview (<span class="mono">meta.preview=true</span>).</p>
+                        <div class="bridge-panel" style="padding: 20px;">
+                        <div class="integr-page-hero">
+                            <div class="integr-page-hero__main">
+                                <h1 class="integr-section__title">Fila / auditoria — access-events</h1>
+                                <p class="integr-section__lead">Cada linha é um POST: canal <span class="mono">gestor_hmac</span> (<span class="mono">/api/v1/gestor/access-events</span>) ou <span class="mono">catraca_bearer</span> (<span class="mono">/api/v1/catraca/access-events</span>). O JSON bruto fica em <span class="mono">inbound_payload</span>. O iEducar é chamado <strong>somente</strong> em preview (<span class="mono">meta.preview=true</span>).</p>
                             </div>
-                            <a class="bridge-btn" href="{{ url('/dashboard') }}">Dashboard</a>
                         </div>
+                        <x-audit-toolbar style="margin-top: 12px;">
+                            <x-slot:left>
+                                <form method="get" action="{{ route('admin.gestor-access-events.index') }}" class="gae-filters" style="margin-top: 0;">
+                                    <input type="hidden" name="per_page" value="{{ (int) $perPage }}">
+                                    <label for="f-status">Estado</label>
+                                    <select id="f-status" name="status" onchange="this.form.submit()">
+                                        <option value="" @selected($statusFilter === '')>Todos</option>
+                                        <option value="completed" @selected($statusFilter === 'completed')>completed</option>
+                                        <option value="failed" @selected($statusFilter === 'failed')>failed</option>
+                                        <option value="skipped" @selected($statusFilter === 'skipped')>skipped</option>
+                                        <option value="pending" @selected($statusFilter === 'pending')>pending</option>
+                                        <option value="processing" @selected($statusFilter === 'processing')>processing</option>
+                                    </select>
+                                </form>
+                            </x-slot:left>
+                        </x-audit-toolbar>
 
                         <div class="gae-alert" role="status">
                             <strong>Aviso de modo:</strong> o rótulo <span class="mono">preview</span> / <span class="mono">homolog</span> vem da integração Gestor (<span class="mono">extra.ieducar_processing.environment</span>). O envio ao iEducar neste fluxo está <strong>sempre em preview</strong> (simulação), independentemente desse rótulo.
                         </div>
-
-                        <form method="get" action="{{ route('admin.gestor-access-events.index') }}" class="gae-filters">
-                            <input type="hidden" name="per_page" value="{{ (int) $perPage }}">
-                            <label for="f-status">Estado</label>
-                            <select id="f-status" name="status" onchange="this.form.submit()">
-                                <option value="" @selected($statusFilter === '')>Todos</option>
-                                <option value="completed" @selected($statusFilter === 'completed')>completed</option>
-                                <option value="failed" @selected($statusFilter === 'failed')>failed</option>
-                                <option value="skipped" @selected($statusFilter === 'skipped')>skipped</option>
-                                <option value="pending" @selected($statusFilter === 'pending')>pending</option>
-                                <option value="processing" @selected($statusFilter === 'processing')>processing</option>
-                            </select>
-                        </form>
 
                         @include('admin.partials.list-pagination', ['paginator' => $items, 'perPage' => $perPage, 'position' => 'top'])
 
@@ -83,7 +95,7 @@
                                 <thead>
                                     <tr>
                                         <th style="width:8%;">ID</th>
-                                        <th style="width:14%;">event_id</th>
+                                        <th style="width:14%;">ID do evento</th>
                                         <th style="width:12%;">Canal</th>
                                         <th style="width:12%;">Estado</th>
                                         <th style="width:10%;">Gestor (rótulo)</th>

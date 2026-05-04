@@ -21,8 +21,73 @@ class FacialAdminController extends Controller
     {
         $perPage = AdminListPerPage::resolve($request);
 
-        $items = FacialSendRequest::query()
-            ->orderByDesc('id')
+        $filters = [
+            'q' => trim((string) $request->query('q', '')), // token/event_id
+            'token' => trim((string) $request->query('token', '')),
+            'event' => trim((string) $request->query('event', '')),
+            'cod_aluno' => trim((string) $request->query('cod_aluno', '')),
+            'idpes' => trim((string) $request->query('idpes', '')),
+            'token_status' => (string) $request->query('token_status', ''), // used|pending|valid|expired
+            'catraca' => (string) $request->query('catraca', ''), // ok|fail|none
+        ];
+
+        $q = FacialSendRequest::query();
+
+        if ($filters['q'] !== '') {
+            $term = $filters['q'];
+            $q->where(function ($qq) use ($term) {
+                $qq->where('token', 'like', '%'.$term.'%')
+                    ->orWhere('event_id', 'like', '%'.$term.'%');
+            });
+        }
+        if ($filters['token'] !== '') {
+            $q->where('token', 'like', '%'.$filters['token'].'%');
+        }
+        if ($filters['event'] !== '') {
+            $q->where('event_id', 'like', '%'.$filters['event'].'%');
+        }
+        if ($filters['cod_aluno'] !== '') {
+            $q->where('payload->aluno_id', $filters['cod_aluno']);
+        }
+        if ($filters['idpes'] !== '') {
+            $q->where('payload->idpes', $filters['idpes']);
+        }
+
+        $now = now();
+        if ($filters['token_status'] === 'used') {
+            $q->whereNotNull('used_at');
+        } elseif ($filters['token_status'] === 'pending') {
+            $q->whereNull('used_at');
+        } elseif ($filters['token_status'] === 'expired') {
+            $q->whereNotNull('expires_at')->where('expires_at', '<', $now);
+        } elseif ($filters['token_status'] === 'valid') {
+            $q->whereNull('used_at')->where(function ($qq) use ($now) {
+                $qq->whereNull('expires_at')->orWhere('expires_at', '>=', $now);
+            });
+        }
+
+        // Filtro por estado "Catraca (Gestor)" usando a última tentativa por request.
+        if (in_array($filters['catraca'], ['ok', 'fail', 'none'], true)) {
+            $latestAttemptIds = FacialEnrollAttempt::query()
+                ->selectRaw('MAX(id) as latest_id, facial_send_request_id')
+                ->groupBy('facial_send_request_id');
+
+            $q->leftJoinSub($latestAttemptIds, 'la_max', function ($join) {
+                $join->on('la_max.facial_send_request_id', '=', 'facial_send_requests.id');
+            })
+                ->leftJoin('facial_enroll_attempts as la', 'la.id', '=', 'la_max.latest_id')
+                ->select('facial_send_requests.*');
+
+            if ($filters['catraca'] === 'none') {
+                $q->whereNull('la.id');
+            } elseif ($filters['catraca'] === 'ok') {
+                $q->whereNotNull('la.id')->where('la.ok', true);
+            } elseif ($filters['catraca'] === 'fail') {
+                $q->whereNotNull('la.id')->where('la.ok', false);
+            }
+        }
+
+        $items = $q->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -70,6 +135,7 @@ class FacialAdminController extends Controller
         return view('admin.facial_requests', [
             'items' => $items,
             'perPage' => $perPage,
+            'filters' => $filters,
             'attemptsByRequest' => $attemptsByRequest,
             'statusByRequest' => $statusByRequest,
             'guestLinksByCod' => $guestLinksByCod,
