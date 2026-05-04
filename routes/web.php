@@ -2,8 +2,9 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Web\FacialAdminController;
-use App\Http\Controllers\Web\GestorAccessEventAdminController;
 use App\Http\Controllers\Web\FacialSendController;
+use App\Http\Controllers\Web\GestorAccessEventAdminController;
+use App\Http\Controllers\Web\GideQueuesController;
 use App\Http\Controllers\Web\IeducarFrequenciaRegistroAdminController;
 use App\Http\Controllers\Web\IeducarFrequenciaRegistroController;
 use App\Http\Controllers\Web\IntegrationController;
@@ -133,6 +134,7 @@ Route::post('/facial/enviar', [FacialSendController::class, 'store'])->name('fac
 
 Route::middleware('auth')->group(function () {
     Route::get('/integracoes', [IntegrationOverviewController::class, 'index'])->name('integrations.overview');
+    Route::get('/integracoes/filas', [GideQueuesController::class, 'index'])->name('integrations.gide-queues');
     Route::get('/integracoes/status', [IntegrationOverviewController::class, 'status'])->name('integrations.overview.status');
 
     Route::middleware('admin')->group(function () {

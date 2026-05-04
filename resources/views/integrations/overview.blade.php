@@ -206,43 +206,6 @@
             .bridge-result { margin-top: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); max-height: 220px; overflow: auto; display: none; }
             .bridge-result.is-open { display: block; }
             .bridge-result pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; }
-            .queue-panel { margin-top: 14px; padding: 16px 16px 14px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-strong); box-shadow: var(--shadow-soft); }
-            .queue-panel__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 18px; }
-            .queue-panel__aside { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: 0 1 auto; min-width: min(100%, 320px); }
-            .queue-pill {
-                display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-                border: 1px solid color-mix(in srgb, var(--accent-a) 35%, var(--border));
-                background: color-mix(in srgb, var(--accent-a) 8%, var(--surface-2));
-                font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--text) 88%, var(--accent-a));
-                white-space: nowrap;
-            }
-            .queue-pill .mono { font-size: 11.5px; }
-            .queue-legend {
-                margin-top: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border);
-                background: color-mix(in srgb, var(--surface-2) 92%, var(--bg0));
-                display: grid; gap: 8px;
-            }
-            .queue-legend__item { font-size: 12.5px; line-height: 1.45; color: var(--muted); }
-            .queue-legend__item strong { color: var(--text); font-weight: 750; }
-            .queue-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-            .queue-tab {
-                padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-1) 70%, transparent);
-                font-size: 12px; font-weight: 650; cursor: pointer; color: var(--muted);
-                transition: background .14s ease, border-color .14s ease, color .14s ease, transform .08s ease;
-            }
-            .queue-tab:hover { border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); color: var(--text); background: color-mix(in srgb, var(--bg0) 55%, transparent); }
-            .queue-tab:active { transform: translateY(1px); }
-            .queue-tab:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent-c) 45%, transparent); outline-offset: 2px; }
-            .queue-tab.is-on { border-color: color-mix(in srgb, var(--accent-c) 45%, var(--border)); color: color-mix(in srgb, var(--text) 90%, var(--accent-c)); background: color-mix(in srgb, var(--accent-c) 10%, transparent); }
-            .queue-foot { margin-top: 10px; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
-            .queue-table-wrap { margin-top: 10px; overflow: auto; max-height: 280px; border-radius: 14px; border: 1px solid var(--border); }
-            .queue-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            .queue-table th, .queue-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-            .queue-table th { position: sticky; top: 0; background: var(--surface-2); z-index: 4; color: var(--muted); font-weight: 650; box-shadow: var(--sticky-table-head-shadow, 0 10px 28px -8px rgba(2, 6, 23, 0.28)); }
-            .queue-table tr:last-child td { border-bottom: none; }
-            .st-ok { color: color-mix(in srgb, var(--accent-c) 70%, var(--text)); font-weight: 650; }
-            .st-bad { color: #ef4444; font-weight: 650; }
-            .st-warn { color: #f59e0b; font-weight: 650; }
         </style>
     </head>
     <body>
@@ -268,16 +231,12 @@
                         <div class="bridge-panel">
                             <div class="bridge-panel__head">
                                 <div class="bridge-panel__title">Integrações</div>
-                                <div class="bridge-panel__meta">pontes ida e volta • fila e entregas • testes rápidos</div>
+                                <div class="bridge-panel__meta">pontes ida e volta • métricas • testes rápidos</div>
                             </div>
 
                             @if ($integrationsOverviewAdmin ?? false)
                                 <x-audit-toolbar style="margin-top: 12px;" />
                             @endif
-
-                            @php
-                                $qs = is_array($queueSnapshot ?? null) ? $queueSnapshot : ['jobs' => [], 'failed_jobs' => [], 'outbound' => [], 'sms' => [], 'gestor_access_events' => []];
-                            @endphp
 
                             @php
                                 $smsChainReady = (bool) ($smsChainReady ?? false);
@@ -348,7 +307,7 @@
                                 <div class="bridge-legend">
                                     <div><span>→</span> <strong>Tronco</strong>: iEducar — GIDE — Gestor (fluxo principal animado como “canal ativo”).</div>
                                     <div><span>↓</span> <strong>SMS</strong>: ramo a partir do GIDE; animação leve só quando Gestor + SMS estão prontos e o SMS está habilitado.</div>
-                                    <div><span>◎</span> <strong>Status da conexão</strong>: cada trecho do tronco combina configuração mínima, sinais operacionais do conector e os <strong>últimos testes por faixa</strong> (os mesmos badges dos cartões). A fila de jobs só entra no <strong>resumo geral</strong> e no trecho Gestor, não pinta o iEducar só por backlog. Atualização automática a cada <strong>1 minuto</strong>.</div>
+                                    <div><span>◎</span> <strong>Status da conexão</strong>: cada trecho do tronco combina configuração mínima, sinais operacionais do conector e os <strong>últimos testes por faixa</strong> (os mesmos badges dos cartões). O backlog de jobs entra no <strong>resumo geral</strong> e no trecho Gestor, sem pintar o iEducar só por fila. Para <strong>jobs, falhas e entregas</strong> numa única lista, abra <a href="{{ route('integrations.gide-queues') }}">Filas GIDE</a>. Atualização automática a cada <strong>1 minuto</strong>.</div>
                                 </div>
                                 <p class="bridge-map__status-hint" id="bridge-map-status-hint" aria-live="polite">Tom atual: <span class="mono" id="bridge-map-tone-label">{{ $connectionTone ?? 'ok' }}</span> · próxima verificação em <span id="bridge-map-countdown">60</span>s</p>
                                 @if ($integrationsOverviewAdmin ?? false)
@@ -380,162 +339,6 @@
                                     </div>
                                     <div class="bridge-result" id="bridge-result" role="status" aria-live="polite"><pre id="bridge-result-pre"></pre></div>
                                 @endif
-                            </section>
-
-                            <section class="queue-panel" aria-labelledby="queue-panel-title">
-                                @php $queueDriver = (string) config('queue.default', 'sync'); @endphp
-                                <div class="queue-panel__head">
-                                    <div style="flex: 1 1 320px; min-width: 0;">
-                                        <h2 class="integr-section__title" id="queue-panel-title">Fila e entregas</h2>
-                                        <p class="integr-section__lead" style="margin-top:6px;">
-                                            <strong>O que é isto:</strong> um painel de <strong>operação</strong> que junta duas camadas: a fila do Laravel (<span class="mono">jobs</span> / <span class="mono">failed_jobs</span>)
-                                            e as <strong>entregas persistidas</strong> no GIDE (outbound para o Gestor, SMS após presença, preview catraca-frequência disparado por webhooks de access-events).
-                                            Mostram-se apenas as linhas mais recentes; para auditoria completa use as telas dedicadas.
-                                            Horários em <strong>{{ \App\Support\DateDisplay::timezoneLabel() }}</strong>.
-                                        </p>
-                                        <div class="queue-legend" aria-label="O que cada separador mostra">
-                                            <div class="queue-legend__item"><strong>Jobs</strong> — trabalhos ainda na fila (aguardam <span class="mono">queue:work</span> ou execução síncrona).</div>
-                                            <div class="queue-legend__item"><strong>Falhas</strong> — jobs que falharam e ficaram registados em <span class="mono">failed_jobs</span>.</div>
-                                            <div class="queue-legend__item"><strong>Outbound</strong> — envios do GIDE para o Gestor (ex.: sincronização de matrícula), com tentativas e último erro.</div>
-                                            <div class="queue-legend__item"><strong>SMS</strong> — tentativas de envio ao provedor após o fluxo de presença (HTTP, retries).</div>
-                                            <div class="queue-legend__item"><strong>Eventos</strong> — processamento de cada POST de access-event (preview iEducar quando aplicável).</div>
-                                        </div>
-                                    </div>
-                                    <div class="queue-panel__aside">
-                                        <span class="queue-pill" title="Driver configurado em QUEUE_CONNECTION">Driver de fila: <span class="mono">{{ $queueDriver }}</span></span>
-                                    </div>
-                                </div>
-                                <div class="queue-tabs" role="tablist">
-                                    <button type="button" class="queue-tab is-on" role="tab" aria-selected="true" data-tab="jobs" title="Tabela jobs — trabalhos pendentes na fila Laravel">Jobs ({{ count($qs['jobs'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="failed" title="Tabela failed_jobs — exceções após esgotar tentativas">Falhas ({{ count($qs['failed_jobs'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="outbound" title="Outbound para o Gestor (tabela outbound_deliveries)">Outbound ({{ count($qs['outbound'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="sms" title="Entregas SMS (tabela sms_deliveries)">SMS ({{ count($qs['sms'] ?? []) }})</button>
-                                    <button type="button" class="queue-tab" role="tab" aria-selected="false" data-tab="gae" title="Access-events e preview iEducar (gestor_access_event_deliveries)">Eventos ({{ count($qs['gestor_access_events'] ?? []) }})</button>
-                                </div>
-                                <p class="queue-foot">
-                                    <strong>Nota:</strong> com <span class="mono">QUEUE_CONNECTION=sync</span> é normal ver poucos ou nenhum job em <span class="mono">jobs</span>, porque o processamento ocorre na mesma requisição HTTP.
-                                    @if ($integrationsOverviewAdmin ?? false)
-                                        Ligações rápidas: <a href="{{ route('sms.index') }}">SMS</a>, <a href="{{ route('admin.gestor-access-events.index') }}">Eventos</a>, <a href="{{ route('admin.ieducar-frequencia-deliveries.index') }}">Frequência</a>.
-                                    @endif
-                                </p>
-                                <div class="queue-table-wrap" data-panel="jobs">
-                                    <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Fila</th><th>Trabalho</th><th>Tentativas</th><th>Criado</th><th>Disponível em</th></tr></thead>
-                                        <tbody>
-                                            @forelse ($qs['jobs'] ?? [] as $j)
-                                                <tr>
-                                                    <td class="mono">{{ $j['id'] ?? '' }}</td>
-                                                    <td class="mono">{{ $j['queue'] ?? '' }}</td>
-                                                    <td class="mono">{{ $j['label'] ?? '—' }}</td>
-                                                    <td>{{ (int) ($j['attempts'] ?? 0) }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $j['created_at_display'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $j['available_at_display'] ?? '—' }}</td>
-                                                </tr>
-                                            @empty
-                                                <tr><td colspan="6" class="bridge-muted">Nenhum job na tabela <code>jobs</code> (fila vazia ou worker já drenou).</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="queue-table-wrap" data-panel="failed" hidden>
-                                    <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>Fila</th><th>Trabalho</th><th>Falhou em</th><th>Início da exceção</th></tr></thead>
-                                        <tbody>
-                                            @forelse ($qs['failed_jobs'] ?? [] as $j)
-                                                <tr>
-                                                    <td class="mono">{{ $j['id'] ?? '' }}</td>
-                                                    <td class="mono">{{ $j['queue'] ?? '' }}</td>
-                                                    <td class="mono">{{ $j['label'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $j['failed_at_display'] ?? '—' }}</td>
-                                                    <td class="mono" style="font-size:11px;">{{ $j['exception'] ?? '—' }}</td>
-                                                </tr>
-                                            @empty
-                                                <tr><td colspan="5" class="bridge-muted">Sem registros em <code>failed_jobs</code>.</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="queue-table-wrap" data-panel="outbound" hidden>
-                                    <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>ID do evento</th><th>Estado</th><th>Tentativas</th><th>HTTP</th><th>Entregue em</th><th>Próximo reenvio</th><th>Erro</th></tr></thead>
-                                        <tbody>
-                                            @forelse ($qs['outbound'] ?? [] as $r)
-                                                @php
-                                                    $st = (string) ($r['status'] ?? '');
-                                                    $cls = $st === 'completed' ? 'st-ok' : ($st === 'failed' ? 'st-bad' : ($st === 'retry_scheduled' ? 'st-warn' : ''));
-                                                @endphp
-                                                <tr>
-                                                    <td class="mono">{{ $r['id'] ?? '' }}</td>
-                                                    <td class="mono" style="max-width:120px;word-break:break-all;">{{ $r['event_id'] ?? '' }}</td>
-                                                    <td class="{{ $cls }}">{{ $st !== '' ? $st : '—' }}</td>
-                                                    <td>{{ (int) ($r['attempts'] ?? 0) }}</td>
-                                                    <td class="mono">{{ $r['http'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $r['delivered_at_display'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $r['next_retry_at_display'] ?? '—' }}</td>
-                                                    <td class="mono" style="font-size:11px;">{{ $r['error'] ?? '—' }}</td>
-                                                </tr>
-                                            @empty
-                                                <tr><td colspan="8" class="bridge-muted">Sem linhas recentes em <code>outbound_deliveries</code>.</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="queue-table-wrap" data-panel="sms" hidden>
-                                    <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>ID do evento</th><th>Estado</th><th>Tentativas</th><th>HTTP</th><th>Enviado em</th><th>Próximo reenvio</th><th>Erro</th></tr></thead>
-                                        <tbody>
-                                            @forelse ($qs['sms'] ?? [] as $r)
-                                                @php
-                                                    $st = (string) ($r['status'] ?? '');
-                                                    $cls = ($r['sent_at'] ?? null) ? 'st-ok' : ($st === 'error' ? 'st-bad' : 'st-warn');
-                                                @endphp
-                                                <tr>
-                                                    <td class="mono">{{ $r['id'] ?? '' }}</td>
-                                                    <td class="mono" style="max-width:120px;word-break:break-all;">{{ $r['event_id'] ?? '' }}</td>
-                                                    <td class="{{ $cls }}">{{ $st !== '' ? $st : '—' }}</td>
-                                                    <td>{{ (int) ($r['attempts'] ?? 0) }}</td>
-                                                    <td class="mono">{{ $r['http'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $r['sent_at_display'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $r['next_retry_at_display'] ?? '—' }}</td>
-                                                    <td class="mono" style="font-size:11px;">{{ $r['error'] ?? '—' }}</td>
-                                                </tr>
-                                            @empty
-                                                <tr><td colspan="8" class="bridge-muted">Sem linhas recentes em <code>sms_deliveries</code>.</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="queue-table-wrap" data-panel="gae" hidden>
-                                    <table class="queue-table">
-                                        <thead><tr><th>ID</th><th>ID do evento</th><th>Canal</th><th>Estado</th><th>Tentativas (iEducar)</th><th>HTTP</th><th>Processado em</th><th>Erro</th></tr></thead>
-                                        <tbody>
-                                            @forelse ($qs['gestor_access_events'] ?? [] as $r)
-                                                @php
-                                                    $st = (string) ($r['status'] ?? '');
-                                                    $cls = $st === 'completed' ? 'st-ok' : ($st === 'failed' ? 'st-bad' : ($st === 'pending' || $st === 'processing' ? 'st-warn' : ''));
-                                                @endphp
-                                                <tr>
-                                                    <td class="mono">
-                                                        @if ($integrationsOverviewAdmin ?? false)
-                                                            <a href="{{ route('admin.gestor-access-events.show', ['id' => $r['id'] ?? 0]) }}">{{ $r['id'] ?? '' }}</a>
-                                                        @else
-                                                            {{ $r['id'] ?? '' }}
-                                                        @endif
-                                                    </td>
-                                                    <td class="mono" style="max-width:120px;word-break:break-all;">{{ $r['event_id'] ?? '' }}</td>
-                                                    <td class="mono" style="font-size:11px;">{{ $r['channel'] ?? '—' }}</td>
-                                                    <td class="{{ $cls }}">{{ $st !== '' ? $st : '—' }}</td>
-                                                    <td>{{ (int) ($r['attempts'] ?? 0) }}</td>
-                                                    <td class="mono">{{ $r['http'] ?? '—' }}</td>
-                                                    <td style="font-size:11px;line-height:1.35;">{{ $r['processed_at_display'] ?? '—' }}</td>
-                                                    <td class="mono" style="font-size:11px;">{{ $r['error'] ?? '—' }}</td>
-                                                </tr>
-                                            @empty
-                                                <tr><td colspan="8" class="bridge-muted">Sem linhas pendentes/falha/processamento recentes em <code>gestor_access_event_deliveries</code>.</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
                             </section>
 
                             <div class="card integr-section-card" style="margin-top: 12px;">
@@ -956,24 +759,6 @@
         </div>
         <script>
             (function () {
-                var tabs = document.querySelectorAll('.queue-tab');
-                var panels = document.querySelectorAll('.queue-table-wrap[data-panel]');
-                tabs.forEach(function (tab) {
-                    tab.addEventListener('click', function () {
-                        var name = tab.getAttribute('data-tab');
-                        tabs.forEach(function (t) {
-                            var on = t === tab;
-                            t.classList.toggle('is-on', on);
-                            if (t.getAttribute('role') === 'tab') {
-                                t.setAttribute('aria-selected', on ? 'true' : 'false');
-                            }
-                        });
-                        panels.forEach(function (p) {
-                            p.hidden = p.getAttribute('data-panel') !== name;
-                        });
-                    });
-                });
-
                 function csrf() {
                     var m = document.querySelector('meta[name="csrf-token"]');
                     return m ? m.getAttribute('content') || '' : '';

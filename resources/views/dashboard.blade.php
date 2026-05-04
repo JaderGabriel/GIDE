@@ -320,6 +320,17 @@
                 border-color: color-mix(in srgb, var(--accent-a) 55%, var(--border));
             }
 
+            .dash-qbtn--gidequeues {
+                border-color: color-mix(in srgb, #7c2d12 36%, var(--border));
+                background: color-mix(in srgb, #7c2d12 9%, var(--surface-1));
+                color: color-mix(in srgb, var(--text) 88%, #7c2d12);
+                box-shadow: 0 0 0 1px color-mix(in srgb, #7c2d12 6%, transparent);
+            }
+            .dash-qbtn--gidequeues:hover {
+                background: color-mix(in srgb, #7c2d12 14%, var(--surface-1));
+                border-color: color-mix(in srgb, #7c2d12 48%, var(--border));
+            }
+
             .dash-qbtn--ieducar {
                 border-color: color-mix(in srgb, #166534 45%, var(--border));
                 background: color-mix(in srgb, #166534 10%, var(--surface-1));
@@ -685,6 +696,12 @@
                                                             <path d="M7 14h3v5H7zM11 10h3v9h-3zM15 12h3v7h-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                                                         </svg>
                                                         Visão geral das integrações
+                                                    </a>
+                                                    <a class="bridge-btn dash-qbtn dash-qbtn--gidequeues" href="{{ route('integrations.gide-queues') }}">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M8 6h13M8 12h13M8 18h13M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                        </svg>
+                                                        Filas GIDE
                                                     </a>
                                                 </div>
                                             </div>
