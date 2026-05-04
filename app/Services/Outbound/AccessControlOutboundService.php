@@ -170,7 +170,7 @@ class AccessControlOutboundService
      * Explica qual valor foi aplicado e de onde veio (para logs / artisan simulate).
      *
      * @param  array<string, mixed>  $ieducarPayload
-     * @return array<string, int|string>
+     * @return array<string, int|string|null>
      */
     public function describeInvitePayloadSetup(Integration $integration, array $ieducarPayload): array
     {
@@ -271,7 +271,7 @@ class AccessControlOutboundService
     }
 
     /**
-     * @return array{value: int, source: string}
+     * @return array{value: ?int, source: string}
      */
     private function resolveGestorAccessProfileIdAndSource(Integration $integration): array
     {
@@ -286,7 +286,10 @@ class AccessControlOutboundService
             }
         }
 
-        throw new \RuntimeException('accessProfileId não configurado: defina em /integracoes/gestor (onboarding ou defaults com valor inteiro > 0; 0 é ignorado).');
+        return [
+            'value' => null,
+            'source' => 'nenhum inteiro >0 (0 ou vazio em onboarding/defaults → accessProfileId null no JSON)',
+        ];
     }
 
     private function backoffSeconds(int $attempts): int

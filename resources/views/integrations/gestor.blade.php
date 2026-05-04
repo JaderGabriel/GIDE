@@ -226,12 +226,12 @@
 
                                     <div class="bridge-field">
                                         <label class="bridge-label" for="access_profile_id">accessProfileId</label>
-                                        <input class="bridge-input mono" id="access_profile_id" name="access_profile_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ \App\Support\GestorStoredIds::stringForNumericInput(old('access_profile_id', data_get($integration->extra, 'defaults.access_profile_id') ?? data_get($integration->extra, 'onboarding.access_profile_id'))) }}" placeholder="inteiro &gt; 0" />
+                                        <input class="bridge-input mono" id="access_profile_id" name="access_profile_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ \App\Support\GestorStoredIds::stringForNumericInput(old('access_profile_id', data_get($integration->extra, 'defaults.access_profile_id') ?? data_get($integration->extra, 'onboarding.access_profile_id'))) }}" placeholder="&gt;0 ou vazio / 0 → null no JSON" />
                                         @error('access_profile_id')
                                             <div class="bridge-error">{{ $message }}</div>
                                         @enderror
                                         <div class="bridge-muted" style="margin-top: 6px;">
-                                            Mesma regra: <span class="mono">onboarding.access_profile_id</span> primeiro, depois <span class="mono">defaults.access_profile_id</span> (apenas valores &gt; 0).
+                                            Mesma ordem: <span class="mono">onboarding.access_profile_id</span>, depois <span class="mono">defaults.access_profile_id</span>. Só valores inteiro &gt; 0 viram número no convite; vazio ou <strong>0</strong> → <span class="mono">accessProfileId: null</span> no JSON enviado ao Gestor.
                                         </div>
                                     </div>
                                 </div>

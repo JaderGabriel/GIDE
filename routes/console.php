@@ -604,7 +604,7 @@ Artisan::command('gestor:invite:list {--timeout=15 : Timeout em segundos} {--lim
     return $resp->successful() ? 0 : 3;
 })->purpose('Lista Invites disponíveis no Gestor (usa integração do banco)');
 
-Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEducar) usado no name} {--cod_matricula= : Código da matrícula (iEducar) no snapshot} {--ano= : Ano letivo (default=ano atual)} {--unityId= : UnityId (>0; sobrescreve só nesta execução)} {--accessProfileId= : AccessProfileId (>0; sobrescreve só nesta execução)} {--path= : Path do Invite (sobrescreve só nesta execução; senão usa o banco)}', function () {
+Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEducar) usado no name} {--cod_matricula= : Código da matrícula (iEducar) no snapshot} {--ano= : Ano letivo (default=ano atual)} {--unityId= : UnityId (>0; sobrescreve só nesta execução)} {--accessProfileId= : AccessProfileId (>0 sobrescreve; 0 força null no JSON desta execução)} {--path= : Path do Invite (sobrescreve só nesta execução; senão usa o banco)}', function () {
     $integration = Integration::query()->where('key', 'gestor')->first();
     if (! $integration) {
         $this->error('Integração Gestor não encontrada (key=gestor). Configure em /integracoes/gestor.');
@@ -655,9 +655,9 @@ Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEduc
     $this->info('Setup no banco (integrations key=gestor) — valores brutos em extra');
     $this->line('  onboarding.unity_id (bruto): '.json_encode(data_get($extra, 'onboarding.unity_id')).' → efetivo se >0: '.(GestorStoredIds::positiveIntOrNull(data_get($extra, 'onboarding.unity_id')) ?? '—'));
     $this->line('  defaults.unity_id (bruto): '.json_encode(data_get($extra, 'defaults.unity_id')).' → efetivo se >0: '.(GestorStoredIds::positiveIntOrNull(data_get($extra, 'defaults.unity_id')) ?? '—'));
-    $this->line('  onboarding.access_profile_id (bruto): '.json_encode(data_get($extra, 'onboarding.access_profile_id')).' → efetivo se >0: '.(GestorStoredIds::positiveIntOrNull(data_get($extra, 'onboarding.access_profile_id')) ?? '—'));
-    $this->line('  defaults.access_profile_id (bruto): '.json_encode(data_get($extra, 'defaults.access_profile_id')).' → efetivo se >0: '.(GestorStoredIds::positiveIntOrNull(data_get($extra, 'defaults.access_profile_id')) ?? '—'));
-    $this->line('  Regra outbound: primeiro unityId >0 entre onboarding e defaults; idem accessProfileId. Zero ou vazio = ignorado.');
+    $this->line('  onboarding.access_profile_id (bruto): '.json_encode(data_get($extra, 'onboarding.access_profile_id')).' → inteiro >0 deste campo: '.json_encode(GestorStoredIds::positiveIntOrNull(data_get($extra, 'onboarding.access_profile_id'))));
+    $this->line('  defaults.access_profile_id (bruto): '.json_encode(data_get($extra, 'defaults.access_profile_id')).' → inteiro >0 deste campo: '.json_encode(GestorStoredIds::positiveIntOrNull(data_get($extra, 'defaults.access_profile_id'))));
+    $this->line('  Regra outbound: primeiro unityId >0 entre onboarding e defaults; accessProfileId: primeiro >0, senão null no JSON (0 ou vazio não envia inteiro).');
     $this->line('  ieducar_processing.environment (rótulo / auditoria): '.(string) data_get($extra, 'ieducar_processing.environment', 'homolog').' — chamadas iEducar usam a integração iEducar; este comando só cria Invite no Gestor.');
     $this->line('  endpoints.enrollment_sync_path: '.$path.($pathOption !== '' ? ' (via --path)' : ''));
 
@@ -675,9 +675,12 @@ Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEduc
     ];
 
     $forPayload = $integration;
-    $optUnity = GestorStoredIds::positiveIntOrNull($this->option('unityId'));
-    $optProfile = GestorStoredIds::positiveIntOrNull($this->option('accessProfileId'));
-    if ($optUnity !== null || $optProfile !== null) {
+    $unityOptStr = trim((string) ($this->option('unityId') ?? ''));
+    $profileOptStr = trim((string) ($this->option('accessProfileId') ?? ''));
+    $optUnity = $unityOptStr !== '' ? GestorStoredIds::positiveIntOrNull($unityOptStr) : null;
+    $forceAccessProfileNull = $profileOptStr !== '' && ctype_digit($profileOptStr) && (int) $profileOptStr === 0;
+    $optProfile = (! $forceAccessProfileNull && $profileOptStr !== '') ? GestorStoredIds::positiveIntOrNull($profileOptStr) : null;
+    if ($optUnity !== null || $optProfile !== null || $forceAccessProfileNull) {
         $snap = $integration->replicate();
         $snap->exists = true;
         $snap->id = $integration->id;
@@ -688,15 +691,27 @@ Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEduc
         }
         if ($optProfile !== null) {
             $defaults['access_profile_id'] = $optProfile;
+        } elseif ($forceAccessProfileNull) {
+            unset($defaults['access_profile_id']);
+            $onboarding = (array) ($snapExtra['onboarding'] ?? []);
+            unset($onboarding['access_profile_id']);
+            if ($onboarding === []) {
+                unset($snapExtra['onboarding']);
+            } else {
+                $snapExtra['onboarding'] = $onboarding;
+            }
         }
         $snapExtra['defaults'] = $defaults;
         $snap->extra = $snapExtra;
         $forPayload = $snap;
-        $this->warn('Overrides pontuais na cópia em memória (--unityId / --accessProfileId > 0 apenas): '
-            .($optUnity !== null ? 'unity_id='.$optUnity.' ' : '')
-            .($optProfile !== null ? 'access_profile_id='.$optProfile : ''));
-    } elseif (trim((string) ($this->option('unityId') ?? '')) !== '' || trim((string) ($this->option('accessProfileId') ?? '')) !== '') {
-        $this->warn('Opções --unityId / --accessProfileId ignoradas (use inteiro > 0; zero é tratado como ausente).');
+        $overrideBits = array_filter([
+            $optUnity !== null ? 'unity_id='.$optUnity : null,
+            $optProfile !== null ? 'access_profile_id='.$optProfile : null,
+            $forceAccessProfileNull ? 'accessProfileId=null (--accessProfileId=0)' : null,
+        ]);
+        $this->warn('Overrides pontuais na cópia em memória: '.implode(' ', $overrideBits));
+    } elseif ($unityOptStr !== '' || $profileOptStr !== '') {
+        $this->warn('Opção --unityId ou --accessProfileId ignorada (--unityId deve ser inteiro >0; --accessProfileId: inteiro >0 ou 0 para forçar null no JSON).');
     }
 
     $outbound = new AccessControlOutboundService;
@@ -714,7 +729,7 @@ Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEduc
     $this->line('  cod_aluno: '.(string) $setup['cod_aluno'].' ← '.(string) $setup['cod_aluno_source']);
     $this->line('  Invite.id: '.(string) $setup['invite_id'].' ← '.(string) $setup['invite_id_rule']);
     $this->line('  unityId: '.(string) $setup['unity_id'].' ← '.(string) $setup['unity_source']);
-    $this->line('  accessProfileId: '.(string) $setup['access_profile_id'].' ← '.(string) $setup['access_profile_source']);
+    $this->line('  accessProfileId: '.($setup['access_profile_id'] === null ? 'null' : (string) $setup['access_profile_id']).' ← '.(string) $setup['access_profile_source']);
     $this->line('  ano (datas start/end): '.(string) $setup['ano_letivo'].' ← '.(string) $setup['ano_source']);
 
     $client = new GestorClient($integration);
@@ -748,7 +763,7 @@ Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEduc
     $this->line('  • Carregou integrations (key=gestor) do banco deste ambiente (APP + DB).');
     $this->line('  • Path do POST: '.($pathOption !== '' ? 'vindo de --path' : 'vindo de extra.endpoints.enrollment_sync_path').' → '.$path);
     $this->line('  • Montou o JSON do Invite com AccessControlOutboundService (mesma lógica do outbound de matrícula).');
-    $this->line('  • unityId / accessProfileId: apenas onboarding/defaults no extra com valor > 0; 0 ou vazio não conta.'.($forPayload === $integration ? '' : ' Nesta execução houve cópia em memória com --unityId/--accessProfileId > 0.'));
+    $this->line('  • unityId: inteiro >0 no extra; accessProfileId: primeiro >0 no extra, senão null no JSON.'.($forPayload === $integration ? '' : ' Nesta execução houve cópia em memória com overrides na CLI.'));
     $this->line('  • Ambiente iEducar (preview/homolog) no extra do Gestor: só registro; API do Diário = integração iEducar.');
     $this->line('  • Autenticação Gestor: token em integrations.auth_token (Signin via GestorClient).');
     $this->line('  • Chamou POST no SDK → HTTP '.$resp->status().($resp->successful() ? ' (resposta considerada sucesso pelo status).' : ' (ver corpo acima).'));

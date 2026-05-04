@@ -14,8 +14,9 @@ use Illuminate\Database\Eloquent\Model;
  * - `application_key` (string|null)
  * - `auth.username`, `auth.password` (string|null)
  * - `endpoints.enrollment_sync_path` (string|null) — path do POST de convite no SDK
- * - `onboarding.unity_id`, `onboarding.access_profile_id`, `onboarding.condominium_id` (int|null; ids ≤0 ignorados na lógica de negócio)
- * - `defaults.unity_id`, `defaults.access_profile_id` (int|null; gravados pela tela /integracoes/gestor)
+ * - `onboarding.unity_id`, `onboarding.condominium_id` (int|null; ids ≤0 ignorados onde aplicável)
+ * - `onboarding.access_profile_id`, `defaults.access_profile_id` (int|null; gravado pela tela em defaults; ausente ou ≤0 → `accessProfileId` null no JSON do Invite)
+ * - `defaults.unity_id` (int|null; gravado pela tela /integracoes/gestor; unityId do Invite exige &gt;0)
  * - `ieducar_processing.environment`: `preview` | `homolog` (rótulo para auditoria; API iEducar = integração {@see Integration::KEY_IEDUCAR})
  * - `catraca_webhook_bearer_hash`, `catraca_webhook_bearer_created_at` (webhook Bearer catraca → GIDE)
  * - `endpoints.face_enroll_path` (opcional), outros endpoints conforme evolução
