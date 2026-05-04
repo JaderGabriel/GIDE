@@ -149,10 +149,17 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                                         Lista
                                     </a>
-                                    <a class="fac-btn" href="{{ url('/facial/enviar?token='.urlencode($item->token)) }}" target="_blank" rel="noreferrer">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                        Abrir envio
-                                    </a>
+                                    @if ($showGestorInviteVerify ?? false)
+                                        <a class="fac-btn fac-btn--primary" href="{{ route('admin.facial-requests.gestor-invite', ['id' => $item->id]) }}" target="_blank" rel="noreferrer">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+                                            Verificar Invite (Gestor)
+                                        </a>
+                                    @elseif (! $item->used_at && ! $expired)
+                                        <a class="fac-btn" href="{{ url('/facial/enviar?token='.urlencode($item->token)) }}" target="_blank" rel="noreferrer">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                            Abrir envio
+                                        </a>
+                                    @endif
                                     <form method="POST" action="{{ route('admin.facial-requests.refresh-status', ['id' => $item->id]) }}" style="margin:0;">
                                         @csrf
                                         <button type="submit" class="fac-btn fac-btn--primary">
@@ -210,6 +217,56 @@
                                 </div>
                                 <pre class="mono fac-json">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
                             </div>
+
+                            @if (($gestorHistories ?? collect())->isNotEmpty())
+                                <div class="fac-card" style="margin-top: 14px;">
+                                    <div class="fac-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                        <div>
+                                            <h2 class="fac-card__title">Histórico Gestor (solicitação + catraca)</h2>
+                                            <p class="fac-card__hint">Uma linha por pedido de link ou resposta do POST de facial no SDK.</p>
+                                        </div>
+                                    </div>
+                                    <div class="fac-timeline">
+                                        @foreach ($gestorHistories as $gh)
+                                            @php
+                                                $isSol = $gh->event_type === \App\Models\FacialGestorCatracaHistory::EVENT_SOLICITACAO;
+                                                $tl = $isSol ? 'fac-tl-item--info' : ($gh->ok ? 'fac-tl-item--ok' : 'fac-tl-item--bad');
+                                            @endphp
+                                            <div class="fac-tl-item {{ $tl }}">
+                                                <div class="fac-badge-row" style="margin-top:0;">
+                                                    @if ($isSol)
+                                                        <span class="fac-badge fac-badge--info">Solicitação facial</span>
+                                                    @elseif ($gh->ok)
+                                                        <span class="fac-badge fac-badge--success">Enroll catraca OK</span>
+                                                    @else
+                                                        <span class="fac-badge fac-badge--danger">Enroll catraca</span>
+                                                    @endif
+                                                    @if (! $isSol)
+                                                        <span class="fac-badge fac-badge--neutral">HTTP {{ $gh->http_status ?? '—' }}</span>
+                                                    @endif
+                                                    @if ($gh->invite_id)
+                                                        <span class="fac-badge fac-badge--neutral">invite {{ $gh->invite_id }}</span>
+                                                    @endif
+                                                    @if ($gh->guest_id)
+                                                        <span class="fac-badge fac-badge--neutral">guest {{ $gh->guest_id }}</span>
+                                                    @endif
+                                                    <span class="fac-badge fac-badge--neutral">{{ $gh->created_at ? \App\Support\DateDisplay::formatHuman($gh->created_at, true) : '' }}</span>
+                                                </div>
+                                                @if ($gh->effective_url)
+                                                    <div class="mono fac-muted" style="margin-top:6px;word-break:break-all;">{{ $gh->effective_url }}</div>
+                                                @endif
+                                                @if ($gh->response_body)
+                                                    <details class="fac-details">
+                                                        <summary>Resposta armazenada</summary>
+                                                        <pre class="mono">{{ mb_substr($gh->response_body, 0, 16000) }}</pre>
+                                                    </details>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <div class="fac-grid" style="margin-top: 14px;">
                                 <div class="fac-card">

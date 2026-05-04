@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\FacialEnrollAttempt;
+use App\Models\FacialGestorCatracaHistory;
 use App\Models\FacialIeducarStatusSnapshot;
 use App\Models\FacialSendRequest;
+use App\Models\GestorGuestLink;
 use App\Models\Integration;
+use App\Services\Gestor\GestorClient;
 use App\Services\Ieducar\IeducarClient;
 use App\Services\UserAuditLogger;
 use App\Support\AdminListPerPage;
@@ -37,6 +40,30 @@ class FacialAdminController extends Controller
             ->get()
             ->groupBy('facial_send_request_id');
 
+        $codAlunos = $items->getCollection()
+            ->map(fn (FacialSendRequest $it) => (string) (data_get($it->payload, 'aluno_id') ?? ''))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $guestLinksByCod = collect();
+        if ($codAlunos !== []) {
+            $guestLinksByCod = GestorGuestLink::query()
+                ->whereIn('cod_aluno', $codAlunos)
+                ->get()
+                ->keyBy('cod_aluno');
+        }
+
+        $gestorHistoriesByRequest = collect();
+        if ($ids->isNotEmpty()) {
+            $gestorHistoriesByRequest = FacialGestorCatracaHistory::query()
+                ->whereIn('facial_send_request_id', $ids)
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('facial_send_request_id');
+        }
+
         $ieducar = Integration::query()->where('key', 'ieducar')->first();
         $gestor = Integration::query()->where('key', 'gestor')->first();
 
@@ -45,6 +72,8 @@ class FacialAdminController extends Controller
             'perPage' => $perPage,
             'attemptsByRequest' => $attemptsByRequest,
             'statusByRequest' => $statusByRequest,
+            'guestLinksByCod' => $guestLinksByCod,
+            'gestorHistoriesByRequest' => $gestorHistoriesByRequest,
             'hasIeducar' => (bool) $ieducar,
             'hasGestor' => (bool) $gestor,
             'ieducarReady' => (bool) ($ieducar && $ieducar->base_url && ($ieducar->auth_token || data_get($ieducar->extra, 'catraca_frequencia.confirmacao_token'))),
@@ -107,11 +136,110 @@ class FacialAdminController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $payload = is_array($item->payload) ? $item->payload : [];
+        $codAluno = (string) (data_get($payload, 'aluno_id') ?? '');
+        $guestLink = $codAluno !== '' ? GestorGuestLink::query()->where('cod_aluno', $codAluno)->first() : null;
+        $gestorHistories = FacialGestorCatracaHistory::query()
+            ->where('facial_send_request_id', $item->id)
+            ->orderByDesc('id')
+            ->get();
+        $lastEnrollHistory = $gestorHistories
+            ->where('event_type', FacialGestorCatracaHistory::EVENT_ENROLL_RESPONSE)
+            ->sortByDesc('id')
+            ->first();
+        $inviteIdForInspect = $guestLink?->invite_id
+            ?? $gestorHistories
+                ->where('event_type', FacialGestorCatracaHistory::EVENT_ENROLL_RESPONSE)
+                ->whereNotNull('invite_id')
+                ->sortByDesc('id')
+                ->first()
+                ?->invite_id;
+        $showGestorInviteVerify = $inviteIdForInspect && ($item->used_at || $lastEnrollHistory);
+
         return view('admin.facial_request_show', [
             'item' => $item,
             'attempts' => $attempts,
             'snapshots' => $snapshots,
+            'guestLink' => $guestLink,
+            'gestorHistories' => $gestorHistories,
+            'inviteIdForInspect' => $inviteIdForInspect,
+            'showGestorInviteVerify' => $showGestorInviteVerify,
         ]);
+    }
+
+    public function inspectGestorInvite(int $id)
+    {
+        $item = FacialSendRequest::query()->findOrFail($id);
+        $gestor = Integration::query()->where('key', 'gestor')->first();
+        if (! $gestor) {
+            return response()
+                ->view('admin.facial_gestor_invite', [
+                    'item' => $item,
+                    'inviteId' => null,
+                    'error' => 'Integração Gestor (key=gestor) não encontrada.',
+                    'effectiveUrl' => null,
+                    'httpStatus' => null,
+                    'responseJson' => null,
+                    'rawBody' => null,
+                ], 503);
+        }
+
+        $payload = is_array($item->payload) ? $item->payload : [];
+        $codAluno = (string) (data_get($payload, 'aluno_id') ?? '');
+        $inviteId = $codAluno !== ''
+            ? GestorGuestLink::query()->where('cod_aluno', $codAluno)->value('invite_id')
+            : null;
+        if (! $inviteId) {
+            $inviteId = FacialGestorCatracaHistory::query()
+                ->where('facial_send_request_id', $item->id)
+                ->where('event_type', FacialGestorCatracaHistory::EVENT_ENROLL_RESPONSE)
+                ->whereNotNull('invite_id')
+                ->orderByDesc('id')
+                ->value('invite_id');
+        }
+
+        if (! $inviteId) {
+            return response()
+                ->view('admin.facial_gestor_invite', [
+                    'item' => $item,
+                    'inviteId' => null,
+                    'error' => 'Nenhum InviteId conhecido para este pedido (sincronize matrícula ou conclua envio facial com resposta da catraca).',
+                    'effectiveUrl' => null,
+                    'httpStatus' => null,
+                    'responseJson' => null,
+                    'rawBody' => null,
+                ], 422);
+        }
+
+        $client = new GestorClient($gestor);
+        $effectiveUrl = $client->inviteGetAbsoluteUrl($inviteId);
+
+        try {
+            $resp = $client->getInvite($inviteId);
+            $httpStatus = $resp->status();
+            $rawBody = (string) $resp->body();
+            $responseJson = $resp->json();
+
+            return response()->view('admin.facial_gestor_invite', [
+                'item' => $item,
+                'error' => null,
+                'inviteId' => (int) $inviteId,
+                'effectiveUrl' => $effectiveUrl,
+                'httpStatus' => $httpStatus,
+                'responseJson' => is_array($responseJson) ? $responseJson : null,
+                'rawBody' => $rawBody,
+            ], $resp->successful() ? 200 : $httpStatus);
+        } catch (\Throwable $e) {
+            return response()->view('admin.facial_gestor_invite', [
+                'item' => $item,
+                'error' => $e->getMessage(),
+                'inviteId' => (int) $inviteId,
+                'effectiveUrl' => $effectiveUrl,
+                'httpStatus' => null,
+                'responseJson' => null,
+                'rawBody' => null,
+            ], 500);
+        }
     }
 
     public function refreshStatus(Request $request, int $id)

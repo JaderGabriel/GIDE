@@ -8,6 +8,7 @@ use App\Models\SmsTemplate;
 use App\Services\Gestor\GestorClient;
 use App\Services\UserAuditLogger;
 use App\Support\BrPhoneNormalizer;
+use App\Support\GestorCatracaAccessToken;
 use App\Support\GestorSigninProbeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -135,7 +136,7 @@ class IntegrationController extends Controller
         return view('integrations.gestor', [
             'integration' => $integration,
             'catracaWebhookUrl' => url('/api/v1/catraca/access-events'),
-            'catracaWebhookBearerConfigured' => filled(data_get($integration->extra, 'catraca_webhook_bearer_hash')),
+            'catracaWebhookBearerConfigured' => GestorCatracaAccessToken::isConfigured($integration),
         ]);
     }
 
@@ -149,8 +150,9 @@ class IntegrationController extends Controller
         $plain = 'gide_cwc_'.Str::lower(Str::random(40));
 
         $extra = (array) ($integration->extra ?? []);
-        $extra['catraca_webhook_bearer_hash'] = Hash::make($plain);
-        $extra['catraca_webhook_bearer_created_at'] = now()->toIso8601String();
+        unset($extra['catraca_webhook_bearer_hash'], $extra['catraca_webhook_bearer_created_at']);
+        $extra[GestorCatracaAccessToken::HASH_KEY] = Hash::make($plain);
+        $extra[GestorCatracaAccessToken::CREATED_AT_KEY] = now()->toIso8601String();
         $integration->extra = $extra;
         $integration->save();
 

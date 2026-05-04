@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Web\FacialAdminController;
+use App\Http\Controllers\Web\GestorAccessEventAdminController;
 use App\Http\Controllers\Web\FacialSendController;
 use App\Http\Controllers\Web\IeducarFrequenciaRegistroAdminController;
 use App\Http\Controllers\Web\IeducarFrequenciaRegistroController;
@@ -81,7 +82,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/sms', [SmsDeliveryController::class, 'index'])->name('sms.index');
         Route::get('/sms/{id}', [SmsDeliveryController::class, 'show'])->name('sms.show');
 
+        Route::get('/admin/gestor-access-events', [GestorAccessEventAdminController::class, 'index'])->name('admin.gestor-access-events.index');
+        Route::get('/admin/gestor-access-events/{id}', [GestorAccessEventAdminController::class, 'show'])->name('admin.gestor-access-events.show');
+
         Route::get('/admin/faciais', [FacialAdminController::class, 'index'])->name('admin.facial-requests.index');
+        Route::get('/admin/faciais/{id}/gestor-invite', [FacialAdminController::class, 'inspectGestorInvite'])->name('admin.facial-requests.gestor-invite');
         Route::get('/admin/faciais/{id}', [FacialAdminController::class, 'show'])->name('admin.facial-requests.show');
         Route::post('/admin/faciais/{id}/atualizar-status', [FacialAdminController::class, 'refreshStatus'])->name('admin.facial-requests.refresh-status');
 

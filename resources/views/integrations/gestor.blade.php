@@ -294,16 +294,16 @@
                             </div>
 
                             <div class="gestor-section">
-                                <div class="gestor-section__title">5. Gestor → GIDE — como o Gestor autentica o envio de eventos</div>
+                                <div class="gestor-section__title">5. Gestor → GIDE — eventos de acesso</div>
                                 <p class="gestor-section__lead">
-                                    O catraca/Gestor pode chamar o GIDE de <strong>duas formas</strong> (contratos diferentes). Configure a que o seu fornecedor usa. Em ambas a integração alvo continua sendo <span class="mono">gestor</span> no GIDE.
+                                    Dois canais: <strong>HMAC</strong> em <span class="mono">POST /api/v1/gestor/access-events</span> (cabeçalhos <span class="mono">VerifyHmacSignature</span>) ou <strong>token de acesso</strong> em <span class="mono">POST /api/v1/catraca/access-events</span> com <span class="mono">Authorization: Bearer</span> e JSON da catraca (auditoria em <span class="mono">/admin/gestor-access-events</span>). Documentação: <code>docs/CATRACA_WEBHOOK.md</code>.
                                 </p>
 
                                 <div class="gestor-inbound-card">
-                                    <div class="gestor-inbound-card__k">Opção A</div>
-                                    <div class="gestor-inbound-card__t">HMAC — <span class="mono">POST /api/v1/gestor/access-events</span></div>
+                                    <div class="gestor-inbound-card__k">Gestor (HMAC)</div>
+                                    <div class="gestor-inbound-card__t"><span class="mono">POST /api/v1/gestor/access-events</span></div>
                                     <p class="gestor-inbound-card__p">
-                                        O corpo JSON é assinado com o <strong>segredo HMAC</strong> guardado no GIDE. Cabeçalhos de evento e timestamp seguem o contrato do middleware HMAC.
+                                        Gere ou rotacione o segredo abaixo e configure o remetente para assinar o corpo bruto exatamente como enviado, com os cabeçalhos exigidos pelo middleware.
                                     </p>
                                     <div class="bridge-field">
                                         <label class="bridge-label">Segredo HMAC</label>
@@ -318,20 +318,20 @@
                                 </div>
 
                                 <div class="gestor-inbound-card">
-                                    <div class="gestor-inbound-card__k">Opção B</div>
-                                    <div class="gestor-inbound-card__t">Bearer — <span class="mono">POST {{ $catracaWebhookUrl ?? url('/api/v1/catraca/access-events') }}</span></div>
+                                    <div class="gestor-inbound-card__k">Catraca (token)</div>
+                                    <div class="gestor-inbound-card__t"><span class="mono">POST {{ $catracaWebhookUrl ?? url('/api/v1/catraca/access-events') }}</span></div>
                                     <p class="gestor-inbound-card__p">
-                                        Cabeçalho <span class="mono">Authorization: Bearer &lt;token&gt;</span>. O GIDE guarda só o <strong>hash</strong> do token; o texto em claro aparece <strong>uma única vez</strong> logo após gerar (como abaixo). Documentação: <code>docs/CATRACA_WEBHOOK.md</code>.
+                                        Autenticação: somente <span class="mono">Authorization: Bearer &lt;token&gt;</span>. O GIDE guarda <strong>só o hash</strong> em <span class="mono">extra.catraca_access_token_hash</span>; o valor em claro aparece <strong>uma vez</strong> após gerar. O JSON recebido e o processamento ficam em <span class="mono">gestor_access_event_deliveries</span> (TI: <span class="mono">/admin/gestor-access-events</span>).
                                     </p>
                                     <div style="margin-top: 8px;">
                                         <span class="bridge-chip" style="{{ ! empty($catracaWebhookBearerConfigured) ? 'border-color: color-mix(in srgb, var(--accent-c) 40%, var(--border));' : '' }}">
-                                            {{ ! empty($catracaWebhookBearerConfigured) ? 'Bearer da catraca: configurado' : 'Bearer da catraca: não configurado' }}
+                                            {{ ! empty($catracaWebhookBearerConfigured) ? 'Token de acesso da catraca: configurado' : 'Token de acesso da catraca: não configurado' }}
                                         </span>
                                     </div>
 
                                     @if (session('gestor_catraca_webhook_bearer_plaintext'))
                                         <div style="margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 2px solid color-mix(in srgb, var(--accent-c) 45%, var(--border)); background: color-mix(in srgb, var(--accent-c) 10%, var(--surface-1));">
-                                            <div style="font-weight: 800; margin-bottom: 8px;">Token Bearer — copie agora (não será exibido de novo)</div>
+                                            <div style="font-weight: 800; margin-bottom: 8px;">Token de acesso — copie agora (não será exibido de novo)</div>
                                             <label class="bridge-label" for="catraca_wh_once">Valor do token</label>
                                             <input class="bridge-input mono" id="catraca_wh_once" type="text" readonly value="{{ session('gestor_catraca_webhook_bearer_plaintext') }}" onclick="this.select()" style="font-size: 13px;" />
                                             <div class="bridge-muted" style="margin-top: 8px; font-size: 12px;">Some após recarregar a página. Guarde na catraca ou em cofre.</div>
@@ -341,7 +341,7 @@
                                     <form method="POST" action="{{ route('integrations.gestor.generate-catraca-webhook-bearer') }}" class="bridge-form" style="margin-top: 12px;" onsubmit="return confirm('Gerar um novo token invalida o anterior na catraca. Continuar?');">
                                         @csrf
                                         <div class="bridge-form__actions">
-                                            <button type="submit" class="bridge-btn">{{ ! empty($catracaWebhookBearerConfigured) ? 'Gerar novo Bearer (invalida o atual)' : 'Gerar token Bearer da catraca' }}</button>
+                                            <button type="submit" class="bridge-btn">{{ ! empty($catracaWebhookBearerConfigured) ? 'Gerar novo token (invalida o atual)' : 'Gerar token de acesso da catraca' }}</button>
                                         </div>
                                     </form>
                                 </div>

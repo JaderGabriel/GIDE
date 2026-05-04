@@ -11,7 +11,7 @@ Premissa central: **todo o tráfego é via API** (sem conexão direta ao banco d
 
 - **Fluxo ponta-a-ponta**: `docs/FLUXO_DO_SISTEMA.md`
 - **Análise técnica (melhorias/gargalos)**: `docs/ANALISE_TECNICA_MELHORIAS.md`
-- **Catraca / webhook Gestor**: `docs/CATRACA_WEBHOOK.md`
+- **Eventos Gestor → GIDE (HMAC)**: `docs/CATRACA_WEBHOOK.md`
 - **Frequência iEducar ↔ GIDE (registro / fila)**: `docs/IEDUCAR_FREQUENCIA_REGISTRO_GIDE.md`
 - **WhatsApp (planeado) e notificações / referência SMS**: `docs/WHATSAPP_INTEGRACAO_NOTIFICACOES.md`
 
@@ -146,6 +146,7 @@ flowchart TD
 - **`POST /facial/enviar`** (protegida por `auth`): executa envio (stream)
 - **`GET /usuarios`**, **`GET /usuarios/novo`**, **`POST /usuarios`**, ações POST em `usuarios/{user}/…` (protegidas por `auth` + `admin`): gestão de utilizadores GIDE
 - **`GET /admin/auditoria-usuarios`** (`auth` + `admin`): auditoria de contas e sessões
+- **`GET /admin/gestor-access-events`**, **`GET /admin/gestor-access-events/{id}`** (`auth` + `admin`): auditoria de entregas do webhook Gestor (HMAC)
 - **`GET /integracoes/ieducar`**, **`GET /integracoes/gestor`**, **`GET /integracoes/sms`**, **`GET /integracoes/ieducar/frequencia-registro`**, painéis admin de facial e de entregas de frequência (`auth` + `admin` onde aplicável — ver `routes/web.php`)
 
 ### API (v1)
@@ -160,9 +161,10 @@ Arquivo: `routes/api.php`
   - Middleware: `verify.hmac:ieducar`
   - Cria requisição/token para abrir `GET /facial/enviar?token=...` (somente esse fluxo permite envio ao Gestor)
 - **`POST /api/v1/gestor/access-events`**
-  - Middleware: `verify.hmac:gestor`
-  - Persistência para auditoria/análise: `access_events` (`App\\Models\\AccessEvent`)
-  - Processamento MVP: análise por janela/turno e preparação para marcar presença
+  - Middleware: `verify.hmac:gestor` — cabeçalhos `X-Event-Id`, `X-Timestamp`, `X-Signature`; o corpo JSON é coberto pela assinatura (ver `VerifyHmacSignature` e `docs/CATRACA_WEBHOOK.md`).
+  - Persistência: `access_events` (`App\\Models\\AccessEvent`) e linha de auditoria em `gestor_access_event_deliveries`.
+  - Resposta JSON inclui `delivery_id` para correlação com `GET /admin/gestor-access-events`.
+  - **`POST /api/v1/catraca/access-events`**: catraca com **Bearer** (`Authorization` + JSON); token em `integrations.extra.catraca_access_token_hash` (ver `App\Support\GestorCatracaAccessToken` e `docs/CATRACA_WEBHOOK.md`). Mesma auditoria admin que o fluxo HMAC.
 
 ## Segurança entre sistemas (HMAC inbound)
 
@@ -367,6 +369,13 @@ Observação: para lançar efetivamente faltas/presença, é necessário enrique
 - **Código**: cenários em `tests/Feature/Telas/`, `tests/Feature/Api/`, `tests/Feature/Fluxo/` e helper `tests/Support/HmacJsonRequest.php`.
 
 ## Comandos úteis
+
+- **Fluxo iEducar pós-facial (consulta + confirmação + frequência com `meta.preview` ligado ao Gestor)** — ver `docs/IEDUCAR_FACIAL_CATRACA_FLOW_TEST.md`:
+
+```bash
+php artisan ieducar:facial-catraca-flow:test --help
+php artisan ieducar:facial-catraca-flow:test 211 --idpes=12345678
+```
 
 - **Importar Postman (Gestor)**:
 

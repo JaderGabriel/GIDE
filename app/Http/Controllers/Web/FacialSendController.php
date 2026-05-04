@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendEnrollmentToAccessControl;
 use App\Models\FacialEnrollAttempt;
+use App\Models\FacialGestorCatracaHistory;
 use App\Models\FacialSendRequest;
 use App\Models\GestorGuestLink;
 use App\Models\Integration;
@@ -180,6 +181,7 @@ class FacialSendController extends Controller
                 $listResp = $gestorClientTmp->listInvites(300);
                 $json = $listResp->json();
                 $found = null;
+                $inviteIdFromList = null;
                 if (is_array($json)) {
                     $list = array_is_list($json) ? $json : (data_get($json, 'data') ?? data_get($json, 'items') ?? $json);
                     if (is_array($list)) {
@@ -198,6 +200,7 @@ class FacialSendController extends Controller
                                 $gName = (string) (data_get($g, 'name') ?? data_get($g, 'Name') ?? '');
                                 if ($gName === $codAluno) {
                                     $found = data_get($g, 'id') ?? data_get($g, 'Id') ?? null;
+                                    $inviteIdFromList = data_get($inv, 'id') ?? data_get($inv, 'Id') ?? data_get($inv, 'inviteId') ?? data_get($inv, 'InviteId');
                                     break 2;
                                 }
                             }
@@ -209,6 +212,9 @@ class FacialSendController extends Controller
                     $guestId = (int) $found;
                     $link = $link ?: GestorGuestLink::query()->firstOrCreate(['cod_aluno' => $codAluno], ['cod_aluno' => $codAluno]);
                     $link->guest_id = $guestId;
+                    if (is_numeric($inviteIdFromList)) {
+                        $link->invite_id = (int) $inviteIdFromList;
+                    }
                     $link->last_error = null;
                     $link->save();
                 }
@@ -220,6 +226,7 @@ class FacialSendController extends Controller
 
             $gestorClient = new GestorClient($gestor);
             $gestorResp = $gestorClient->createGuestFace((int) $guestId, $stream, $mime);
+            $faceEffectiveUrl = $gestorClient->guestFaceEnrollAbsoluteUrl((int) $guestId);
 
             // Auditoria no link
             try {
@@ -245,6 +252,16 @@ class FacialSendController extends Controller
                 'response_body' => method_exists($gestorResp, 'body') ? mb_substr((string) $gestorResp->body(), 0, 20000) : null,
                 'error_message' => null,
             ]);
+
+            $linkFresh = GestorGuestLink::query()->where('cod_aluno', $codAluno)->first();
+            FacialGestorCatracaHistory::recordEnrollResponse(
+                $facialRequest,
+                $codAluno,
+                $linkFresh?->invite_id,
+                (int) $guestId,
+                $gestorResp,
+                $faceEffectiveUrl,
+            );
 
             // Se o enroll no Gestor foi aceito, calcula validade e informa ao iEducar (quando configurado).
             if ($gestorResp && method_exists($gestorResp, 'successful') && $gestorResp->successful()) {

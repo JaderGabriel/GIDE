@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FacialGestorCatracaHistory;
 use App\Models\FacialSendRequest;
 use App\Models\GideFacialInbound;
 use Illuminate\Http\Request;
@@ -127,6 +128,10 @@ class GideFacialInboundController extends Controller
                 $sendReq->expires_at = now()->addSeconds($ttlSeconds);
                 $sendReq->used_at = null;
                 $sendReq->save();
+            }
+
+            if ($codAluno !== '') {
+                FacialGestorCatracaHistory::recordSolicitacao($sendReq, $codAluno);
             }
 
             // Usa o host da requisição (evita APP_URL apontando para host.docker.internal em ambientes docker).

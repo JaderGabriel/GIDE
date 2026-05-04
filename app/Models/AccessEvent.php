@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Evento recebido de catraca / Gestor (`source`: gestor, catraca_bearer, …).
  *
- * `analysis` (JSON): resultado do motor de presença; pode incluir `gestor_ieducar_environment`
- * (`preview`|`homolog`), `marker` (resposta da API do Diário), `action`, `reason`, etc.
+ * `analysis` (JSON): resultado do motor de presença; inclui `gestor_ieducar_environment` (`preview`|`homolog`),
+ * `ieducar_outbound_channel` = catraca_frequencia_registro (preview), `marker` (resumo do POST preview), etc.
  */
 class AccessEvent extends Model
 {

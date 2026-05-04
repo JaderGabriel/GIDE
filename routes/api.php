@@ -20,7 +20,7 @@ Route::prefix('v1')->group(function () {
         ->middleware('verify.hmac:gestor')
         ->name('api.gestor.access-events.store');
 
-    /** Catraca → GIDE: JSON com Bearer (token gerado na tela Gestor; hash na base). */
+    /** Catraca → GIDE: JSON + Bearer (token em extra.catraca_access_token_hash; mesma auditoria que gestor/access-events). */
     Route::post('/catraca/access-events', [CatracaAccessWebhookController::class, 'store'])
         ->middleware('verify.catraca.webhook.bearer')
         ->name('api.catraca.access-events.store');

@@ -291,6 +291,7 @@
                                             @php
                                                 $payload = is_array($it->payload) ? $it->payload : [];
                                                 $codAluno = data_get($payload, 'aluno_id');
+                                                $codAlunoKey = $codAluno !== null && $codAluno !== '' ? (string) $codAluno : '';
                                                 $idpes = data_get($payload, 'idpes');
                                                 $matricula = data_get($payload, 'matricula_id');
                                                 $externalId = data_get($payload, 'external_id');
@@ -299,6 +300,13 @@
                                                 $attemptCount = $attempts->count();
                                                 $snap = ($statusByRequest[$it->id] ?? collect())->first();
                                                 $expired = $it->expires_at && $it->expires_at->isPast();
+                                                $histRows = ($gestorHistoriesByRequest[$it->id] ?? collect());
+                                                $solCount = $histRows->where('event_type', \App\Models\FacialGestorCatracaHistory::EVENT_SOLICITACAO)->count();
+                                                $lastEnrollHist = $histRows->where('event_type', \App\Models\FacialGestorCatracaHistory::EVENT_ENROLL_RESPONSE)->sortByDesc('id')->first();
+                                                $guestLinkRow = $codAlunoKey !== '' ? ($guestLinksByCod[$codAlunoKey] ?? null) : null;
+                                                $inviteForInspect = $guestLinkRow?->invite_id ?? $lastEnrollHist?->invite_id;
+                                                $showVerifyInvite = $inviteForInspect && ($it->used_at || $lastEnrollHist);
+                                                $canOpenSend = ! $it->used_at && ! $expired;
                                             @endphp
                                             <tr>
                                                 <td>
@@ -384,6 +392,42 @@
                                                         </span>
                                                         <div class="fac-muted">Nenhuma tentativa na catraca.</div>
                                                     @endif
+                                                    @if ($histRows->isNotEmpty())
+                                                        <div class="fac-muted" style="margin-top:10px;font-weight:650;">Histórico Gestor (persistido)</div>
+                                                        @if ($solCount > 0)
+                                                            <div class="mono fac-muted" style="margin-top:4px;">Pedidos de link (facial): <strong>{{ $solCount }}</strong></div>
+                                                        @endif
+                                                        @if ($lastEnrollHist)
+                                                            <div class="fac-badge-row" style="margin-top:6px;">
+                                                                <span class="fac-badge fac-badge--neutral">Último POST Face</span>
+                                                                @if ($lastEnrollHist->ok === true)
+                                                                    <span class="fac-badge fac-badge--success">OK</span>
+                                                                @elseif ($lastEnrollHist->ok === false)
+                                                                    <span class="fac-badge fac-badge--danger">Falha</span>
+                                                                @endif
+                                                                <span class="fac-badge fac-badge--neutral">HTTP {{ $lastEnrollHist->http_status ?? '—' }}</span>
+                                                                @if ($lastEnrollHist->invite_id)
+                                                                    <span class="fac-badge fac-badge--info">invite {{ $lastEnrollHist->invite_id }}</span>
+                                                                @endif
+                                                                @if ($lastEnrollHist->guest_id)
+                                                                    <span class="fac-badge fac-badge--info">guest {{ $lastEnrollHist->guest_id }}</span>
+                                                                @endif
+                                                            </div>
+                                                            <div class="mono fac-muted" style="margin-top:4px;">{{ $lastEnrollHist->created_at ? \App\Support\DateDisplay::formatHuman($lastEnrollHist->created_at, true) : '' }}</div>
+                                                            @if ($lastEnrollHist->effective_url)
+                                                                <details class="fac-details">
+                                                                    <summary>URL do POST (facial)</summary>
+                                                                    <pre class="mono wrap">{{ $lastEnrollHist->effective_url }}</pre>
+                                                                </details>
+                                                            @endif
+                                                            @if ($lastEnrollHist->response_body)
+                                                                <details class="fac-details">
+                                                                    <summary>JSON/corpo catraca (último enroll)</summary>
+                                                                    <pre class="mono wrap">{{ mb_substr($lastEnrollHist->response_body, 0, 12000) }}</pre>
+                                                                </details>
+                                                            @endif
+                                                        @endif
+                                                    @endif
                                                 </td>
                                                 <td>
                                                     @if ($snap)
@@ -434,9 +478,15 @@
                                                         <a class="fac-btn-ico" href="{{ route('admin.facial-requests.show', ['id' => $it->id]) }}" title="Ver detalhes" aria-label="Ver detalhes da solicitação">
                                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                                         </a>
-                                                        <a class="fac-btn-ico" href="{{ url('/facial/enviar?token='.urlencode($it->token)) }}" target="_blank" rel="noreferrer" title="Abrir tela de envio" aria-label="Abrir tela de envio facial">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                                        </a>
+                                                        @if ($showVerifyInvite)
+                                                            <a class="fac-btn-ico fac-btn-ico--primary" href="{{ route('admin.facial-requests.gestor-invite', ['id' => $it->id]) }}" target="_blank" rel="noreferrer" title="Verificar Invite no Gestor (GET /SDK/Invite/{{ $inviteForInspect }})" aria-label="Verificar Invite no Gestor">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                                            </a>
+                                                        @elseif ($canOpenSend)
+                                                            <a class="fac-btn-ico" href="{{ url('/facial/enviar?token='.urlencode($it->token)) }}" target="_blank" rel="noreferrer" title="Abrir tela de envio" aria-label="Abrir tela de envio facial">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                                            </a>
+                                                        @endif
                                                     </div>
                                                 </td>
                                             </tr>

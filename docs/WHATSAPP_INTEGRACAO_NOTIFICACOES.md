@@ -17,7 +17,7 @@ Ou seja: **hoje as notificações pós-presença saem apenas por SMS**, quando a
 
 ## 2. Objetivo de negócio
 
-Enviar **mensagens transacionais** aos responsáveis (ou números de teste) quando o GIDE concluir o fluxo de **marcação de presença** no iEducar a partir de um evento de acesso (Gestor ou catraca), de forma:
+Enviar **mensagens transacionais** aos responsáveis (ou números de teste) quando o GIDE concluir o fluxo de **marcação de presença** no iEducar a partir de um evento de acesso (webhook Gestor **HMAC** ou catraca **Bearer**), de forma:
 
 - **Assíncrona** (fila), para não bloquear o webhook inbound.
 - **Auditável** (registro por `event_id`, tentativas, último erro, HTTP).
@@ -38,8 +38,8 @@ O job `App\Jobs\SendPresenceSms` é enfileirado **somente** quando:
 
 Pontos de entrada que disparam o mesmo job (com `eventId`, `payload`/`normalized`, `analysis` e `occurred_at`):
 
-- `POST /api/v1/gestor/access-events` — `App\Http\Controllers\Api\GestorWebhookController`
-- Webhook de catraca (Bearer) — `App\Http\Controllers\Api\CatracaAccessWebhookController`
+- `POST /api/v1/gestor/access-events` (HMAC) — `GestorWebhookController` → `GestorAccessEventWebhookService`
+- `POST /api/v1/catraca/access-events` (Bearer) — `CatracaAccessWebhookController` → o mesmo `GestorAccessEventWebhookService` (canal `catraca_bearer`; SMS quando `mark_presence` e evento novo, como no HMAC)
 
 Para o **WhatsApp futuro**, o gatilho deve ser **idêntico** (mesmo momento do pipeline), evitando duplicar regras de negócio: ou um job orquestra SMS + WhatsApp, ou dois jobs distintos escutam o mesmo critério, com idempotência por `event_id` + canal.
 
@@ -150,7 +150,7 @@ Credenciais sensíveis devem permanecer em **integração no banco** ou **secret
 ## 9. Documentos e ficheiros relacionados
 
 - Fluxo geral e diagrama: [`docs/FLUXO_DO_SISTEMA.md`](FLUXO_DO_SISTEMA.md)
-- Webhook catraca / contexto de acesso: [`docs/CATRACA_WEBHOOK.md`](CATRACA_WEBHOOK.md)
+- Eventos Gestor → GIDE (HMAC): [`docs/CATRACA_WEBHOOK.md`](CATRACA_WEBHOOK.md)
 - Código: `App\Jobs\SendPresenceSms`, `App\Services\Sms\SmsService`, `App\Services\Sms\ZenviaSmsClient`, `App\Http\Controllers\Web\IntegrationController` (`sms`, `updateSms`), `config/integrations.php` (`sms.default_base_url`)
 
 ---

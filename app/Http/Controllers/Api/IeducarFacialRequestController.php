@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FacialGestorCatracaHistory;
 use App\Models\FacialSendRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -53,6 +54,11 @@ class IeducarFacialRequestController extends Controller
             $record->expires_at = now()->addSeconds($ttlSeconds);
             $record->used_at = null;
             $record->save();
+        }
+
+        $alunoId = (string) ($payload['aluno_id'] ?? '');
+        if ($alunoId !== '') {
+            FacialGestorCatracaHistory::recordSolicitacao($record, $alunoId);
         }
 
         // Usa o host da requisição (evita APP_URL apontando para host.docker.internal em ambientes docker).

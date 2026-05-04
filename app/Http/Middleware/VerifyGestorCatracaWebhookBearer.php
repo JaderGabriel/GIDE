@@ -3,14 +3,13 @@
 namespace App\Http\Middleware;
 
 use App\Models\Integration;
+use App\Support\GestorCatracaAccessToken;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Valida Authorization: Bearer contra hash guardado em integrations.extra (Gestor).
- * O valor em texto plano só é mostrado uma vez na UI ao gerar o token.
+ * Valida Authorization: Bearer contra o hash em GestorCatracaAccessToken (integração Gestor).
  */
 class VerifyGestorCatracaWebhookBearer
 {
@@ -22,9 +21,8 @@ class VerifyGestorCatracaWebhookBearer
             return response()->json(['message' => 'Integração Gestor desabilitada ou inexistente.'], 403);
         }
 
-        $hash = (string) data_get($integration->extra, 'catraca_webhook_bearer_hash', '');
-        if ($hash === '') {
-            return response()->json(['message' => 'Token do webhook da catraca não configurado. Gere um token em Integrações → Gestor.'], 503);
+        if (! GestorCatracaAccessToken::isConfigured($integration)) {
+            return response()->json(['message' => 'Token de acesso da catraca não configurado. Gere em Integrações → Gestor.'], 503);
         }
 
         $header = (string) $request->header('Authorization', '');
@@ -34,8 +32,8 @@ class VerifyGestorCatracaWebhookBearer
             return response()->json(['message' => 'Cabeçalho Authorization Bearer ausente.'], 401);
         }
 
-        if (! Hash::check($token, $hash)) {
-            return response()->json(['message' => 'Token inválido.'], 401);
+        if (! GestorCatracaAccessToken::checkPlainAgainstIntegration($token, $integration)) {
+            return response()->json(['message' => 'Token de acesso inválido.'], 401);
         }
 
         $request->attributes->set('gestor_integration', $integration);

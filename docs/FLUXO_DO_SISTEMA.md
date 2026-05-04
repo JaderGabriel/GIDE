@@ -109,10 +109,11 @@ flowchart TD
   - **Objetivo**: criar uma requisição de envio facial (token + URL) para abrir a tela do GIDE
   - **Persistência**: `facial_send_requests` (idempotência por `event_id`, expiração e consumo)
 - `POST /api/v1/gestor/access-events`
-  - **Auth**: `verify.hmac:gestor`
-  - **Persistência**: `access_events`
-  - **Processamento**: análise de janela e tentativa de marcar presença no iEducar
+  - **Auth**: `verify.hmac:gestor` (`X-Event-Id`, `X-Timestamp`, `X-Signature` + corpo JSON assinado; ver `VerifyHmacSignature` e `docs/CATRACA_WEBHOOK.md`)
+  - **Persistência**: `access_events` e auditoria `gestor_access_event_deliveries` (resposta com `delivery_id`; admin `GET /admin/gestor-access-events`)
+  - **Processamento**: motor de presença e encadeamento com iEducar/SMS conforme serviço atual
   - **Notificação**: job de SMS (se integração SMS habilitada)
+  - **Catraca (token)**: `POST /api/v1/catraca/access-events` — Bearer + JSON equipamento; mesma tabela de auditoria `gestor_access_event_deliveries` (`inbound_channel=catraca_bearer`).
 
 ---
 

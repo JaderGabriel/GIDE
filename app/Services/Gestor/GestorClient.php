@@ -266,7 +266,7 @@ class GestorClient
         }
 
         $token = $this->bearerToken();
-        $url = $this->baseUrl().'/SDK/Invite/Guest/'.urlencode((string) $guestId).'/Face';
+        $url = $this->guestFaceEnrollAbsoluteUrl($guestId);
 
         return Http::timeout(60)
             ->withToken($token)
@@ -278,6 +278,19 @@ class GestorClient
     public function getInvite(int|string $inviteId): Response
     {
         return $this->request('get', '/SDK/Invite/'.urlencode((string) $inviteId));
+    }
+
+    /**
+     * URL absoluta do GET de Invite (mesmo host/path que {@see getInvite}, ex.: base Kiper + `/SDK/Invite/{id}`).
+     */
+    public function inviteGetAbsoluteUrl(int|string $inviteId): string
+    {
+        return $this->baseUrl().'/SDK/Invite/'.rawurlencode((string) $inviteId);
+    }
+
+    public function guestFaceEnrollAbsoluteUrl(int|string $guestId): string
+    {
+        return $this->baseUrl().'/SDK/Invite/Guest/'.rawurlencode((string) $guestId).'/Face';
     }
 
     public function listInvites(int $limit = 200): Response

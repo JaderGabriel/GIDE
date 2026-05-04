@@ -21,7 +21,7 @@ class GideTestCommand extends Command
         'api-ieducar' => 'API inbound iEducar (HMAC)',
         'api-gestor' => 'API inbound Gestor (HMAC)',
         'api-catraca' => 'API inbound catraca-frequência (Bearer)',
-        'api-catraca-webhook' => 'Webhook catraca access-events (Bearer Gestor, /api/v1/catraca/access-events)',
+        'api-catraca-webhook' => 'Webhook /api/v1/catraca/access-events (Bearer + JSON catraca, auditoria partilhada)',
         'fluxo-frequencia' => 'Job de registro de frequência → HTTP ao iEducar (falso)',
         'fluxo-enrollment' => 'Matrícula iEducar → job outbound (partilhado com api-ieducar)',
         'unit' => 'Testes unitários (pasta tests/Unit)',

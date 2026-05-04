@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Group;
@@ -49,7 +50,7 @@ class GestorAccessEventApiTest extends TestCase
         $payload = ['occurred_at' => now()->toIso8601String(), 'aluno_id' => 211];
         $signed = HmacJsonRequest::build($secret, $eventId, $payload);
 
-        $this->withHeaders($signed['headers'])
+        $resp = $this->withHeaders($signed['headers'])
             ->withBody($signed['body'], 'application/json')
             ->post('/api/v1/gestor/access-events')
             ->assertOk()
@@ -58,6 +59,14 @@ class GestorAccessEventApiTest extends TestCase
         $this->assertDatabaseHas('access_events', [
             'source' => 'gestor',
             'event_id' => $eventId,
+        ]);
+
+        $deliveryId = (int) ($resp->json('delivery_id') ?? 0);
+        $this->assertGreaterThan(0, $deliveryId);
+        $this->assertDatabaseHas('gestor_access_event_deliveries', [
+            'id' => $deliveryId,
+            'event_id' => $eventId,
+            'inbound_channel' => GestorAccessEventDelivery::CHANNEL_GESTOR_HMAC,
         ]);
     }
 }

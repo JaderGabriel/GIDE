@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Model;
  * - `onboarding.access_profile_id`, `defaults.access_profile_id` (int|null; gravado pela tela em defaults; ausente ou ≤0 → `accessProfileId` null no JSON do Invite)
  * - `defaults.unity_id` (int|null; gravado pela tela /integracoes/gestor; unityId do Invite exige &gt;0)
  * - `ieducar_processing.environment`: `preview` | `homolog` (rótulo para auditoria; API iEducar = integração {@see Integration::KEY_IEDUCAR})
- * - `catraca_webhook_bearer_hash`, `catraca_webhook_bearer_created_at` (webhook Bearer catraca → GIDE)
+ * - `catraca_access_token_hash`, `catraca_access_token_created_at` (token do POST /api/v1/catraca/access-events; legado: `catraca_webhook_bearer_hash`)
  * - `endpoints.face_enroll_path` (opcional), outros endpoints conforme evolução
  *
  * Contrato parcial quando `key` = {@see Integration::KEY_IEDUCAR}: `access_key`, `presence.*`, `catraca_frequencia.*`, etc.
