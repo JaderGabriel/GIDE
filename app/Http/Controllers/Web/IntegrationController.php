@@ -175,6 +175,13 @@ class IntegrationController extends Controller
                 'auth_password' => ['nullable', 'string'],
                 'signature_ttl_seconds' => ['required', 'integer', 'min:30', 'max:3600'],
                 'outbound_enrollment_path' => ['nullable', 'string'],
+                'unity_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
+                'access_profile_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
+                'ieducar_processing_environment' => ['required', Rule::in(['preview', 'homolog'])],
+                'ieducar_preview_base_url' => ['nullable', 'string', 'max:2048'],
+                'ieducar_preview_access_key' => ['nullable', 'string', 'max:512'],
+                'ieducar_homolog_base_url' => ['nullable', 'string', 'max:2048'],
+                'ieducar_homolog_access_key' => ['nullable', 'string', 'max:512'],
             ]);
 
             $integration->enabled = (bool) $request->boolean('enabled');
@@ -190,6 +197,43 @@ class IntegrationController extends Controller
             $extra['endpoints'] = array_merge((array) ($extra['endpoints'] ?? []), [
                 'enrollment_sync_path' => $data['outbound_enrollment_path'] !== '' ? $data['outbound_enrollment_path'] : null,
             ]);
+
+            $defaults = (array) ($extra['defaults'] ?? []);
+            if (($data['unity_id'] ?? '') !== '') {
+                $defaults['unity_id'] = (int) $data['unity_id'];
+            } else {
+                unset($defaults['unity_id']);
+            }
+            if (($data['access_profile_id'] ?? '') !== '') {
+                $defaults['access_profile_id'] = (int) $data['access_profile_id'];
+            } else {
+                unset($defaults['access_profile_id']);
+            }
+            if ($defaults === []) {
+                unset($extra['defaults']);
+            } else {
+                $extra['defaults'] = $defaults;
+            }
+
+            $ip = (array) ($extra['ieducar_processing'] ?? []);
+            $prevPreview = (array) ($ip['preview'] ?? []);
+            $prevHomolog = (array) ($ip['homolog'] ?? []);
+
+            $ip['environment'] = $data['ieducar_processing_environment'];
+            $ip['preview'] = [
+                'base_url' => ($data['ieducar_preview_base_url'] ?? '') !== '' ? trim($data['ieducar_preview_base_url']) : null,
+                'access_key' => ($data['ieducar_preview_access_key'] ?? '') !== ''
+                    ? trim($data['ieducar_preview_access_key'])
+                    : ($prevPreview['access_key'] ?? null),
+            ];
+            $ip['homolog'] = [
+                'base_url' => ($data['ieducar_homolog_base_url'] ?? '') !== '' ? trim($data['ieducar_homolog_base_url']) : null,
+                'access_key' => ($data['ieducar_homolog_access_key'] ?? '') !== ''
+                    ? trim($data['ieducar_homolog_access_key'])
+                    : ($prevHomolog['access_key'] ?? null),
+            ];
+            $extra['ieducar_processing'] = $ip;
+
             $integration->extra = $extra;
 
             // invalidar token para forçar reauth quando credenciais mudarem
@@ -203,6 +247,7 @@ class IntegrationController extends Controller
 
         UserAuditLogger::recordAuthenticated('integration.gestor.updated', [
             'enabled' => (bool) $integration->enabled,
+            'ieducar_processing_environment' => (string) data_get($integration->extra, 'ieducar_processing.environment', ''),
         ], 'integration', $integration->id);
 
         return redirect('/dashboard')->with('status', 'Integração Gestor atualizada.');

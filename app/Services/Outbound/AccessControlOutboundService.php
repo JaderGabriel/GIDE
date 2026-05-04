@@ -120,35 +120,18 @@ class AccessControlOutboundService
 
     private function buildInvitePayload(Integration $integration, array $ieducarPayload): array
     {
-        // No "name" do Invite e do Guest, vai o ID do aluno no iEducar (cod_aluno).
-        $codAluno = (string) (
-            data_get($ieducarPayload, 'identificacao.cod_aluno')
-            ?? data_get($ieducarPayload, 'aluno.cod_aluno')
-            ?? data_get($ieducarPayload, 'cod_aluno')
-            ?? ''
-        );
-        if ($codAluno === '') {
-            throw new \RuntimeException('Payload do iEducar sem cod_aluno (necessário para montar Invite/Guest).');
-        }
+        $cod = $this->extractCodAlunoWithSource($ieducarPayload);
+        $codAluno = $cod['value'];
 
         $inviteId = (int) preg_replace('/\D/', '', $codAluno);
         if ($inviteId <= 0) {
             throw new \RuntimeException('cod_aluno inválido (necessário para montar Invite.id).');
         }
 
-        $unityId = $this->resolveGestorUnityId($integration);
-        $accessProfileId = $this->resolveGestorAccessProfileId($integration);
+        $unityId = $this->resolveGestorUnityIdAndSource($integration)['value'];
+        $accessProfileId = $this->resolveGestorAccessProfileIdAndSource($integration)['value'];
 
-        // Datas: por padrão, usa ano letivo e semestre (conforme exemplo).
-        $ano = (int) (
-            data_get($ieducarPayload, 'matricula.ano_letivo')
-            ?? data_get($ieducarPayload, 'matricula.ano')
-            ?? data_get($ieducarPayload, 'status.matricula.ano')
-            ?? date('Y')
-        );
-        if ($ano < 2000 || $ano > 2100) {
-            $ano = (int) date('Y');
-        }
+        $ano = $this->resolveAnoLetivoWithSource($ieducarPayload)['value'];
 
         $start = sprintf('%04d-01-01T01:00:00Z', $ano);
         $end = CarbonImmutable::parse($start)->addDays(365)->toIso8601ZuluString();
@@ -171,30 +154,140 @@ class AccessControlOutboundService
         ];
     }
 
-    private function resolveGestorUnityId(Integration $integration): int
+    /**
+     * Mesmo JSON de Invite do outbound real (simulação Artisan / testes manuais).
+     *
+     * @param  array<string, mixed>  $ieducarPayload  Snapshot com identificacao.cod_aluno e matricula.ano_letivo|ano
+     * @return array<string, mixed>
+     */
+    public function buildInvitePayloadForSimulate(Integration $integration, array $ieducarPayload): array
     {
-        $raw = data_get($integration->extra, 'onboarding.unity_id')
-            ?? data_get($integration->extra, 'defaults.unity_id')
-            ?? config('integrations.gestor.default_unity_id');
-        $v = (int) $raw;
-        if ($v <= 0) {
-            throw new \RuntimeException('unityId não configurado: defina em /integracoes/gestor (integrations.extra) ou GESTOR_DEFAULT_UNITY_ID no .env.');
-        }
-
-        return $v;
+        return $this->buildInvitePayload($integration, $ieducarPayload);
     }
 
-    private function resolveGestorAccessProfileId(Integration $integration): int
+    /**
+     * Explica qual valor foi aplicado e de onde veio (para logs / artisan simulate).
+     *
+     * @param  array<string, mixed>  $ieducarPayload
+     * @return array<string, int|string>
+     */
+    public function describeInvitePayloadSetup(Integration $integration, array $ieducarPayload): array
     {
-        $raw = data_get($integration->extra, 'onboarding.access_profile_id')
-            ?? data_get($integration->extra, 'defaults.access_profile_id')
-            ?? config('integrations.gestor.default_access_profile_id');
-        $v = (int) $raw;
-        if ($v <= 0) {
-            throw new \RuntimeException('accessProfileId não configurado: defina em /integracoes/gestor (integrations.extra) ou GESTOR_DEFAULT_ACCESS_PROFILE_ID no .env.');
+        $cod = $this->extractCodAlunoWithSource($ieducarPayload);
+        $inviteId = (int) preg_replace('/\D/', '', $cod['value']);
+        if ($inviteId <= 0) {
+            throw new \RuntimeException('cod_aluno inválido (necessário para montar Invite.id).');
         }
 
-        return $v;
+        $unity = $this->resolveGestorUnityIdAndSource($integration);
+        $access = $this->resolveGestorAccessProfileIdAndSource($integration);
+        $ano = $this->resolveAnoLetivoWithSource($ieducarPayload);
+
+        return [
+            'cod_aluno' => $cod['value'],
+            'cod_aluno_source' => $cod['source'],
+            'invite_id' => $inviteId,
+            'invite_id_rule' => 'somente dígitos de cod_aluno (preg_replace /\\D/)',
+            'unity_id' => $unity['value'],
+            'unity_source' => $unity['source'],
+            'access_profile_id' => $access['value'],
+            'access_profile_source' => $access['source'],
+            'ano_letivo' => $ano['value'],
+            'ano_source' => $ano['source'],
+        ];
+    }
+
+    /**
+     * @return array{value: string, source: string}
+     */
+    private function extractCodAlunoWithSource(array $ieducarPayload): array
+    {
+        $candidates = [
+            ['source' => 'payload.identificacao.cod_aluno', 'raw' => data_get($ieducarPayload, 'identificacao.cod_aluno')],
+            ['source' => 'payload.aluno.cod_aluno', 'raw' => data_get($ieducarPayload, 'aluno.cod_aluno')],
+            ['source' => 'payload.cod_aluno', 'raw' => data_get($ieducarPayload, 'cod_aluno')],
+        ];
+        foreach ($candidates as $c) {
+            $s = is_scalar($c['raw']) ? trim((string) $c['raw']) : '';
+            if ($s !== '') {
+                return ['value' => $s, 'source' => $c['source']];
+            }
+        }
+
+        throw new \RuntimeException('Payload do iEducar sem cod_aluno (necessário para montar Invite/Guest).');
+    }
+
+    /**
+     * @return array{value: int, source: string}
+     */
+    private function resolveAnoLetivoWithSource(array $ieducarPayload): array
+    {
+        $y1 = data_get($ieducarPayload, 'matricula.ano_letivo');
+        $y2 = data_get($ieducarPayload, 'matricula.ano');
+        $y3 = data_get($ieducarPayload, 'status.matricula.ano');
+
+        $source = 'date("Y") serviço (nenhum ano no payload)';
+        $ano = (int) date('Y');
+
+        if ($y1 !== null && (string) $y1 !== '') {
+            $ano = (int) $y1;
+            $source = 'payload.matricula.ano_letivo';
+        } elseif ($y2 !== null && (string) $y2 !== '') {
+            $ano = (int) $y2;
+            $source = 'payload.matricula.ano';
+        } elseif ($y3 !== null && (string) $y3 !== '') {
+            $ano = (int) $y3;
+            $source = 'payload.status.matricula.ano';
+        }
+
+        if ($ano < 2000 || $ano > 2100) {
+            return [
+                'value' => (int) date('Y'),
+                'source' => $source.' → substituído por date("Y") (fora do intervalo 2000–2100)',
+            ];
+        }
+
+        return ['value' => $ano, 'source' => $source];
+    }
+
+    /**
+     * @return array{value: int, source: string}
+     */
+    private function resolveGestorUnityIdAndSource(Integration $integration): array
+    {
+        $checks = [
+            ['source' => 'integrations.extra.onboarding.unity_id', 'raw' => data_get($integration->extra, 'onboarding.unity_id')],
+            ['source' => 'integrations.extra.defaults.unity_id', 'raw' => data_get($integration->extra, 'defaults.unity_id')],
+            ['source' => 'config(integrations.gestor.default_unity_id) [GESTOR_DEFAULT_UNITY_ID]', 'raw' => config('integrations.gestor.default_unity_id')],
+        ];
+        foreach ($checks as $c) {
+            $v = (int) ($c['raw'] ?? 0);
+            if ($v > 0) {
+                return ['value' => $v, 'source' => $c['source']];
+            }
+        }
+
+        throw new \RuntimeException('unityId não configurado: defina em /integracoes/gestor (integrations.extra) ou GESTOR_DEFAULT_UNITY_ID no .env.');
+    }
+
+    /**
+     * @return array{value: int, source: string}
+     */
+    private function resolveGestorAccessProfileIdAndSource(Integration $integration): array
+    {
+        $checks = [
+            ['source' => 'integrations.extra.onboarding.access_profile_id', 'raw' => data_get($integration->extra, 'onboarding.access_profile_id')],
+            ['source' => 'integrations.extra.defaults.access_profile_id', 'raw' => data_get($integration->extra, 'defaults.access_profile_id')],
+            ['source' => 'config(integrations.gestor.default_access_profile_id) [GESTOR_DEFAULT_ACCESS_PROFILE_ID]', 'raw' => config('integrations.gestor.default_access_profile_id')],
+        ];
+        foreach ($checks as $c) {
+            $v = (int) ($c['raw'] ?? 0);
+            if ($v > 0) {
+                return ['value' => $v, 'source' => $c['source']];
+            }
+        }
+
+        throw new \RuntimeException('accessProfileId não configurado: defina em /integracoes/gestor (integrations.extra) ou GESTOR_DEFAULT_ACCESS_PROFILE_ID no .env.');
     }
 
     private function backoffSeconds(int $attempts): int

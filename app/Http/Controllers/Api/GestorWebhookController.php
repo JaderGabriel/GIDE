@@ -8,6 +8,7 @@ use App\Models\AccessEvent;
 use App\Models\Integration;
 use App\Services\Presence\PresenceMarker;
 use App\Services\Presence\PresenceRuleEngine;
+use App\Support\GestorIeducarProcessing;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -42,8 +43,13 @@ class GestorWebhookController extends Controller
         if ($record->wasRecentlyCreated) {
             $ieducar = Integration::query()->where('key', 'ieducar')->where('enabled', true)->first();
             if ($ieducar) {
+                $gestor = Integration::query()->where('key', 'gestor')->first();
+                $ieducarApi = $gestor
+                    ? GestorIeducarProcessing::resolveApiIntegrationForGestorInbound($gestor, $ieducar)
+                    : $ieducar;
+
                 $analysis = (new PresenceRuleEngine)->analyze($payload, $occurredAt, $ieducar);
-                $analysis['marker'] = (new PresenceMarker)->mark($ieducar, $analysis);
+                $analysis['marker'] = (new PresenceMarker)->mark($ieducarApi, $analysis);
 
                 $record->analysis = $analysis;
                 $record->processed_at = now();

@@ -134,6 +134,78 @@
                                     </div>
                                 </div>
 
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="unity_id">unityId (convite / Invite → Gestor)</label>
+                                    <input class="bridge-input mono" id="unity_id" name="unity_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ old('unity_id', data_get($integration->extra, 'defaults.unity_id') ?? data_get($integration->extra, 'onboarding.unity_id') ?? '') }}" placeholder="ex.: 123" />
+                                    @error('unity_id')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="bridge-muted" style="margin-top: 6px;">
+                                        Enviado no JSON de criação de convite (<span class="mono">unityId</span>). Se vazio, vale <span class="mono">onboarding.unity_id</span> ou variável de ambiente.
+                                    </div>
+                                </div>
+
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="access_profile_id">accessProfileId (convite / Invite → Gestor)</label>
+                                    <input class="bridge-input mono" id="access_profile_id" name="access_profile_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ old('access_profile_id', data_get($integration->extra, 'defaults.access_profile_id') ?? data_get($integration->extra, 'onboarding.access_profile_id') ?? '') }}" placeholder="ex.: 456" />
+                                    @error('access_profile_id')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="bridge-muted" style="margin-top: 6px;">
+                                        Enviado no convite como <span class="mono">accessProfileId</span>. Se vazio, vale <span class="mono">onboarding.access_profile_id</span> ou variável de ambiente.
+                                    </div>
+                                </div>
+
+                                <div class="bridge-field">
+                                    <div class="bridge-label">Processamento iEducar para eventos recebidos do Gestor</div>
+                                    <div class="bridge-muted" style="margin-top: 6px;">
+                                        Ao processar presença após webhook <span class="mono">/api/v1/gestor/access-events</span>, o GIDE usa o ambiente marcado abaixo. Janelas e mapeamento de payload continuam vindo da integração <strong>iEducar</strong>; apenas <span class="mono">base_url</span> e <span class="mono">access_key</span> da API do Diário podem ser sobrescritos por ambiente.
+                                    </div>
+                                    <div style="margin-top: 10px; display: grid; gap: 10px;">
+                                        <label class="bridge-check">
+                                            <input type="radio" name="ieducar_processing_environment" value="preview" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'preview' ? 'checked' : '' }} />
+                                            <span>API preview do iEducar</span>
+                                        </label>
+                                        <label class="bridge-check">
+                                            <input type="radio" name="ieducar_processing_environment" value="homolog" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'homolog' ? 'checked' : '' }} />
+                                            <span>Homologação do iEducar</span>
+                                        </label>
+                                    </div>
+                                    @error('ieducar_processing_environment')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="ieducar_preview_base_url">URL base iEducar (preview)</label>
+                                    <input class="bridge-input" id="ieducar_preview_base_url" name="ieducar_preview_base_url" type="text" value="{{ old('ieducar_preview_base_url', data_get($integration->extra, 'ieducar_processing.preview.base_url') ?? '') }}" placeholder="https://… (opcional)" />
+                                    @error('ieducar_preview_base_url')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="ieducar_preview_access_key">access_key (preview)</label>
+                                    <input class="bridge-input mono" id="ieducar_preview_access_key" name="ieducar_preview_access_key" type="password" autocomplete="new-password" value="{{ old('ieducar_preview_access_key') }}" placeholder="{{ filled(data_get($integration->extra, 'ieducar_processing.preview.access_key')) ? 'preencha para substituir a chave já salva' : 'opcional; vazio = usar da integração iEducar' }}" />
+                                    @error('ieducar_preview_access_key')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="ieducar_homolog_base_url">URL base iEducar (homologação)</label>
+                                    <input class="bridge-input" id="ieducar_homolog_base_url" name="ieducar_homolog_base_url" type="text" value="{{ old('ieducar_homolog_base_url', data_get($integration->extra, 'ieducar_processing.homolog.base_url') ?? '') }}" placeholder="https://… (opcional)" />
+                                    @error('ieducar_homolog_base_url')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="ieducar_homolog_access_key">access_key (homologação)</label>
+                                    <input class="bridge-input mono" id="ieducar_homolog_access_key" name="ieducar_homolog_access_key" type="password" autocomplete="new-password" value="{{ old('ieducar_homolog_access_key') }}" placeholder="{{ filled(data_get($integration->extra, 'ieducar_processing.homolog.access_key')) ? 'preencha para substituir a chave já salva' : 'opcional; vazio = usar da integração iEducar' }}" />
+                                    @error('ieducar_homolog_access_key')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
                                 <div class="bridge-form__actions">
                                     <button type="submit" class="bridge-btn bridge-btn--primary">Salvar</button>
                                     <a class="bridge-btn" href="/dashboard">Voltar</a>
