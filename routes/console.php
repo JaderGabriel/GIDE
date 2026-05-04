@@ -644,6 +644,10 @@ Artisan::command('gestor:invite:create-simulate {--cod_aluno= : Cod aluno (iEduc
         $this->line('  Banco: '.($pathFromDbStr !== '' ? $pathFromDbStr : '(vazio — salve em /integracoes/gestor)'));
         $this->newLine();
         $this->line('Correção: salvar o endpoint na tela /integracoes/gestor ou executar com --path=/SDK/Invite (exemplo).');
+        $this->newLine();
+        $this->line('Se você já salvou na interface e o banco aparece vazio aqui:');
+        $this->line('  • Confirme o mesmo banco e APP_KEY que o PHP da web (CLI e FPM devem usar o mesmo .env).');
+        $this->line('  • Evite rodar `php artisan db:seed` com seeder antigo que sobrescrevia `extra` do Gestor; o IntegrationSeeder agora só cria a linha se não existir.');
 
         return 1;
     }

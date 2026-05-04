@@ -36,7 +36,9 @@ class IntegrationSeeder extends Seeder
             ],
         );
 
-        Integration::query()->updateOrCreate(
+        // Não usar updateOrCreate com `extra` completo: reaplicar o seeder apagaria path/credenciais
+        // gravados em /integracoes/gestor. Só cria a linha se ainda não existir.
+        Integration::query()->firstOrCreate(
             ['key' => 'gestor'],
             [
                 'name' => 'Gestor (Porter/Kiper SDK)',
@@ -51,11 +53,7 @@ class IntegrationSeeder extends Seeder
                         'password' => null,
                     ],
                     'endpoints' => [
-                        // Path do endpoint do SDK que receberá o payload de matrícula/aluno.
-                        // Depende da documentação final do Gestor.
                         'enrollment_sync_path' => null,
-                        // Path do endpoint do SDK para cadastrar/atualizar facial.
-                        // Depende da documentação final do Gestor.
                         'face_enroll_path' => null,
                     ],
                     'onboarding' => [

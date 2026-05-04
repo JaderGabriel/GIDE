@@ -191,8 +191,13 @@ class IntegrationController extends Controller
                 'username' => $data['auth_username'] !== '' ? $data['auth_username'] : null,
                 'password' => ($data['auth_password'] ?? '') !== '' ? $data['auth_password'] : ($authPrev['password'] ?? null),
             ];
+            $pathRaw = $data['outbound_enrollment_path'] ?? null;
+            $enrollmentSyncPath = null;
+            if (is_string($pathRaw) && trim($pathRaw) !== '') {
+                $enrollmentSyncPath = trim($pathRaw);
+            }
             $extra['endpoints'] = array_merge((array) ($extra['endpoints'] ?? []), [
-                'enrollment_sync_path' => $data['outbound_enrollment_path'] !== '' ? $data['outbound_enrollment_path'] : null,
+                'enrollment_sync_path' => $enrollmentSyncPath,
             ]);
 
             $defaults = (array) ($extra['defaults'] ?? []);
