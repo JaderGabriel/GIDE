@@ -55,7 +55,19 @@
                                 <div class="bridge-panel__meta">logs • status • filtros</div>
                             </div>
 
+                            @php
+                                $smsQueryBase = request()->except('page');
+                            @endphp
+                            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                                <span class="bridge-muted" style="font-size: 12px;">Vista:</span>
+                                <a class="bridge-btn {{ ($filters['layout'] ?? 'flat') === 'flat' ? 'bridge-btn--primary' : '' }}" href="{{ route('sms.index', array_merge($smsQueryBase, ['layout' => 'flat'])) }}">Lista plana</a>
+                                <a class="bridge-btn {{ ($filters['layout'] ?? '') === 'grouped' ? 'bridge-btn--primary' : '' }}" href="{{ route('sms.index', array_merge($smsQueryBase, ['layout' => 'grouped'])) }}">Por aluno (evento → disparos)</a>
+                            </div>
+
                             <form method="GET" action="{{ route('sms.index') }}" class="bridge-form" style="margin-top: 12px;">
+                                @if (($filters['layout'] ?? 'flat') === 'grouped')
+                                    <input type="hidden" name="layout" value="grouped" />
+                                @endif
                                 <div class="bridge-field">
                                     <label class="bridge-label" for="status">Status</label>
                                     <select class="bridge-input" id="status" name="status">
@@ -106,15 +118,64 @@
 
                             <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border);" />
 
+                            @if (($filters['layout'] ?? 'flat') === 'grouped')
+                                <p class="bridge-muted" style="margin-bottom: 14px; line-height: 1.5;">
+                                    Mostrando até <strong>250</strong> envios mais recentes (após filtros), ordenados por data do evento dentro de cada aluno. Em cada momento do evento listam-se os <strong>disparos</strong> (template + estado).
+                                </p>
+                                @php $gt = $groupedTimeline ?? []; @endphp
+                                @forelse ($gt as $group)
+                                    <section style="margin-bottom: 22px; border: 1px solid var(--border); border-radius: 14px; padding: 14px 14px 10px; background: color-mix(in srgb, var(--surface-2) 80%, transparent);">
+                                        <h2 style="margin: 0 0 12px; font-size: 15px; font-weight: 800;">Aluno <span class="mono">{{ $group['aluno_id'] }}</span></h2>
+                                        @foreach ($group['occurrences'] as $slot)
+                                            <div style="margin-bottom: 14px; padding-left: 10px; border-left: 3px solid color-mix(in srgb, var(--accent-c) 45%, var(--border));">
+                                                <div class="bridge-muted" style="font-size: 12px; font-weight: 700; margin-bottom: 8px;">
+                                                    Evento (occurred_at)
+                                                    @if ($slot['occurred_at'])
+                                                        · {{ \App\Support\DateDisplay::formatHuman($slot['occurred_at'], true) }}
+                                                    @else
+                                                        · <em>sem data no registo</em>
+                                                    @endif
+                                                </div>
+                                                <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">ID</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Template</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Status</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Tel.</th>
+                                                            <th style="text-align:left; padding:6px 8px; border-bottom: 1px solid var(--border);">Enviado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($slot['dispatches'] as $d)
+                                                            <tr>
+                                                                <td style="padding:6px 8px; border-bottom: 1px solid var(--border);"><a href="{{ route('sms.show', ['id' => $d->id]) }}">{{ $d->id }}</a></td>
+                                                                <td class="mono" style="padding:6px 8px; border-bottom: 1px solid var(--border);">{{ $d->template_key }}</td>
+                                                                <td style="padding:6px 8px; border-bottom: 1px solid var(--border);"><strong>{{ $d->status }}</strong></td>
+                                                                <td style="padding:6px 8px; border-bottom: 1px solid var(--border);">{{ $d->to }}</td>
+                                                                <td style="padding:6px 8px; border-bottom: 1px solid var(--border); line-height:1.35;">{{ $d->sent_at ? \App\Support\DateDisplay::formatHuman($d->sent_at, true) : '—' }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @endforeach
+                                    </section>
+                                @empty
+                                    <p class="bridge-muted">Nenhuma mensagem encontrada (com os filtros actuais).</p>
+                                @endforelse
+                            @else
                             <div style="overflow:auto;">
                                 <table style="width:100%; border-collapse: collapse;">
                                     <thead>
                                         <tr>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">ID</th>
+                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Template</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Status</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Telefone</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Aluno</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Matrícula</th>
+                                            <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Evento</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Criado</th>
                                             <th style="text-align:left; padding:10px; border-bottom: 1px solid var(--border);">Enviado</th>
                                         </tr>
@@ -125,6 +186,7 @@
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border);">
                                                     <a href="{{ route('sms.show', ['id' => $d->id]) }}">{{ $d->id }}</a>
                                                 </td>
+                                                <td class="mono" style="padding:10px; border-bottom: 1px solid var(--border); font-size: 11px;">{{ $d->template_key }}</td>
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border);">
                                                     <strong>{{ $d->status }}</strong>
                                                     @if ($d->last_http_status)
@@ -134,12 +196,13 @@
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border);">{{ $d->to }}</td>
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border);">{{ $d->aluno_id ?? '-' }}</td>
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border);">{{ $d->matricula_id ?? '-' }}</td>
+                                                <td style="padding:10px; border-bottom: 1px solid var(--border); line-height:1.35;">{{ $d->occurred_at ? \App\Support\DateDisplay::formatHuman($d->occurred_at, true) : '—' }}</td>
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border); line-height:1.35;">{{ $d->created_at ? \App\Support\DateDisplay::formatHuman($d->created_at, true) : '—' }}</td>
                                                 <td style="padding:10px; border-bottom: 1px solid var(--border); line-height:1.35;">{{ $d->sent_at ? \App\Support\DateDisplay::formatHuman($d->sent_at, true) : '-' }}</td>
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="7" class="bridge-muted" style="padding:10px;">Nenhuma mensagem encontrada.</td>
+                                                <td colspan="9" class="bridge-muted" style="padding:10px;">Nenhuma mensagem encontrada.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
@@ -149,6 +212,7 @@
                             <div style="margin-top: 14px;">
                                 {{ $deliveries->links() }}
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>

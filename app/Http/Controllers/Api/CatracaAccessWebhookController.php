@@ -29,12 +29,17 @@ class CatracaAccessWebhookController extends Controller
 
         $result = $service->ingestCatracaBearer($eventId, $body);
 
-        return response()->json([
+        $payload = [
             'ok' => true,
             'created' => $result['created'],
             'processed' => $result['processed'],
             'delivery_id' => $result['delivery_id'],
             'eventId' => $eventId,
-        ]);
+        ];
+        if (! empty($result['queued'])) {
+            $payload['queued'] = true;
+        }
+
+        return response()->json($payload);
     }
 }

@@ -18,6 +18,8 @@ class GestorAccessEventDelivery extends Model
 
     public const STATUS_PENDING = 'pending';
 
+    public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_FAILED = 'failed';
@@ -41,6 +43,7 @@ class GestorAccessEventDelivery extends Model
         'ieducar_frequencia_http_status',
         'ieducar_frequencia_response_json',
         'ieducar_frequencia_error',
+        'ieducar_attempts',
         'processed_at',
     ];
 
@@ -55,6 +58,7 @@ class GestorAccessEventDelivery extends Model
             'ieducar_frequencia_request_json' => 'array',
             'ieducar_frequencia_http_status' => 'integer',
             'ieducar_frequencia_response_json' => 'array',
+            'ieducar_attempts' => 'integer',
             'processed_at' => 'datetime',
         ];
     }

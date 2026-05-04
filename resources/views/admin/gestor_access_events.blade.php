@@ -72,6 +72,7 @@
                                 <option value="failed" @selected($statusFilter === 'failed')>failed</option>
                                 <option value="skipped" @selected($statusFilter === 'skipped')>skipped</option>
                                 <option value="pending" @selected($statusFilter === 'pending')>pending</option>
+                                <option value="processing" @selected($statusFilter === 'processing')>processing</option>
                             </select>
                         </form>
 
@@ -104,6 +105,8 @@
                                                     <span class="fac-badge fac-badge--bad">{{ $row->processing_status }}</span>
                                                 @elseif ($row->processing_status === 'skipped')
                                                     <span class="fac-badge fac-badge--warn">{{ $row->processing_status }}</span>
+                                                @elseif ($row->processing_status === 'processing')
+                                                    <span class="fac-badge fac-badge--info">{{ $row->processing_status }}</span>
                                                 @else
                                                     <span class="fac-badge fac-badge--info">{{ $row->processing_status }}</span>
                                                 @endif

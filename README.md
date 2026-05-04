@@ -11,7 +11,8 @@ Premissa central: **todo o tráfego é via API** (sem conexão direta ao banco d
 
 - **Fluxo ponta-a-ponta**: `docs/FLUXO_DO_SISTEMA.md`
 - **Análise técnica (melhorias/gargalos)**: `docs/ANALISE_TECNICA_MELHORIAS.md`
-- **Eventos Gestor → GIDE (HMAC)**: `docs/CATRACA_WEBHOOK.md`
+- **Catraca → GIDE (webhook Bearer)**: `docs/CATRACA_WEBHOOK.md`
+- **Comandos Artisan (referência, exemplos e simulações)**: `docs/COMANDOS_ARTISAN.md`
 - **Frequência iEducar ↔ GIDE (registro / fila)**: `docs/IEDUCAR_FREQUENCIA_REGISTRO_GIDE.md`
 - **WhatsApp (planeado) e notificações / referência SMS**: `docs/WHATSAPP_INTEGRACAO_NOTIFICACOES.md`
 
@@ -161,10 +162,10 @@ Arquivo: `routes/api.php`
   - Middleware: `verify.hmac:ieducar`
   - Cria requisição/token para abrir `GET /facial/enviar?token=...` (somente esse fluxo permite envio ao Gestor)
 - **`POST /api/v1/gestor/access-events`**
-  - Middleware: `verify.hmac:gestor` — cabeçalhos `X-Event-Id`, `X-Timestamp`, `X-Signature`; o corpo JSON é coberto pela assinatura (ver `VerifyHmacSignature` e `docs/CATRACA_WEBHOOK.md`).
+  - Middleware: `verify.hmac:gestor` — cabeçalhos `X-Event-Id`, `X-Timestamp`, `X-Signature`; o corpo JSON é coberto pela assinatura (ver `VerifyHmacSignature`).
   - Persistência: `access_events` (`App\\Models\\AccessEvent`) e linha de auditoria em `gestor_access_event_deliveries`.
   - Resposta JSON inclui `delivery_id` para correlação com `GET /admin/gestor-access-events`.
-  - **`POST /api/v1/catraca/access-events`**: catraca com **Bearer** (`Authorization` + JSON); token em `integrations.extra.catraca_access_token_hash` (ver `App\Support\GestorCatracaAccessToken` e `docs/CATRACA_WEBHOOK.md`). Mesma auditoria admin que o fluxo HMAC.
+  - **`POST /api/v1/catraca/access-events`**: catraca com **Bearer** (`Authorization` + JSON); token em `integrations.extra.catraca_access_token_hash` (ver `App\Support\GestorCatracaAccessToken` e **`docs/CATRACA_WEBHOOK.md`**). Mesma auditoria admin que o fluxo HMAC.
 
 ## Segurança entre sistemas (HMAC inbound)
 

@@ -136,30 +136,40 @@
                                 <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border);" />
 
                                 <div class="bridge-panel__head" style="margin-top: 8px;">
-                                    <div class="bridge-panel__title">Template de mensagem</div>
-                                    <div class="bridge-panel__meta">tags (placeholders)</div>
+                                    <div class="bridge-panel__title">Templates de mensagem</div>
+                                    <div class="bridge-panel__meta">dois eventos: catraca e confirmação no iEducar</div>
                                 </div>
 
-                                <label class="bridge-check" style="margin-top: 10px;">
-                                    <input type="checkbox" name="template_enabled" value="1" {{ $template->enabled ? 'checked' : '' }} />
-                                    <span>Template ativo</span>
-                                </label>
+                                <p class="bridge-muted" style="margin-top: 10px; line-height: 1.55;">
+                                    <strong>1) Presença na catraca</strong> — enviado quando o evento de acesso marca presença (novo <code>access_event</code>).
+                                    <strong>2) Confirmação no iEducar</strong> — enviado após o GIDE receber resposta HTTP de sucesso da API catraca-frequência (preview ou gravação conforme o fluxo).
+                                </p>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="template_body">Mensagem (use tags)</label>
-                                    <textarea class="bridge-input" id="template_body" name="template_body" rows="6" style="resize: vertical;">{{ old('template_body', $template->body) }}</textarea>
-                                    @error('template_body')
+                                <div class="bridge-field" style="margin-top: 14px;">
+                                    <div class="bridge-label">Evento: presença na catraca (<span class="mono">presence_catraca</span>)</div>
+                                    <label class="bridge-check" style="margin-top: 8px;">
+                                        <input type="checkbox" name="template_catraca_enabled" value="1" @checked(old('template_catraca_enabled', $templateCatraca->enabled)) />
+                                        <span>Template ativo</span>
+                                    </label>
+                                    <textarea class="bridge-input" id="template_catraca_body" name="template_catraca_body" rows="5" style="resize: vertical; margin-top: 8px;">{{ old('template_catraca_body', $templateCatraca->body) }}</textarea>
+                                    @error('template_catraca_body')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="bridge-field" style="margin-top: 16px;">
+                                    <div class="bridge-label">Evento: confirmação no iEducar (<span class="mono">presence_ieducar_sync</span>)</div>
+                                    <label class="bridge-check" style="margin-top: 8px;">
+                                        <input type="checkbox" name="template_ieducar_enabled" value="1" @checked(old('template_ieducar_enabled', $templateIeducar->enabled)) />
+                                        <span>Template ativo</span>
+                                    </label>
+                                    <textarea class="bridge-input" id="template_ieducar_body" name="template_ieducar_body" rows="5" style="resize: vertical; margin-top: 8px;">{{ old('template_ieducar_body', $templateIeducar->body) }}</textarea>
+                                    @error('template_ieducar_body')
                                         <div class="bridge-error">{{ $message }}</div>
                                     @enderror
                                     <div class="bridge-muted" style="margin-top: 10px;">
-                                        Tags disponíveis:
-                                        <br />- <code>{!! '{{aluno_id}}' !!}</code>
-                                        <br />- <code>{!! '{{matricula_id}}' !!}</code>
-                                        <br />- <code>{!! '{{date}}' !!}</code> (dd/mm/aaaa)
-                                        <br />- <code>{!! '{{time}}' !!}</code> (hh:mm)
-                                        <br />- <code>{!! '{{window}}' !!}</code>
-                                        <br />- <code>{!! '{{event_type}}' !!}</code>
-                                        <br />- <code>{!! '{{event_id}}' !!}</code>
+                                        Tags comuns: <code>{!! '{{aluno_id}}' !!}</code>, <code>{!! '{{matricula_id}}' !!}</code>, <code>{!! '{{date}}' !!}</code>, <code>{!! '{{time}}' !!}</code>, <code>{!! '{{window}}' !!}</code>, <code>{!! '{{event_type}}' !!}</code>, <code>{!! '{{event_id}}' !!}</code>.
+                                        <br />Extra neste template: <code>{!! '{{ieducar_http_status}}' !!}</code> (código HTTP da resposta ao iEducar).
                                     </div>
                                 </div>
 

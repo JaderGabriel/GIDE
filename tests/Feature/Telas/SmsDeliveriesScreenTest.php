@@ -53,27 +53,27 @@ class SmsDeliveriesScreenTest extends TestCase
 
         SmsDelivery::query()->create([
             'event_id' => 'ev-a',
-            'template_key' => 'presence',
+            'template_key' => 'presence_catraca',
             'to' => '5511999000001',
             'message' => 'Msg A',
             'status' => 'sent',
         ]);
         SmsDelivery::query()->create([
             'event_id' => 'ev-b',
-            'template_key' => 'presence',
+            'template_key' => 'presence_ieducar_sync',
             'to' => '5511999000002',
             'message' => 'Msg B',
             'status' => 'pending',
         ]);
         SmsDelivery::query()->create([
             'event_id' => 'ev-c',
-            'template_key' => 'presence',
+            'template_key' => 'presence_catraca',
             'to' => '5511999000003',
             'message' => 'Msg C',
-            'status' => 'failed',
+            'status' => 'error',
         ]);
 
-        $rAll = $this->actingAs($admin)->get('/sms');
+        $rAll = $this->actingAs($admin)->get('/sms?layout=flat');
         $this->assertHtmlStatusWithReport(
             $rAll,
             200,
@@ -87,7 +87,7 @@ class SmsDeliveriesScreenTest extends TestCase
             'FALHOU: esperado ver o destino 5511999000001 na listagem completa.',
         );
 
-        $rSent = $this->actingAs($admin)->get('/sms?status=sent');
+        $rSent = $this->actingAs($admin)->get('/sms?status=sent&layout=flat');
         $this->assertHtmlStatusWithReport(
             $rSent,
             200,
@@ -99,7 +99,7 @@ class SmsDeliveriesScreenTest extends TestCase
         $this->assertStringContainsString('5511999000001', $htmlSent, 'FALHOU: filtro sent deveria manter 0001.');
         $this->assertStringNotContainsString('5511999000002', $htmlSent, 'FALHOU: filtro sent não deveria mostrar 0002 (pending).');
 
-        $rEv = $this->actingAs($admin)->get('/sms?event_id=ev-c');
+        $rEv = $this->actingAs($admin)->get('/sms?event_id=ev-c&layout=flat');
         $this->assertHtmlStatusWithReport(
             $rEv,
             200,
@@ -127,7 +127,7 @@ class SmsDeliveriesScreenTest extends TestCase
 
         $row = SmsDelivery::query()->create([
             'event_id' => 'ev-detail',
-            'template_key' => 'presence',
+            'template_key' => 'presence_catraca',
             'to' => '5511888777666',
             'message' => 'Corpo do SMS',
             'status' => 'pending',
@@ -153,5 +153,27 @@ class SmsDeliveriesScreenTest extends TestCase
             $this->htmlResponseLine($response),
             'EXITOSO',
         );
+    }
+
+    #[TestDox('SMS: vista agrupada por aluno (layout=grouped)')]
+    public function test_admin_can_open_sms_grouped_layout(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'is_active' => true]);
+
+        SmsDelivery::query()->create([
+            'event_id' => 'ev-g1',
+            'template_key' => 'presence_catraca',
+            'to' => '5511999111122',
+            'message' => 'Catraca',
+            'status' => 'sent',
+            'aluno_id' => '501',
+            'occurred_at' => now()->subHour(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/sms?layout=grouped');
+
+        $response->assertStatus(200);
+        $response->assertSee('501', false);
+        $response->assertSee('Por aluno', false);
     }
 }

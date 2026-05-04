@@ -296,7 +296,7 @@
                             <div class="gestor-section">
                                 <div class="gestor-section__title">5. Gestor → GIDE — eventos de acesso</div>
                                 <p class="gestor-section__lead">
-                                    Dois canais: <strong>HMAC</strong> em <span class="mono">POST /api/v1/gestor/access-events</span> (cabeçalhos <span class="mono">VerifyHmacSignature</span>) ou <strong>token de acesso</strong> em <span class="mono">POST /api/v1/catraca/access-events</span> com <span class="mono">Authorization: Bearer</span> e JSON da catraca (auditoria em <span class="mono">/admin/gestor-access-events</span>). Documentação: <code>docs/CATRACA_WEBHOOK.md</code>.
+                                    Dois canais: <strong>HMAC</strong> em <span class="mono">POST /api/v1/gestor/access-events</span> (ver <span class="mono">README.md</span> e <span class="mono">VerifyHmacSignature</span>) ou <strong>token de acesso</strong> em <span class="mono">POST /api/v1/catraca/access-events</span> com <span class="mono">Authorization: Bearer</span> — documentação do contrato: <code>docs/CATRACA_WEBHOOK.md</code>. Auditoria: <span class="mono">/admin/gestor-access-events</span>.
                                 </p>
 
                                 <div class="gestor-inbound-card">

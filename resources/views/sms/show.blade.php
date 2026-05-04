@@ -56,6 +56,7 @@
                             </div>
 
                             <div style="display:grid; gap: 10px; margin-top: 12px;">
+                                <div class="bridge-muted"><strong>Template:</strong> <span class="mono">{{ $delivery->template_key }}</span></div>
                                 <div class="bridge-muted"><strong>Telefone:</strong> {{ $delivery->to }}</div>
                                 <div class="bridge-muted"><strong>From:</strong> {{ $delivery->from ?? '-' }}</div>
                                 <div class="bridge-muted"><strong>Aluno:</strong> {{ $delivery->aluno_id ?? '-' }}</div>

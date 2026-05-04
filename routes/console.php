@@ -1000,6 +1000,7 @@ Artisan::command('gide:queue:work-once {--drain : Esvazia a fila (até max-time 
 */
 Schedule::call(function (): void {
     Artisan::call('gide:deliveries:retry-due');
+    Artisan::call('gide:gestor-access-event-deliveries:dispatch-pending');
     Artisan::call('gide:queue:work-once', ['--drain' => true]);
 })
     ->name('gide:schedule-tick-deliveries-and-queue')

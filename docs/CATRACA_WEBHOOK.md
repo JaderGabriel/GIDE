@@ -1,28 +1,38 @@
-# Eventos de acesso → GIDE
+# Catraca → GIDE: `POST /api/v1/catraca/access-events` (token Bearer)
 
-Dois pontos de entrada gravam o mesmo tipo de auditoria (`gestor_access_event_deliveries` + `access_events`) e o mesmo pipeline de preview no iEducar:
+Documentação do **único** contrato deste ficheiro: o equipamento (catraca) envia eventos de acesso ao GIDE com **`Authorization: Bearer`** e corpo **JSON**. Não aborda o canal HMAC (`POST /api/v1/gestor/access-events`); para esse fluxo ver `README.md` (secção API e HMAC inbound) e `app/Http/Middleware/VerifyHmacSignature.php`.
 
-| Canal | Rota | Autenticação |
-|-------|------|----------------|
-| Gestor (SDK) | `POST /api/v1/gestor/access-events` | HMAC: cabeçalhos `X-Event-Id`, `X-Timestamp`, `X-Signature` e segredo em `integrations.hmac_secret` (ver `VerifyHmacSignature`). |
-| Catraca (equipamento) | `POST /api/v1/catraca/access-events` | Somente **`Authorization: Bearer <token>`**. O hash do token fica em `integrations.extra.catraca_access_token_hash` (geração em **Integrações → Gestor**). Instalações antigas podem ainda ter `catraca_webhook_bearer_hash` — o middleware aceita ambos. |
+## URL e método
 
-Auditoria para TI: **`GET /admin/gestor-access-events`** e detalhe **`GET /admin/gestor-access-events/{id}`**. O campo `inbound_channel` distingue `gestor_hmac` de `catraca_bearer`. O JSON bruto do pedido está em `inbound_payload`.
+| Item | Valor |
+|------|--------|
+| Método | `POST` |
+| Caminho | `/api/v1/catraca/access-events` |
+| URL completa | `https://<seu-dominio>/api/v1/catraca/access-events` |
 
----
+## Token de acesso
 
-## Catraca — `POST /api/v1/catraca/access-events`
+- **Cabeçalho:** `Authorization: Bearer <token>` (única autenticação deste endpoint).
+- **Onde o GIDE guarda o segredo:** na integração **`gestor`** (`integrations.key = gestor`), em `integrations.extra`:
+  - **`catraca_access_token_hash`** — preferido (bcrypt do token).
+  - **`catraca_access_token_created_at`** — ISO8601 da geração.
+- **Legado:** `catraca_webhook_bearer_hash` ainda é aceite pelo middleware até migrar.
+- **Geração do token:** Integrações → Gestor → secção da catraca (“Gerar token de acesso”). O valor em **texto claro** só aparece **uma vez** na resposta; na base fica só o hash.
 
-### Cabeçalhos
+Implementação: `App\Support\GestorCatracaAccessToken`, middleware `verify.catraca.webhook.bearer`, controlador `App\Http\Controllers\Api\CatracaAccessWebhookController`.
+
+**Requisitos operacionais:** integração **gestor** existente e **`enabled=true`**; caso contrário o endpoint responde **403**. Se o token não estiver configurado: **503**.
+
+## Cabeçalhos
 
 ```
 Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
-### Corpo JSON (contrato típico do equipamento)
+## Corpo JSON (equipamento)
 
-Campos em **camelCase**. Exemplo válido (note a vírgula após `condominium`):
+Campos em **camelCase**. Exemplo válido (vírgula obrigatória entre propriedades JSON):
 
 ```json
 {
@@ -41,14 +51,14 @@ Campos em **camelCase**. Exemplo válido (note a vírgula após `condominium`):
 
 | Campo | Obrigatório | Uso |
 |--------|-------------|-----|
-| `eventId` | Sim | Idempotência (par único com `source=catraca_bearer` em `access_events`). |
-| `creationDate` | Recomendado | Data/hora do acesso (`occurred_at`) e motor de presença. |
-| `name` | Recomendado | Replicado internamente como `aluno_id` nas regras quando não há `aluno_id` explícito. |
-| Demais (`profile`, `place`, `unity`, …) | Não | Persistidos no payload e disponíveis para mapeamentos / análise TI. |
+| `eventId` | Sim | Idempotência em `access_events` com `source=catraca_bearer`. |
+| `creationDate` | Recomendado | Data/hora do acesso e motor de presença. |
+| `name` | Recomendado | Mapeado para análise como aluno quando não há `aluno_id` explícito. |
+| Outros | Não | Persistidos no payload bruto e na auditoria. |
 
-O GIDE normaliza para o motor de presença (`aluno_id` ← `name` se faltar, `type` ← `way` ou `accessMedia`, etc.) sem alterar o JSON guardado em auditoria (mantém o bruto recebido).
+O GIDE **mantém o JSON bruto** em auditoria; para o motor de presença aplica normalização interna (ex.: `aluno_id` a partir de `name`, `type` a partir de `way` / `accessMedia`) sem substituir o payload guardado.
 
-### Resposta JSON (sucesso)
+## Resposta JSON (sucesso)
 
 HTTP **200**:
 
@@ -62,39 +72,23 @@ HTTP **200**:
 }
 ```
 
-- `delivery_id`: correlaciona com a lista admin acima.
-- `created` / `processed`: mesmo significado que no fluxo HMAC Gestor.
+- **`delivery_id`:** linha em `gestor_access_event_deliveries` (`inbound_channel = catraca_bearer`).
+- **`created`:** novo registo em `access_events` para este `eventId` + origem catraca.
+- **`processed`:** pipeline interno (motor + tentativa de preview iEducar quando as condições se cumprem).
+- **`queued`:** (quando aplicável) o POST ao iEducar foi enfileirado; o processamento HTTP corre num job (`ProcessGestorAccessEventDeliveryJob`).
 
-### Erros comuns
+## Erros comuns
 
 | HTTP | Situação |
 |------|-----------|
-| 401 | Bearer ausente ou token inválido. |
-| 403 | Integração Gestor desabilitada. |
+| 401 | `Authorization` ausente ou token inválido. |
+| 403 | Integração gestor desabilitada. |
 | 503 | Token ainda não gerado na UI. |
-| 400 | `eventId` ausente ou JSON inválido. |
+| 400 | `eventId` ausente ou corpo não JSON. |
 
----
+## Auditoria (TI)
 
-## Gestor — `POST /api/v1/gestor/access-events` (HMAC)
+- Lista: **`GET /admin/gestor-access-events`**
+- Detalhe: **`GET /admin/gestor-access-events/{id}`**
 
-Contrato de assinatura: ver `README.md` (secção HMAC inbound) e `app/Http/Middleware/VerifyHmacSignature.php`.
-
-A resposta inclui `delivery_id` e o canal em auditoria é `gestor_hmac`.
-
----
-
-## Simulação pela CLI (vários POSTs + auditoria)
-
-Com a integração **gestor** habilitada e o token de acesso já gerado na UI:
-
-```bash
-php artisan gide:simulate-catraca-access-events --token='gide_cwc_...'
-```
-
-- Por omissão envia **12** pedidos (mínimo **10**). Ajuste com `--count=15`.
-- Modo **interno** (default): usa o HTTP kernel da app, sem servidor à escuta.
-- Modo **HTTP** (`--http`): chama `APP_URL` (ou `--url=https://...`) — útil para testar nginx/PHP-FPM.
-- Alternativa ao `--token`: variável de ambiente `GIDE_CATRACA_ACCESS_TOKEN`.
-
-No fim o comando imprime uma tabela com `delivery_id` por pedido e outra com as linhas em `gestor_access_event_deliveries` (`inbound_channel=catraca_bearer`). Detalhe no admin: `/admin/gestor-access-events`.
+Cada POST cria uma linha de auditoria com o JSON recebido. O envio em **preview** ao iEducar (catraca-frequência) depende de integração **ieducar** ativa e do motor de presença; detalhes em `docs/FLUXO_DO_SISTEMA.md` (nota sobre duas filas no admin).

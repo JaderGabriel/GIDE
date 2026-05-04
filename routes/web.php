@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sms/{id}', [SmsDeliveryController::class, 'show'])->name('sms.show');
 
         Route::get('/admin/gestor-access-events', [GestorAccessEventAdminController::class, 'index'])->name('admin.gestor-access-events.index');
+        Route::post('/admin/gestor-access-events/{id}/retry', [GestorAccessEventAdminController::class, 'retry'])->name('admin.gestor-access-events.retry');
         Route::get('/admin/gestor-access-events/{id}', [GestorAccessEventAdminController::class, 'show'])->name('admin.gestor-access-events.show');
 
         Route::get('/admin/faciais', [FacialAdminController::class, 'index'])->name('admin.facial-requests.index');

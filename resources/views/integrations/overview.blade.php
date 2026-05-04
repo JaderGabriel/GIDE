@@ -251,7 +251,7 @@
                             </div>
 
                             @php
-                                $qs = is_array($queueSnapshot ?? null) ? $queueSnapshot : ['jobs' => [], 'failed_jobs' => [], 'outbound' => [], 'sms' => []];
+                                $qs = is_array($queueSnapshot ?? null) ? $queueSnapshot : ['jobs' => [], 'failed_jobs' => [], 'outbound' => [], 'sms' => [], 'gestor_access_events' => []];
                             @endphp
 
                             @php
@@ -361,7 +361,7 @@
                                 <div class="queue-panel__head">
                                     <div>
                                         <h2 class="integr-section__title" id="queue-panel-title">Fila e status de entregas</h2>
-                                        <p class="integr-section__lead" style="margin-top:6px;">Jobs pendentes, falhas de job, outbound para o Gestor e SMS — com HTTP, tentativas e último erro. Horários em <strong>{{ \App\Support\DateDisplay::timezoneLabel() }}</strong>.@if ($integrationsOverviewAdmin ?? false) Detalhe por SMS: <a href="{{ route('sms.index') }}">lista de envios</a>.@endif</p>
+                                        <p class="integr-section__lead" style="margin-top:6px;">Jobs pendentes, falhas de job, outbound para o Gestor, fila de preview iEducar a partir dos webhooks de access-event e SMS — com HTTP, tentativas e último erro. Horários em <strong>{{ \App\Support\DateDisplay::timezoneLabel() }}</strong>.@if ($integrationsOverviewAdmin ?? false) Detalhe por SMS: <a href="{{ route('sms.index') }}">lista de envios</a>; access-events: <a href="{{ route('admin.gestor-access-events.index') }}">auditoria</a>.@endif</p>
                                     </div>
                                 </div>
                                 <div class="queue-tabs" role="tablist">
@@ -369,6 +369,7 @@
                                     <button type="button" class="queue-tab" data-tab="failed">Falhas ({{ count($qs['failed_jobs'] ?? []) }})</button>
                                     <button type="button" class="queue-tab" data-tab="outbound">Outbound Gestor ({{ count($qs['outbound'] ?? []) }})</button>
                                     <button type="button" class="queue-tab" data-tab="sms">SMS ({{ count($qs['sms'] ?? []) }})</button>
+                                    <button type="button" class="queue-tab" data-tab="gae">Access-event → iEducar ({{ count($qs['gestor_access_events'] ?? []) }})</button>
                                 </div>
                                 <div class="queue-table-wrap" data-panel="jobs">
                                     <table class="queue-table">
@@ -457,6 +458,37 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                <div class="queue-table-wrap" data-panel="gae" hidden>
+                                    <table class="queue-table">
+                                        <thead><tr><th>ID</th><th>Event id</th><th>Canal</th><th>Status</th><th>Tent. iE.</th><th>HTTP</th><th>Processado</th><th>Erro</th></tr></thead>
+                                        <tbody>
+                                            @forelse ($qs['gestor_access_events'] ?? [] as $r)
+                                                @php
+                                                    $st = (string) ($r['status'] ?? '');
+                                                    $cls = $st === 'completed' ? 'st-ok' : ($st === 'failed' ? 'st-bad' : ($st === 'pending' || $st === 'processing' ? 'st-warn' : ''));
+                                                @endphp
+                                                <tr>
+                                                    <td class="mono">
+                                                        @if ($integrationsOverviewAdmin ?? false)
+                                                            <a href="{{ route('admin.gestor-access-events.show', ['id' => $r['id'] ?? 0]) }}">{{ $r['id'] ?? '' }}</a>
+                                                        @else
+                                                            {{ $r['id'] ?? '' }}
+                                                        @endif
+                                                    </td>
+                                                    <td class="mono" style="max-width:120px;word-break:break-all;">{{ $r['event_id'] ?? '' }}</td>
+                                                    <td class="mono" style="font-size:11px;">{{ $r['channel'] ?? '—' }}</td>
+                                                    <td class="{{ $cls }}">{{ $st !== '' ? $st : '—' }}</td>
+                                                    <td>{{ (int) ($r['attempts'] ?? 0) }}</td>
+                                                    <td class="mono">{{ $r['http'] ?? '—' }}</td>
+                                                    <td style="font-size:11px;line-height:1.35;">{{ $r['processed_at_display'] ?? '—' }}</td>
+                                                    <td class="mono" style="font-size:11px;">{{ $r['error'] ?? '—' }}</td>
+                                                </tr>
+                                            @empty
+                                                <tr><td colspan="8" class="bridge-muted">Sem linhas pendentes/falha/processamento recentes em <code>gestor_access_event_deliveries</code>.</td></tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
                             </section>
 
                             <div class="card integr-section-card" style="margin-top: 12px;">
@@ -511,7 +543,7 @@
                                         <div class="kpi">
                                             <div class="kpi__k">Fila (jobs)</div>
                                             <div class="kpi__v">{{ (int) ($db['jobs_pending'] ?? 0) }}</div>
-                                            <div class="bridge-muted" style="margin-top: 6px;">tabela `jobs` (cron: schedule + worker)</div>
+                                            <div class="bridge-muted" style="margin-top: 6px;">tabela `jobs` · access-event iEducar pendente: <span class="mono">{{ (int) ($db['gestor_access_event_ieducar_pending'] ?? 0) }}</span> (`gestor_access_event_deliveries`)</div>
                                         </div>
                                         <div class="kpi">
                                             <div class="kpi__k">Links Guest/Face</div>
@@ -523,7 +555,8 @@
                                             @php
                                                 $attention = (int) ($db['jobs_pending'] ?? 0)
                                                     + (int) ($db['outbound_retry_due'] ?? 0)
-                                                    + (int) ($db['sms_retry_due'] ?? 0);
+                                                    + (int) ($db['sms_retry_due'] ?? 0)
+                                                    + (int) ($db['gestor_access_event_ieducar_pending'] ?? 0);
                                             @endphp
                                             <div class="kpi__v">{{ $attention === 0 ? 'OK' : $attention }}</div>
                                             <div class="bridge-muted" style="margin-top: 6px;">jobs + retries devidos (fila/cron)</div>

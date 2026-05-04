@@ -109,11 +109,13 @@ flowchart TD
   - **Objetivo**: criar uma requisição de envio facial (token + URL) para abrir a tela do GIDE
   - **Persistência**: `facial_send_requests` (idempotência por `event_id`, expiração e consumo)
 - `POST /api/v1/gestor/access-events`
-  - **Auth**: `verify.hmac:gestor` (`X-Event-Id`, `X-Timestamp`, `X-Signature` + corpo JSON assinado; ver `VerifyHmacSignature` e `docs/CATRACA_WEBHOOK.md`)
+  - **Auth**: `verify.hmac:gestor` (`X-Event-Id`, `X-Timestamp`, `X-Signature` + corpo JSON assinado; ver `VerifyHmacSignature`)
   - **Persistência**: `access_events` e auditoria `gestor_access_event_deliveries` (resposta com `delivery_id`; admin `GET /admin/gestor-access-events`)
   - **Processamento**: motor de presença e encadeamento com iEducar/SMS conforme serviço atual
   - **Notificação**: job de SMS (se integração SMS habilitada)
   - **Catraca (token)**: `POST /api/v1/catraca/access-events` — Bearer + JSON equipamento; mesma tabela de auditoria `gestor_access_event_deliveries` (`inbound_channel=catraca_bearer`).
+
+> **Duas filas no admin (não confundir):** `/admin/gestor-access-events` mostra `gestor_access_event_deliveries` — uma linha por POST do webhook Gestor/catraca. O preview HTTP ao iEducar (catraca-frequência) **só é tentado** se existir integração `ieducar` com **`enabled=true`** e o motor de presença devolver **`action=mark_presence`** com `cod_aluno` válido; caso contrário o cartão “JSON enviado ao iEducar” fica vazio e o motivo aparece no resumo do marker / mensagem de erro. Já `/admin/frequencia-ieducar` lista **`ieducar_frequencia_registro_deliveries`** (registros enfileirados por outro fluxo, ex. comando Artisan ou job); uma pode mostrar sucessos enquanto a outra, para o mesmo dia, mostra “sem POST” se o evento de acesso não cumpriu as condições acima ou foi processado quando o iEducar estava desligado.
 
 ---
 

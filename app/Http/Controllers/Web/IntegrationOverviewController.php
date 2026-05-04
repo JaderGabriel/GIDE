@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
 use App\Models\OutboundDelivery;
 use App\Models\SmsDelivery;
@@ -214,6 +215,9 @@ class IntegrationOverviewController extends Controller
                 'sms_retry_due' => $smsRetryDue,
                 'jobs_pending' => (int) DB::table('jobs')->count(),
                 'gestor_guest_links' => (int) DB::table('gestor_guest_links')->count(),
+                'gestor_access_event_ieducar_pending' => (int) GestorAccessEventDelivery::query()
+                    ->where('processing_status', GestorAccessEventDelivery::STATUS_PENDING)
+                    ->count(),
             ];
         } catch (\Throwable $e) {
             return ['error' => $e->getMessage()];
@@ -303,7 +307,9 @@ class IntegrationOverviewController extends Controller
         $ieducarLanesFailed = $this->bridgeSegmentReflectsLaneFailures($laneTests, ['ieducar:in', 'ieducar:out', 'catraca_frequencia:out']);
         $segIeducar = $ieducarLanesFailed ? $this->bridgeToneMax($segIeducarBase, 'bad') : $segIeducarBase;
 
-        $segGestorBase = (! $configured($gestor) || $jobBacklogWarn || $gestorProbeWarn || $outboundFailed > 0 || $outboundRetryDue) ? 'warn' : 'ok';
+        $gaeIeducarPending = (int) ($dbMetrics['gestor_access_event_ieducar_pending'] ?? 0) > 0;
+
+        $segGestorBase = (! $configured($gestor) || $jobBacklogWarn || $gestorProbeWarn || $outboundFailed > 0 || $outboundRetryDue || $gaeIeducarPending) ? 'warn' : 'ok';
         $gestorLanesFailed = $this->bridgeSegmentReflectsLaneFailures($laneTests, ['gestor:in', 'gestor:out']);
         $segGestor = $gestorLanesFailed ? $this->bridgeToneMax($segGestorBase, 'bad') : $segGestorBase;
 
@@ -618,7 +624,7 @@ class IntegrationOverviewController extends Controller
     }
 
     /**
-     * @return array{jobs: array<int, array<string, mixed>>, outbound: array<int, array<string, mixed>>, sms: array<int, array<string, mixed>>, failed_jobs: array<int, array<string, mixed>>}
+     * @return array{jobs: array<int, array<string, mixed>>, outbound: array<int, array<string, mixed>>, sms: array<int, array<string, mixed>>, failed_jobs: array<int, array<string, mixed>>, gestor_access_events: array<int, array<string, mixed>>}
      */
     private function buildQueueSnapshot(): array
     {
@@ -626,6 +632,7 @@ class IntegrationOverviewController extends Controller
         $failed = [];
         $out = [];
         $sms = [];
+        $gae = [];
 
         try {
             $rows = DB::table('jobs')->orderByDesc('id')->limit(25)->get();
@@ -691,11 +698,36 @@ class IntegrationOverviewController extends Controller
         } catch (\Throwable) {
         }
 
+        try {
+            foreach (GestorAccessEventDelivery::query()
+                ->whereIn('processing_status', [
+                    GestorAccessEventDelivery::STATUS_PENDING,
+                    GestorAccessEventDelivery::STATUS_FAILED,
+                    GestorAccessEventDelivery::STATUS_PROCESSING,
+                ])
+                ->orderByDesc('id')
+                ->limit(18)
+                ->get() as $d) {
+                $gae[] = [
+                    'id' => $d->id,
+                    'event_id' => (string) $d->event_id,
+                    'status' => (string) ($d->processing_status ?? ''),
+                    'channel' => (string) ($d->inbound_channel ?? ''),
+                    'attempts' => (int) ($d->ieducar_attempts ?? 0),
+                    'http' => $d->ieducar_frequencia_http_status,
+                    'processed_at_display' => $d->processed_at ? DateDisplay::formatHuman($d->processed_at, true) : '—',
+                    'error' => $d->ieducar_frequencia_error ? mb_substr((string) $d->ieducar_frequencia_error, 0, 500) : null,
+                ];
+            }
+        } catch (\Throwable) {
+        }
+
         return [
             'jobs' => $jobs,
             'failed_jobs' => $failed,
             'outbound' => $out,
             'sms' => $sms,
+            'gestor_access_events' => $gae,
         ];
     }
 

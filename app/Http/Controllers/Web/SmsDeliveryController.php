@@ -4,14 +4,62 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\SmsDelivery;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class SmsDeliveryController extends Controller
 {
     public function index(Request $request)
     {
-        $q = SmsDelivery::query()->orderByDesc('id');
+        $layout = (string) $request->query('layout', 'flat');
 
+        $q = SmsDelivery::query();
+        $this->applySmsFilters($q, $request);
+
+        $filters = $this->smsFiltersFromRequest($request);
+
+        if ($layout === 'grouped') {
+            $rows = (clone $q)->orderByDesc('occurred_at')->orderByDesc('id')->limit(250)->get();
+            $groupedTimeline = $this->buildSmsGroupedTimeline($rows);
+
+            return view('sms.index', [
+                'layout' => 'grouped',
+                'groupedTimeline' => $groupedTimeline,
+                'deliveries' => null,
+                'filters' => $filters,
+            ]);
+        }
+
+        $deliveries = (clone $q)->orderByDesc('id')->paginate(30)->withQueryString();
+
+        return view('sms.index', [
+            'layout' => 'flat',
+            'groupedTimeline' => [],
+            'deliveries' => $deliveries,
+            'filters' => $filters,
+        ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function smsFiltersFromRequest(Request $request): array
+    {
+        return [
+            'status' => (string) $request->query('status', ''),
+            'to' => (string) $request->query('to', ''),
+            'aluno_id' => trim((string) $request->query('aluno_id', '')),
+            'matricula_id' => trim((string) $request->query('matricula_id', '')),
+            'event_id' => trim((string) $request->query('event_id', '')),
+            'from_date' => (string) $request->query('from_date', ''),
+            'to_date' => (string) $request->query('to_date', ''),
+            'layout' => (string) $request->query('layout', 'flat'),
+        ];
+    }
+
+    private function applySmsFilters(Builder $q, Request $request): void
+    {
         $status = (string) $request->query('status', '');
         if ($status !== '') {
             $q->where('status', $status);
@@ -46,21 +94,50 @@ class SmsDeliveryController extends Controller
         if ($toDate !== '') {
             $q->whereDate('created_at', '<=', $toDate);
         }
+    }
 
-        $deliveries = $q->paginate(30)->withQueryString();
+    /**
+     * @param  Collection<int, SmsDelivery>  $rows
+     * @return list<array{aluno_id: string, last_at: int, occurrences: list<array{occurred_at: mixed, dispatches: Collection<int, SmsDelivery>}>}>
+     */
+    private function buildSmsGroupedTimeline(Collection $rows): array
+    {
+        $byAluno = $rows->groupBy(function (SmsDelivery $d) {
+            $aid = $d->aluno_id;
 
-        return view('sms.index', [
-            'deliveries' => $deliveries,
-            'filters' => [
-                'status' => $status,
-                'to' => (string) $request->query('to', ''),
-                'aluno_id' => $alunoId,
-                'matricula_id' => $matriculaId,
-                'event_id' => $eventId,
-                'from_date' => $fromDate,
-                'to_date' => $toDate,
-            ],
-        ]);
+            return ($aid !== null && $aid !== '') ? (string) $aid : '—';
+        });
+
+        $groups = [];
+        foreach ($byAluno as $alunoKey => $items) {
+            $byOcc = $items->groupBy(function (SmsDelivery $d) {
+                return $d->occurred_at
+                    ? $d->occurred_at->format('Y-m-d H:i:s')
+                    : 'sem_data';
+            });
+
+            $occurrences = [];
+            foreach ($byOcc->sortKeysDesc() as $timeKey => $dispatches) {
+                $occurrences[] = [
+                    'occurred_at' => $timeKey === 'sem_data' ? null : $dispatches->first()->occurred_at,
+                    'dispatches' => $dispatches->sortBy('id')->values(),
+                ];
+            }
+
+            $lastAt = (int) $items->max(function (SmsDelivery $d) {
+                return $d->occurred_at?->getTimestamp() ?? $d->created_at?->getTimestamp() ?? 0;
+            });
+
+            $groups[] = [
+                'aluno_id' => (string) $alunoKey,
+                'last_at' => $lastAt,
+                'occurrences' => $occurrences,
+            ];
+        }
+
+        usort($groups, fn (array $a, array $b): int => ($b['last_at'] <=> $a['last_at']));
+
+        return $groups;
     }
 
     public function show(int $id)

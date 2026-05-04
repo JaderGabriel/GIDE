@@ -17,11 +17,16 @@ class GestorWebhookController extends Controller
 
         $result = $service->handle($request, $eventId);
 
-        return response()->json([
+        $payload = [
             'ok' => true,
             'created' => $result['created'],
             'processed' => $result['processed'],
             'delivery_id' => $result['delivery_id'],
-        ]);
+        ];
+        if (! empty($result['queued'])) {
+            $payload['queued'] = true;
+        }
+
+        return response()->json($payload);
     }
 }

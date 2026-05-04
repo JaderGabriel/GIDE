@@ -10,6 +10,7 @@ use App\Services\UserAuditLogger;
 use App\Support\BrPhoneNormalizer;
 use App\Support\GestorCatracaAccessToken;
 use App\Support\GestorSigninProbeCache;
+use App\Support\SmsTemplateKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -346,9 +347,14 @@ class IntegrationController extends Controller
             ['name' => 'SMS', 'enabled' => false, 'auth_type' => 'api_token', 'base_url' => (string) config('integrations.sms.default_base_url')],
         );
 
-        $template = SmsTemplate::query()->firstOrCreate(
-            ['key' => 'presence_notification'],
-            ['name' => 'Presença registrada', 'body' => 'Presença registrada em {{date}} às {{time}}. Aluno: {{aluno_id}}. Matrícula: {{matricula_id}}.', 'enabled' => true],
+        $templateCatraca = SmsTemplate::query()->firstOrCreate(
+            ['key' => SmsTemplateKey::PRESENCE_CATRACA],
+            ['name' => 'Presença na catraca', 'body' => 'Presença registada na catraca em {{date}} às {{time}}. Aluno: {{aluno_id}}. Matrícula: {{matricula_id}}.', 'enabled' => true],
+        );
+
+        $templateIeducar = SmsTemplate::query()->firstOrCreate(
+            ['key' => SmsTemplateKey::PRESENCE_IEDUCAR_SYNC],
+            ['name' => 'Confirmação no iEducar', 'body' => 'O iEducar confirmou a frequência (HTTP {{ieducar_http_status}}) em {{date}} às {{time}}. Aluno: {{aluno_id}}.', 'enabled' => true],
         );
 
         $testPhones = (array) data_get($integration->extra, 'test_phone_numbers', []);
@@ -356,7 +362,8 @@ class IntegrationController extends Controller
 
         return view('integrations.sms', [
             'integration' => $integration,
-            'template' => $template,
+            'templateCatraca' => $templateCatraca,
+            'templateIeducar' => $templateIeducar,
             'testPhoneNumbersDisplay' => $testPhoneLines,
         ]);
     }
@@ -364,7 +371,14 @@ class IntegrationController extends Controller
     public function updateSms(Request $request)
     {
         $integration = Integration::query()->where('key', 'sms')->firstOrFail();
-        $template = SmsTemplate::query()->where('key', 'presence_notification')->firstOrFail();
+        $templateCatraca = SmsTemplate::query()->firstOrCreate(
+            ['key' => SmsTemplateKey::PRESENCE_CATRACA],
+            ['name' => 'Presença na catraca', 'body' => 'Presença registada na catraca em {{date}} às {{time}}. Aluno: {{aluno_id}}.', 'enabled' => true],
+        );
+        $templateIeducar = SmsTemplate::query()->firstOrCreate(
+            ['key' => SmsTemplateKey::PRESENCE_IEDUCAR_SYNC],
+            ['name' => 'Confirmação no iEducar', 'body' => 'O iEducar confirmou a frequência (HTTP {{ieducar_http_status}}) em {{date}} às {{time}}. Aluno: {{aluno_id}}.', 'enabled' => true],
+        );
 
         try {
             $data = $request->validate([
@@ -375,8 +389,10 @@ class IntegrationController extends Controller
                 'payload_phone_key' => ['nullable', 'string'],
                 'sms_recipient_mode' => ['required', Rule::in(['alunos', 'test_numbers'])],
                 'test_phone_numbers' => ['nullable', 'string'],
-                'template_enabled' => ['nullable'],
-                'template_body' => ['required', 'string', 'min:1'],
+                'template_catraca_enabled' => ['nullable'],
+                'template_catraca_body' => ['required', 'string', 'min:1'],
+                'template_ieducar_enabled' => ['nullable'],
+                'template_ieducar_body' => ['required', 'string', 'min:1'],
             ]);
 
             $integration->enabled = (bool) $request->boolean('enabled');
@@ -402,9 +418,13 @@ class IntegrationController extends Controller
             $integration->extra = $extra;
             $integration->save();
 
-            $template->enabled = (bool) $request->boolean('template_enabled');
-            $template->body = $data['template_body'];
-            $template->save();
+            $templateCatraca->enabled = (bool) $request->boolean('template_catraca_enabled');
+            $templateCatraca->body = $data['template_catraca_body'];
+            $templateCatraca->save();
+
+            $templateIeducar->enabled = (bool) $request->boolean('template_ieducar_enabled');
+            $templateIeducar->body = $data['template_ieducar_body'];
+            $templateIeducar->save();
         } catch (\Throwable $e) {
             return back()->withErrors(['api_token' => $e->getMessage()]);
         }

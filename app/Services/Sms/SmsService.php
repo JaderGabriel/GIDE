@@ -6,6 +6,7 @@ use App\Models\Integration;
 use App\Models\SmsDelivery;
 use App\Models\SmsTemplate;
 use App\Support\BrPhoneNormalizer;
+use App\Support\SmsTemplateKey;
 use Carbon\CarbonInterface;
 
 class SmsService
@@ -15,16 +16,26 @@ class SmsService
         return max(1, (int) config('gide.deliveries.max_attempts', 3));
     }
 
-    public function sendPresenceSms(string $eventId, array $payload, array $analysis, ?CarbonInterface $occurredAt = null): SmsDelivery
-    {
+    /**
+     * @param  array<string, mixed>  $extraContext  Mesclado no contexto de tags (ex.: ieducar_http_status).
+     */
+    public function sendPresenceSms(
+        string $eventId,
+        array $payload,
+        array $analysis,
+        ?CarbonInterface $occurredAt = null,
+        string $templateKey = SmsTemplateKey::PRESENCE_CATRACA,
+        array $extraContext = [],
+    ): SmsDelivery {
         $smsIntegration = Integration::query()->where('key', 'sms')->where('enabled', true)->first();
         if (! $smsIntegration) {
             throw new \RuntimeException('Integração SMS não habilitada.');
         }
 
-        $template = SmsTemplate::query()->where('key', 'presence_notification')->where('enabled', true)->first();
+        $resolvedKey = $this->resolvePresenceTemplateKey($templateKey);
+        $template = SmsTemplate::query()->where('key', $resolvedKey)->where('enabled', true)->first();
         if (! $template) {
-            throw new \RuntimeException('Template de SMS (presence_notification) não configurado/ativo.');
+            throw new \RuntimeException('Template de SMS ('.$resolvedKey.') não configurado/ativo.');
         }
 
         $recipients = $this->resolvePresenceSmsRecipients($smsIntegration, $payload);
@@ -34,10 +45,23 @@ class SmsService
 
         $last = null;
         foreach ($recipients as $to) {
-            $last = $this->sendPresenceSmsToRecipient($smsIntegration, $template, $eventId, $payload, $analysis, $occurredAt, $to);
+            $last = $this->sendPresenceSmsToRecipient($smsIntegration, $template, $eventId, $payload, $analysis, $occurredAt, $to, $extraContext);
         }
 
         return $last ?? throw new \RuntimeException('Falha interna ao enviar SMS.');
+    }
+
+    private function resolvePresenceTemplateKey(string $requested): string
+    {
+        if ($requested === SmsTemplateKey::PRESENCE_CATRACA) {
+            if (SmsTemplate::query()->where('key', SmsTemplateKey::PRESENCE_CATRACA)->exists()) {
+                return SmsTemplateKey::PRESENCE_CATRACA;
+            }
+
+            return SmsTemplateKey::LEGACY_PRESENCE_NOTIFICATION;
+        }
+
+        return $requested;
     }
 
     /**
@@ -82,13 +106,14 @@ class SmsService
         array $analysis,
         ?CarbonInterface $occurredAt,
         string $to,
+        array $extraContext = [],
     ): SmsDelivery {
         $from = (string) data_get($smsIntegration->extra, 'from', '');
         if ($from === '') {
             throw new \RuntimeException('Remetente do SMS não configurado (integrations.extra.from).');
         }
 
-        $context = [
+        $context = array_merge([
             'event_id' => $eventId,
             'aluno_id' => data_get($analysis, 'aluno_id') ?? data_get($payload, 'aluno_id'),
             'matricula_id' => data_get($analysis, 'matricula_id') ?? data_get($payload, 'matricula_id'),
@@ -97,7 +122,7 @@ class SmsService
             'date' => $occurredAt?->format('d/m/Y'),
             'time' => $occurredAt?->format('H:i'),
             'event_type' => data_get($payload, 'type') ?? data_get($payload, 'event_type'),
-        ];
+        ], $extraContext);
 
         $message = (new SmsTemplateRenderer)->render($template->body, $context);
 

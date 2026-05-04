@@ -150,7 +150,7 @@ Credenciais sensíveis devem permanecer em **integração no banco** ou **secret
 ## 9. Documentos e ficheiros relacionados
 
 - Fluxo geral e diagrama: [`docs/FLUXO_DO_SISTEMA.md`](FLUXO_DO_SISTEMA.md)
-- Eventos Gestor → GIDE (HMAC): [`docs/CATRACA_WEBHOOK.md`](CATRACA_WEBHOOK.md)
+- Webhook catraca (Bearer): [`docs/CATRACA_WEBHOOK.md`](CATRACA_WEBHOOK.md)
 - Código: `App\Jobs\SendPresenceSms`, `App\Services\Sms\SmsService`, `App\Services\Sms\ZenviaSmsClient`, `App\Http\Controllers\Web\IntegrationController` (`sms`, `updateSms`), `config/integrations.php` (`sms.default_base_url`)
 
 ---

@@ -2,25 +2,28 @@
 
 namespace App\Services\Presence;
 
+use App\Jobs\ProcessGestorAccessEventDeliveryJob;
 use App\Jobs\SendPresenceSms;
 use App\Models\AccessEvent;
 use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
 use App\Services\Ieducar\IeducarClient;
 use App\Support\Ieducar\GideFrequenciaRegistroPlanB;
+use App\Support\SmsTemplateKey;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Ingestão de eventos de acesso: {@see GestorWebhookController} (HMAC) e {@see CatracaAccessWebhookController} (Bearer).
- * Persiste `access_events` + `gestor_access_event_deliveries`; iEducar apenas em preview (catraca-frequência).
+ * Persiste `access_events` + `gestor_access_event_deliveries`; iEducar em preview (catraca-frequência) via fila quando há POST real.
  */
 class GestorAccessEventWebhookService
 {
     /**
-     * @return array{created: bool, processed: bool, delivery_id: int}
+     * @return array{created: bool, processed: bool, delivery_id: int, queued?: bool}
      */
     public function handle(Request $request, string $eventId): array
     {
@@ -40,7 +43,7 @@ class GestorAccessEventWebhookService
 
     /**
      * @param  array<string, mixed>  $rawDeviceJson  JSON bruto da catraca (auditoria e access_events.payload).
-     * @return array{created: bool, processed: bool, delivery_id: int}
+     * @return array{created: bool, processed: bool, delivery_id: int, queued?: bool}
      */
     public function ingestCatracaBearer(string $eventId, array $rawDeviceJson): array
     {
@@ -54,9 +57,84 @@ class GestorAccessEventWebhookService
     }
 
     /**
+     * Executa o preview HTTP ao iEducar para uma linha de auditoria (job ou comando).
+     */
+    public function processIeducarForDelivery(int $deliveryId): void
+    {
+        $claimed = false;
+        DB::transaction(function () use ($deliveryId, &$claimed): void {
+            $d = GestorAccessEventDelivery::query()->whereKey($deliveryId)->lockForUpdate()->first();
+            if (! $d || $d->processing_status !== GestorAccessEventDelivery::STATUS_PENDING) {
+                return;
+            }
+            $d->update(['processing_status' => GestorAccessEventDelivery::STATUS_PROCESSING]);
+            $claimed = true;
+        });
+
+        if (! $claimed) {
+            return;
+        }
+
+        $delivery = GestorAccessEventDelivery::query()->find($deliveryId);
+        if (! $delivery) {
+            return;
+        }
+
+        $ieducar = Integration::query()->where('key', 'ieducar')->where('enabled', true)->first();
+        $analysis = is_array($delivery->analysis_json) ? $delivery->analysis_json : [];
+        $payloadForPresence = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
+        $occurredAt = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $eventId = (string) $delivery->event_id;
+
+        if (! $ieducar) {
+            $delivery->update([
+                'processing_status' => GestorAccessEventDelivery::STATUS_SKIPPED,
+                'ieducar_frequencia_error' => 'Integração iEducar inexistente ou com enabled=false no worker.',
+                'processed_at' => now(),
+                'ieducar_attempts' => (int) $delivery->ieducar_attempts + 1,
+            ]);
+
+            return;
+        }
+
+        $previewOutcome = $this->runIeducarFrequenciaPreviewOnly($ieducar, $analysis, $occurredAt);
+        $analysis['marker'] = $previewOutcome['marker'];
+        $analysis['inbound_channel'] = $analysis['inbound_channel'] ?? $delivery->inbound_channel;
+
+        $delivery->update([
+            'analysis_json' => $analysis,
+            'ieducar_marker_summary' => $previewOutcome['marker'],
+            'ieducar_frequencia_request_json' => $previewOutcome['request_json'],
+            'ieducar_frequencia_http_status' => $previewOutcome['http_status'],
+            'ieducar_frequencia_response_json' => $previewOutcome['response_json'],
+            'ieducar_frequencia_error' => $previewOutcome['error'],
+            'processing_status' => $previewOutcome['delivery_status'],
+            'processed_at' => now(),
+            'ieducar_attempts' => (int) $delivery->ieducar_attempts + 1,
+        ]);
+
+        $record = AccessEvent::query()->find($delivery->access_event_id);
+        if ($record && $delivery->access_event_was_created) {
+            $record->analysis = $analysis;
+            $record->processed_at = now();
+            $record->save();
+        }
+
+        $this->dispatchPresenceIeducarSyncSmsIfApplicable(
+            (bool) $delivery->access_event_was_created,
+            $eventId,
+            $payloadForPresence,
+            $analysis,
+            $occurredAt,
+            (string) $previewOutcome['delivery_status'],
+            $previewOutcome['http_status'],
+        );
+    }
+
+    /**
      * @param  array<string, mixed>  $inboundPayloadForAudit
      * @param  array<string, mixed>  $payloadForPresence
-     * @return array{created: bool, processed: bool, delivery_id: int}
+     * @return array{created: bool, processed: bool, delivery_id: int, queued?: bool}
      */
     private function ingest(
         string $eventId,
@@ -97,7 +175,7 @@ class GestorAccessEventWebhookService
         if (! $ieducar) {
             $delivery->update([
                 'processing_status' => GestorAccessEventDelivery::STATUS_SKIPPED,
-                'ieducar_frequencia_error' => 'Integração iEducar desabilitada ou inexistente.',
+                'ieducar_frequencia_error' => 'Integração iEducar inexistente ou com enabled=false no momento deste POST (não houve chamada HTTP).',
                 'processed_at' => now(),
             ]);
 
@@ -113,6 +191,34 @@ class GestorAccessEventWebhookService
         $analysis['ieducar_outbound_channel'] = 'catraca_frequencia_registro';
         $analysis['ieducar_outbound_preview_only'] = true;
         $analysis['inbound_channel'] = $inboundChannel;
+
+        if ($this->shouldQueueIeducarPreview($analysis)) {
+            $delivery->update([
+                'analysis_json' => $analysis,
+                'processing_status' => GestorAccessEventDelivery::STATUS_PENDING,
+                'processed_at' => null,
+            ]);
+            $record->analysis = $analysis;
+            $record->save();
+
+            $this->dispatchPresenceCatracaSmsIfApplicable(
+                $record->wasRecentlyCreated,
+                $eventId,
+                $payloadForPresence,
+                $analysis,
+                $occurredAt,
+            );
+
+            ProcessGestorAccessEventDeliveryJob::dispatch($delivery->id);
+            $delivery->refresh();
+
+            return [
+                'created' => $record->wasRecentlyCreated,
+                'processed' => $delivery->processing_status !== GestorAccessEventDelivery::STATUS_PENDING,
+                'delivery_id' => $delivery->id,
+                'queued' => true,
+            ];
+        }
 
         $previewOutcome = $this->runIeducarFrequenciaPreviewOnly($ieducar, $analysis, $occurredAt);
 
@@ -133,20 +239,100 @@ class GestorAccessEventWebhookService
             $record->analysis = $analysis;
             $record->processed_at = now();
             $record->save();
-
-            if (($analysis['action'] ?? null) === 'mark_presence') {
-                $smsEnabled = Integration::query()->where('key', 'sms')->where('enabled', true)->exists();
-                if ($smsEnabled) {
-                    SendPresenceSms::dispatch($eventId, $payloadForPresence, $analysis, $occurredAt?->toIso8601String());
-                }
-            }
         }
+
+        $this->dispatchPresenceCatracaSmsIfApplicable(
+            $record->wasRecentlyCreated,
+            $eventId,
+            $payloadForPresence,
+            $analysis,
+            $occurredAt,
+        );
+
+        $this->dispatchPresenceIeducarSyncSmsIfApplicable(
+            $record->wasRecentlyCreated,
+            $eventId,
+            $payloadForPresence,
+            $analysis,
+            $occurredAt,
+            (string) $previewOutcome['delivery_status'],
+            $previewOutcome['http_status'],
+        );
 
         return [
             'created' => $record->wasRecentlyCreated,
             'processed' => true,
             'delivery_id' => $delivery->id,
         ];
+    }
+
+    private function dispatchPresenceCatracaSmsIfApplicable(
+        bool $accessEventWasCreated,
+        string $eventId,
+        array $payloadForPresence,
+        array $analysis,
+        ?Carbon $occurredAt,
+    ): void {
+        if (! $accessEventWasCreated || ($analysis['action'] ?? null) !== 'mark_presence') {
+            return;
+        }
+        if (! Integration::query()->where('key', 'sms')->where('enabled', true)->exists()) {
+            return;
+        }
+
+        SendPresenceSms::dispatch(
+            $eventId,
+            $payloadForPresence,
+            $analysis,
+            $occurredAt?->toIso8601String(),
+            SmsTemplateKey::PRESENCE_CATRACA,
+        );
+    }
+
+    private function dispatchPresenceIeducarSyncSmsIfApplicable(
+        bool $accessEventWasCreated,
+        string $eventId,
+        array $payloadForPresence,
+        array $analysis,
+        ?Carbon $occurredAt,
+        string $ieducarDeliveryStatus,
+        ?int $ieducarHttpStatus,
+    ): void {
+        if (! $accessEventWasCreated || ($analysis['action'] ?? null) !== 'mark_presence') {
+            return;
+        }
+        if ($ieducarDeliveryStatus !== GestorAccessEventDelivery::STATUS_COMPLETED) {
+            return;
+        }
+        if (! Integration::query()->where('key', 'sms')->where('enabled', true)->exists()) {
+            return;
+        }
+
+        $httpLabel = $ieducarHttpStatus !== null ? (string) $ieducarHttpStatus : 'OK';
+
+        SendPresenceSms::dispatch(
+            $eventId,
+            $payloadForPresence,
+            $analysis,
+            $occurredAt?->toIso8601String(),
+            SmsTemplateKey::PRESENCE_IEDUCAR_SYNC,
+            ['ieducar_http_status' => $httpLabel],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function shouldQueueIeducarPreview(array $analysis): bool
+    {
+        if (($analysis['action'] ?? null) !== 'mark_presence') {
+            return false;
+        }
+
+        $rawAluno = data_get($analysis, 'aluno_id');
+        $codAluno = is_numeric($rawAluno) ? (int) $rawAluno : (int) preg_replace('/\D/', '', (string) $rawAluno);
+
+        return $codAluno >= 1;
     }
 
     private function resolveOccurredAtFromPayload(array $payload): ?Carbon
@@ -199,11 +385,13 @@ class GestorAccessEventWebhookService
         ];
 
         if (($analysis['action'] ?? null) !== 'mark_presence') {
+            $action = $analysis['action'] ?? null;
+
             return [
                 'marker' => array_merge($markerBase, [
                     'status' => 'skipped',
-                    'reason' => 'Motor de presença não marcou envio (action≠mark_presence).',
-                    'analysis_action' => $analysis['action'] ?? null,
+                    'reason' => 'Motor de presença não marcou envio ao iEducar (é necessário action=mark_presence).',
+                    'analysis_action' => $action,
                 ]),
                 'request_json' => null,
                 'http_status' => null,
@@ -219,7 +407,7 @@ class GestorAccessEventWebhookService
             return [
                 'marker' => array_merge($markerBase, [
                     'status' => 'skipped',
-                    'reason' => 'cod_aluno ausente ou inválido para o contrato Plan B de frequência.',
+                    'reason' => 'cod_aluno ausente ou inválido após mapeamento (ex.: `aluno_id` / `name` no JSON) — não é montado body Plan B para catraca-frequência.',
                 ]),
                 'request_json' => null,
                 'http_status' => null,

@@ -8,6 +8,7 @@ use App\Models\AccessEvent;
 use App\Models\EnrollmentIngest;
 use App\Models\OutboundDelivery;
 use App\Models\SmsDelivery;
+use App\Support\SmsTemplateKey;
 
 /**
  * Re-despacha jobs quando a entrega falhou com backoff (next_retry_at) ou quando
@@ -104,7 +105,7 @@ class DeliveryRetryDispatcher
 
         foreach ($query->cursor() as $sms) {
             $event = AccessEvent::query()
-                ->where('source', 'gestor')
+                ->whereIn('source', ['gestor', 'catraca_bearer'])
                 ->where('event_id', $sms->event_id)
                 ->first();
             if (! $event || ! is_array($event->payload) || ! is_array($event->analysis)) {
@@ -112,12 +113,19 @@ class DeliveryRetryDispatcher
             }
 
             $occurred = $sms->occurred_at ?? $event->occurred_at;
+            $templateKey = (string) ($sms->template_key ?? '');
+            if ($templateKey === '') {
+                $templateKey = SmsTemplateKey::PRESENCE_CATRACA;
+            }
+            $extra = is_array($sms->context) ? $sms->context : [];
 
             SendPresenceSms::dispatch(
                 $sms->event_id,
                 $event->payload,
                 $event->analysis,
                 $occurred?->toIso8601String(),
+                $templateKey,
+                $extra,
             );
             $dispatched++;
         }
