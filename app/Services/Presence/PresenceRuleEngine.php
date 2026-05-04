@@ -33,6 +33,32 @@ class PresenceRuleEngine
             }
         }
 
+        if (filter_var(data_get($payload, 'action.mark_presence'), FILTER_VALIDATE_BOOLEAN)) {
+            $alunoIdKey = (string) ($payloadMap['aluno_id'] ?? 'aluno_id');
+            $matriculaIdKey = (string) ($payloadMap['matricula_id'] ?? 'matricula_id');
+            $alunoId = data_get($payload, $alunoIdKey);
+            $matriculaId = data_get($payload, $matriculaIdKey);
+            if ($alunoId === null && $matriculaId === null) {
+                return [
+                    'action' => 'ignore',
+                    'reason' => 'action.mark_presence=true sem aluno_id/matricula_id resolvíveis no payload.',
+                ];
+            }
+            $windows = $presenceCfg['windows'] ?? [];
+            $windowMeta = ['name' => 'explicit', 'start' => '00:00', 'end' => '23:59'];
+            if (is_array($windows) && isset($windows[0]) && is_array($windows[0])) {
+                $windowMeta = $windows[0];
+            }
+
+            return [
+                'action' => 'mark_presence',
+                'window' => $windowMeta,
+                'aluno_id' => $alunoId,
+                'matricula_id' => $matriculaId,
+                'reason' => 'action.mark_presence=true no payload (ex.: simulação CLI catraca_bearer).',
+            ];
+        }
+
         if (! $occurredAt) {
             return [
                 'action' => 'ignore',

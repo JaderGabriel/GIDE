@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
+use Illuminate\Support\Carbon;
 use App\Support\GestorCatracaAccessToken;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
@@ -57,6 +58,7 @@ class GideSimulateCatracaAccessEventsCommand extends Command
         $prefix = now()->format('YmdHis');
         $eventIds = [];
         $rows = [];
+        $ieducar = Integration::query()->where('key', 'ieducar')->first();
 
         $this->info(sprintf('A enviar %d POST(s) para /api/v1/catraca/access-events (%s).', $count, $useHttp ? 'HTTP '.$baseUrl : 'kernel interno'));
         $this->newLine();
@@ -64,7 +66,7 @@ class GideSimulateCatracaAccessEventsCommand extends Command
         for ($i = 0; $i < $count; $i++) {
             $eventId = sprintf('gide-sim-%s-%03d', $prefix, $i);
             $eventIds[] = $eventId;
-            $payload = $this->samplePayload($eventId, $i);
+            $payload = $this->samplePayload($eventId, $i, $ieducar);
 
             try {
                 if ($useHttp) {
@@ -145,21 +147,54 @@ class GideSimulateCatracaAccessEventsCommand extends Command
     }
 
     /**
+     * Payload alinhado ao motor de presença: entrada (não saída), horário dentro da 1.ª janela em
+     * `ieducar.extra.presence.windows` quando existir, e `action.mark_presence=true` para documentar
+     * a intenção no canal catraca_bearer (o GIDE continua a decidir com {@see \App\Services\Presence\PresenceRuleEngine}).
+     *
      * @return array<string, mixed>
      */
-    private function samplePayload(string $eventId, int $index): array
+    private function samplePayload(string $eventId, int $index, ?Integration $ieducar): array
     {
+        $codAluno = 897500 + $index;
+
         return [
             'eventId' => $eventId,
-            'creationDate' => now()->subMinutes($index % 5)->utc()->format('Y-m-d\TH:i:s\Z'),
-            'name' => (string) (897500 + $index),
+            'creationDate' => $this->resolveCreationDateForWindows($ieducar, $index),
+            'name' => (string) $codAluno,
             'profile' => 'guest',
             'place' => 'Portaria Principal',
             'unity' => 'Aluno',
             'unityGroup' => 'Escola',
             'condominium' => 'Escola simulação CLI',
-            'way' => $index % 2 === 0 ? 'Entrance' : 'Exit',
+            'way' => 'Entrance',
             'accessMedia' => 'facial',
+            'action' => [
+                'mark_presence' => true,
+            ],
         ];
+    }
+
+    /**
+     * Mesma ideia que {@see GideSimulateCatracaAccessPipelineCommand::resolveCreationDateForWindows}:
+     * favorecer `action=mark_presence` no motor quando há janelas configuradas.
+     */
+    private function resolveCreationDateForWindows(?Integration $ieducar, int $index): string
+    {
+        $windows = $ieducar ? data_get($ieducar->extra, 'presence.windows', []) : [];
+        if (! is_array($windows) || $windows === []) {
+            return now()->subMinutes($index % 5)->toIso8601String();
+        }
+        $w = $windows[0];
+        if (! is_array($w)) {
+            return now()->toIso8601String();
+        }
+        $start = (string) ($w['start'] ?? '07:30');
+        $parts = explode(':', $start);
+        $h = (int) ($parts[0] ?? 7);
+        $m = (int) ($parts[1] ?? 30);
+        $tz = (string) config('app.timezone', 'UTC');
+        $dt = Carbon::now($tz)->startOfDay()->setTime(max(0, min(23, $h)), max(0, min(59, $m)), 0)->addMinutes(10 + ($index % 7));
+
+        return $dt->toIso8601String();
     }
 }

@@ -20,8 +20,11 @@ final class DateDisplay
     {
         try {
             $c = Carbon::now(self::appTimezone());
+            if (self::appTimezone() === 'America/Sao_Paulo') {
+                return 'GMT-3';
+            }
 
-            return 'GMT-3 ('.$c->format('T').', '.self::appTimezone().')';
+            return $c->format('T');
         } catch (\Throwable) {
             return self::appTimezone();
         }
@@ -59,7 +62,7 @@ final class DateDisplay
     }
 
     /**
-     * Ex.: 1 de maio de 2026, 14:32 — há 2 minutos · GMT-3 (BRT, America/Sao_Paulo)
+     * Ex.: 1 de maio de 2026, 14:32 — há 2 minutos · GMT-3
      */
     public static function formatHuman(?CarbonInterface $moment, bool $withRelative = true): string
     {
