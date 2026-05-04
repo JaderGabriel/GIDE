@@ -10,6 +10,7 @@
         request()->routeIs('admin.gestor-access-events.*') => 'events',
         request()->routeIs('admin.ieducar-frequencia-deliveries.*') => 'frequencia',
         request()->routeIs('integrations.ieducar.frequencia-registro*') => 'integrations-freq',
+        request()->routeIs('integrations.gide-queues') => 'gide-queues',
         request()->routeIs('sms.*') => 'sms',
         request()->routeIs('admin.user-audit-logs.*') => 'users',
         default => null,
@@ -33,6 +34,12 @@
             'title' => 'Access-events (Gestor / catraca)',
             'class' => 'audit-sc--events',
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>',
+        ],
+        'gide-queues' => [
+            'href' => route('integrations.gide-queues'),
+            'title' => 'Filas GIDE',
+            'class' => 'audit-sc--gidequeues',
+            'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M4 6h.01M4 12h.01M4 18h.01"/></svg>',
         ],
         'frequencia' => [
             'href' => route('admin.ieducar-frequencia-deliveries.index'),
@@ -132,6 +139,15 @@
         .audit-sc--events:hover {
             background: color-mix(in srgb, #4f46e5 18%, var(--surface-1));
             border-color: color-mix(in srgb, #4f46e5 54%, var(--border));
+        }
+        .audit-sc--gidequeues {
+            background: color-mix(in srgb, #7c2d12 10%, var(--surface-1));
+            border-color: color-mix(in srgb, #7c2d12 38%, var(--border));
+            color: color-mix(in srgb, var(--text) 88%, #7c2d12);
+        }
+        .audit-sc--gidequeues:hover {
+            background: color-mix(in srgb, #7c2d12 16%, var(--surface-1));
+            border-color: color-mix(in srgb, #7c2d12 50%, var(--border));
         }
         .audit-sc--frequencia {
             background: color-mix(in srgb, #7c3aed 11%, var(--surface-1));

@@ -81,7 +81,16 @@
             .st-ok { color: color-mix(in srgb, var(--accent-c) 70%, var(--text)); font-weight: 650; }
             .st-bad { color: #ef4444; font-weight: 650; }
             .st-warn { color: #f59e0b; font-weight: 650; }
-            .gql-actions-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+            .fac-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--card-strong); box-shadow: var(--shadow-soft); }
+            .fac-pager--above { margin-top: 14px; margin-bottom: 12px; }
+            .fac-pager--below { margin-top: 16px; }
+            .fac-pager__left { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+            .fac-pager__meta { font-size: 13px; color: var(--muted); line-height: 1.4; }
+            .fac-pager__form { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; }
+            .fac-pager__label { font-size: 13px; font-weight: 650; color: var(--text); }
+            .fac-pager__select { appearance: none; padding: 8px 34px 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text); font-size: 13px; font-weight: 650; font-family: inherit; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 14px) calc(50% + 2px), calc(100% - 9px) calc(50% + 2px); background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+            .fac-pager__select:hover { border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); }
+            .fac-pager__links { flex: 1 1 auto; min-width: 0; display: flex; justify-content: flex-end; }
         </style>
     </head>
     <body>
@@ -111,29 +120,25 @@
                             </div>
 
                             @if ($integrationsOverviewAdmin ?? false)
-                                <x-audit-toolbar style="margin-top: 12px;" />
+                                <x-audit-toolbar auditCurrent="gide-queues" style="margin-top: 12px;" />
                             @endif
 
                             <p class="bridge-muted" style="margin-top: 12px; line-height: 1.55;">
-                                Consolidação das últimas linhas por origem (até {{ (int) ($filters['limite'] ?? 150) }} após filtros).
+                                Consolidação por origem: até <span class="mono">{{ (int) ($perSourceCap ?? 500) }}</span> entradas mais recentes por canal antes de filtrar, ordenar e paginar (totais além desse tampão não aparecem aqui).
                                 Horários em <strong>{{ \App\Support\DateDisplay::timezoneLabel() }}</strong>.
                                 Driver de fila: <span class="mono">{{ $queueDriver }}</span>.
                             </p>
-
-                            <div class="gql-actions-top">
-                                <a class="bridge-btn" href="{{ url('/dashboard') }}">← Dashboard</a>
-                                <a class="bridge-btn bridge-btn--ghost" href="{{ route('integrations.overview') }}">Visão geral das integrações</a>
-                            </div>
 
                             @php
                                 $f = is_array($filters ?? null) ? $filters : [];
                                 $tipo = (string) ($f['tipo'] ?? 'todos');
                                 $estado = (string) ($f['estado'] ?? 'todos');
                                 $qVal = (string) ($f['q'] ?? '');
-                                $lim = (int) ($f['limite'] ?? 150);
                             @endphp
 
                             <form class="gql-filters" method="get" action="{{ route('integrations.gide-queues') }}" aria-label="Filtros da lista">
+                                <input type="hidden" name="per_page" value="{{ $perPage }}">
+                                <input type="hidden" name="page" value="1">
                                 <div>
                                     <label for="gql-tipo">Origem</label>
                                     <select id="gql-tipo" name="tipo">
@@ -159,23 +164,13 @@
                                     <label for="gql-q">Busca (texto)</label>
                                     <input id="gql-q" type="text" name="q" value="{{ $qVal }}" placeholder="ID, event_id, estado, resumo…" autocomplete="off" />
                                 </div>
-                                <div>
-                                    <label for="gql-lim">Limite na lista</label>
-                                    <select id="gql-lim" name="limite">
-                                        @foreach ([50, 100, 150, 200, 300] as $n)
-                                            <option value="{{ $n }}" @selected($lim === $n)>{{ $n }} linhas</option>
-                                        @endforeach
-                                    </select>
-                                </div>
                                 <div class="gql-filters__actions">
                                     <button type="submit" class="bridge-btn">Aplicar filtros</button>
                                     <a class="bridge-btn bridge-btn--ghost" href="{{ route('integrations.gide-queues') }}">Limpar</a>
                                 </div>
                             </form>
 
-                            <p class="bridge-muted" style="margin-top: 10px; font-size: 12px;">
-                                Mostrando <strong>{{ count($rows ?? []) }}</strong> de <strong>{{ (int) ($totalFiltrado ?? 0) }}</strong> após filtros (cortado pelo limite).
-                            </p>
+                            @include('admin.partials.list-pagination', ['paginator' => $items, 'perPage' => $perPage, 'position' => 'top'])
 
                             <div class="gql-table-wrap">
                                 <table class="gql-table">
@@ -190,7 +185,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse ($rows ?? [] as $r)
+                                        @forelse ($items ?? [] as $r)
                                             @php
                                                 $bucket = (string) ($r['estado_bucket'] ?? '');
                                                 $stCls = $bucket === 'concluido' ? 'st-ok' : ($bucket === 'falha' ? 'st-bad' : 'st-warn');
@@ -219,11 +214,7 @@
                                 </table>
                             </div>
 
-                            @if ($integrationsOverviewAdmin ?? false)
-                                <div class="bridge-form__actions" style="margin-top: 14px;">
-                                    <a class="bridge-btn" href="{{ url('/dashboard') }}">Voltar ao dashboard</a>
-                                </div>
-                            @endif
+                            @include('admin.partials.list-pagination', ['paginator' => $items, 'perPage' => $perPage, 'position' => 'bottom'])
                         </div>
                     </div>
                 </div>

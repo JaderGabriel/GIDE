@@ -7,9 +7,11 @@ use App\Models\GestorAccessEventDelivery;
 use App\Models\IeducarFrequenciaRegistroDelivery;
 use App\Models\OutboundDelivery;
 use App\Models\SmsDelivery;
+use App\Support\AdminListPerPage;
 use App\Support\DateDisplay;
 use App\Support\OutboundDeliveryStatuses;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -19,7 +21,8 @@ class GideQueuesController extends Controller
 
     private const ESTADOS = ['todos', 'pendente', 'concluido', 'falha'];
 
-    private const LIMITES = [50, 100, 150, 200, 300];
+    /** Máximo de linhas lidas por origem antes de fundir, ordenar e paginar em memória. */
+    private const PER_SOURCE_CAP = 500;
 
     public function index(Request $request): View
     {
@@ -32,30 +35,36 @@ class GideQueuesController extends Controller
             $estado = 'todos';
         }
         $q = trim((string) $request->query('q', ''));
-        $limite = (int) $request->query('limite', 150);
-        if (! in_array($limite, self::LIMITES, true)) {
-            $limite = 150;
-        }
+        $perPage = AdminListPerPage::resolve($request, 25);
+        $page = max(1, (int) $request->query('page', 1));
 
-        $perSource = min(200, max(40, $limite));
         $isAdmin = (bool) $request->user()->is_admin;
-        $rows = $this->collectRows($perSource, $isAdmin);
-        $rows = $this->filterRows($rows, $tipo, $estado, $q);
-        usort($rows, static fn (array $a, array $b): int => ($b['sort_ts'] ?? 0) <=> ($a['sort_ts'] ?? 0));
-        $totalFiltrado = count($rows);
-        $rows = array_slice($rows, 0, $limite);
+        $rowsAll = $this->collectRows(self::PER_SOURCE_CAP, $isAdmin);
+        $rowsAll = $this->filterRows($rowsAll, $tipo, $estado, $q);
+        usort($rowsAll, static fn (array $a, array $b): int => ($b['sort_ts'] ?? 0) <=> ($a['sort_ts'] ?? 0));
+
+        $total = count($rowsAll);
+        $slice = array_slice($rowsAll, ($page - 1) * $perPage, $perPage);
+
+        $paginator = new LengthAwarePaginator(
+            $slice,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('integrations.gide_queues', [
-            'rows' => $rows,
+            'items' => $paginator,
+            'perPage' => $perPage,
             'filters' => [
                 'tipo' => $tipo,
                 'estado' => $estado,
                 'q' => $q,
-                'limite' => $limite,
             ],
-            'totalFiltrado' => $totalFiltrado,
             'integrationsOverviewAdmin' => $isAdmin,
             'queueDriver' => (string) config('queue.default', 'sync'),
+            'perSourceCap' => self::PER_SOURCE_CAP,
         ]);
     }
 
