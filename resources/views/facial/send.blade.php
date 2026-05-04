@@ -915,7 +915,7 @@
 
                                 <div class="bridge-form__actions facial-submit-actions">
                                     <button type="submit" class="bridge-btn bridge-btn--primary">Enviar foto</button>
-                                    <a class="bridge-btn" href="/dashboard">Voltar</a>
+                                    <a class="bridge-btn" href="{{ $facial_return_url ?? url('/') }}">Voltar</a>
                                 </div>
                             </form>
 
@@ -1139,10 +1139,15 @@
                                                 return;
                                             }
 
-                                            // Se o backend responder JSON, exibe mensagem básica.
                                             let json = null;
                                             try { json = await resp.json(); } catch (_) {}
-                                            setStatus((json && json.message) ? json.message : 'Enviado com sucesso.');
+                                            const msg = (json && json.message) ? json.message : 'Enviado com sucesso.';
+                                            if (json && json.redirect_url && typeof json.redirect_url === 'string') {
+                                                setStatus(msg + ' A redirecionar…');
+                                                window.location.assign(json.redirect_url);
+                                                return;
+                                            }
+                                            setStatus(msg);
                                         } catch (_) {
                                             setStatus('Falha no envio. Verifique sua conexão e tente novamente.');
                                         }

@@ -13,6 +13,7 @@ use App\Services\Gestor\GestorClient;
 use App\Services\Ieducar\IeducarClient;
 use App\Services\Integrations\DeliveryRetryDispatcher;
 use App\Services\Outbound\AccessControlOutboundService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -52,6 +53,7 @@ class FacialSendController extends Controller
         $packedSnapshot = data_get($payload, 'ieducar_status');
         $ieducarStatus = is_array($packedSnapshot) ? $packedSnapshot : null;
         $ieducarStatusError = null;
+        $ieducarIntegration = Integration::query()->where('key', 'ieducar')->first();
         try {
             if ($codAluno === '' && $idpes === '') {
                 throw new \RuntimeException('Payload não contém aluno_id/idpes (não integrado).');
@@ -59,12 +61,11 @@ class FacialSendController extends Controller
 
             // Só consulta no iEducar se não veio snapshot no inbound.
             if (! $ieducarStatus) {
-                $ieducar = Integration::query()->where('key', 'ieducar')->first();
-                if (! $ieducar) {
+                if (! $ieducarIntegration) {
                     throw new \RuntimeException('Integração iEducar (key=ieducar) não configurada.');
                 }
 
-                $resp = (new IeducarClient($ieducar))->postCatracaFrequenciaAlunoConsulta([
+                $resp = (new IeducarClient($ieducarIntegration))->postCatracaFrequenciaAlunoConsulta([
                     'identificacao' => [
                         'cod_aluno' => $codAluno !== '' ? $codAluno : null,
                         'idpes' => $idpes !== '' ? $idpes : null,
@@ -90,6 +91,9 @@ class FacialSendController extends Controller
             'responsavel' => data_get($payload, 'responsavel'),
             'ieducar_status' => $ieducarStatus,
             'ieducar_status_error' => $ieducarStatusError,
+            'facial_return_url' => auth()->check()
+                ? url('/dashboard')
+                : $this->ieducarPublicReturnUrl($ieducarIntegration),
         ]);
     }
 
@@ -263,8 +267,10 @@ class FacialSendController extends Controller
                 $faceEffectiveUrl,
             );
 
+            $enrollOk = $gestorResp && method_exists($gestorResp, 'successful') && $gestorResp->successful();
+
             // Se o enroll no Gestor foi aceito, calcula validade e informa ao iEducar (quando configurado).
-            if ($gestorResp && method_exists($gestorResp, 'successful') && $gestorResp->successful()) {
+            if ($enrollOk) {
                 $facialRequest->used_at = now();
                 $facialRequest->save();
 
@@ -282,11 +288,31 @@ class FacialSendController extends Controller
                 }
             }
 
-            if ($isAjax) {
-                return response()->json(['ok' => true, 'message' => 'Facial enviado (requisição disparada).']);
+            if (! $enrollOk) {
+                $failMsg = 'Envio não aceito pelo Gestor.';
+                if ($gestorResp && method_exists($gestorResp, 'body')) {
+                    $failMsg = 'HTTP '.(method_exists($gestorResp, 'status') ? (string) $gestorResp->status() : '?').': '
+                        .mb_substr((string) $gestorResp->body(), 0, 800);
+                }
+                if ($isAjax) {
+                    return response()->json(['ok' => false, 'message' => $failMsg], 422);
+                }
+
+                return back()->withErrors(['external_id' => $failMsg]);
             }
 
-            return back()->with('status', 'Facial enviado (requisição disparada).');
+            $redirectUrl = $this->facialSuccessRedirectUrl($ieducar);
+            $statusMsg = 'Facial enviado com sucesso.';
+
+            if ($isAjax) {
+                return response()->json([
+                    'ok' => true,
+                    'message' => $statusMsg,
+                    'redirect_url' => $redirectUrl,
+                ]);
+            }
+
+            return $this->redirectAfterFacialSuccess($redirectUrl, $statusMsg);
         } catch (\Throwable $e) {
             // Auditoria do erro (sem resposta HTTP do Gestor)
             try {
@@ -308,5 +334,41 @@ class FacialSendController extends Controller
 
             return back()->withErrors(['external_id' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Após envio facial bem-sucedido: utilizador autenticado → dashboard GIDE; convidado → base do iEducar (integração).
+     */
+    private function facialSuccessRedirectUrl(Integration $ieducar): string
+    {
+        if (auth()->check()) {
+            return url('/dashboard');
+        }
+
+        return $this->ieducarPublicReturnUrl($ieducar);
+    }
+
+    private function ieducarPublicReturnUrl(?Integration $ieducar): string
+    {
+        $base = $ieducar ? trim((string) ($ieducar->base_url ?? '')) : '';
+        if ($base !== '' && preg_match('#^https?://#i', $base) === 1) {
+            return rtrim($base, '/');
+        }
+
+        return url('/');
+    }
+
+    private function redirectAfterFacialSuccess(string $redirectUrl, string $statusMsg): RedirectResponse
+    {
+        $dashboardUrl = url('/dashboard');
+        if ($redirectUrl === $dashboardUrl) {
+            return redirect()->to($dashboardUrl)->with('status', $statusMsg);
+        }
+
+        if (preg_match('#^https?://#i', $redirectUrl) === 1) {
+            return redirect()->away($redirectUrl);
+        }
+
+        return redirect()->to($redirectUrl)->with('status', $statusMsg);
     }
 }
