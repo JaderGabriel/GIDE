@@ -41,7 +41,7 @@ class IntegrationSeeder extends Seeder
             [
                 'name' => 'Gestor (Porter/Kiper SDK)',
                 'enabled' => false,
-                'base_url' => config('integrations.gestor.default_base_url'),
+                'base_url' => null,
                 'auth_type' => 'bearer',
                 'auth_token' => null,
                 'extra' => [

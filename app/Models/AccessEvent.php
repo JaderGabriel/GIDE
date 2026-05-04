@@ -4,6 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Evento recebido de catraca / Gestor (`source`: gestor, catraca_bearer, …).
+ *
+ * `analysis` (JSON): resultado do motor de presença; pode incluir `gestor_ieducar_environment`
+ * (`preview`|`homolog`), `marker` (resposta da API do Diário), `action`, `reason`, etc.
+ */
 class AccessEvent extends Model
 {
     protected $fillable = [

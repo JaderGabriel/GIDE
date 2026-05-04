@@ -128,7 +128,7 @@ class IntegrationController extends Controller
                 'name' => 'Gestor (Porter/Kiper SDK)',
                 'enabled' => false,
                 'auth_type' => 'bearer',
-                'base_url' => config('integrations.gestor.default_base_url'),
+                'base_url' => null,
             ],
         );
 
@@ -178,10 +178,6 @@ class IntegrationController extends Controller
                 'unity_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
                 'access_profile_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
                 'ieducar_processing_environment' => ['required', Rule::in(['preview', 'homolog'])],
-                'ieducar_preview_base_url' => ['nullable', 'string', 'max:2048'],
-                'ieducar_preview_access_key' => ['nullable', 'string', 'max:512'],
-                'ieducar_homolog_base_url' => ['nullable', 'string', 'max:2048'],
-                'ieducar_homolog_access_key' => ['nullable', 'string', 'max:512'],
             ]);
 
             $integration->enabled = (bool) $request->boolean('enabled');
@@ -190,22 +186,25 @@ class IntegrationController extends Controller
 
             $extra = (array) ($integration->extra ?? []);
             $extra['application_key'] = $data['application_key'] !== '' ? $data['application_key'] : null;
+            $authPrev = (array) ($extra['auth'] ?? []);
             $extra['auth'] = [
                 'username' => $data['auth_username'] !== '' ? $data['auth_username'] : null,
-                'password' => $data['auth_password'] !== '' ? $data['auth_password'] : null,
+                'password' => ($data['auth_password'] ?? '') !== '' ? $data['auth_password'] : ($authPrev['password'] ?? null),
             ];
             $extra['endpoints'] = array_merge((array) ($extra['endpoints'] ?? []), [
                 'enrollment_sync_path' => $data['outbound_enrollment_path'] !== '' ? $data['outbound_enrollment_path'] : null,
             ]);
 
             $defaults = (array) ($extra['defaults'] ?? []);
-            if (($data['unity_id'] ?? '') !== '') {
-                $defaults['unity_id'] = (int) $data['unity_id'];
+            $unityIn = trim((string) ($data['unity_id'] ?? ''));
+            if ($unityIn !== '' && (int) $unityIn > 0) {
+                $defaults['unity_id'] = (int) $unityIn;
             } else {
                 unset($defaults['unity_id']);
             }
-            if (($data['access_profile_id'] ?? '') !== '') {
-                $defaults['access_profile_id'] = (int) $data['access_profile_id'];
+            $profileIn = trim((string) ($data['access_profile_id'] ?? ''));
+            if ($profileIn !== '' && (int) $profileIn > 0) {
+                $defaults['access_profile_id'] = (int) $profileIn;
             } else {
                 unset($defaults['access_profile_id']);
             }
@@ -215,24 +214,9 @@ class IntegrationController extends Controller
                 $extra['defaults'] = $defaults;
             }
 
-            $ip = (array) ($extra['ieducar_processing'] ?? []);
-            $prevPreview = (array) ($ip['preview'] ?? []);
-            $prevHomolog = (array) ($ip['homolog'] ?? []);
-
-            $ip['environment'] = $data['ieducar_processing_environment'];
-            $ip['preview'] = [
-                'base_url' => ($data['ieducar_preview_base_url'] ?? '') !== '' ? trim($data['ieducar_preview_base_url']) : null,
-                'access_key' => ($data['ieducar_preview_access_key'] ?? '') !== ''
-                    ? trim($data['ieducar_preview_access_key'])
-                    : ($prevPreview['access_key'] ?? null),
+            $extra['ieducar_processing'] = [
+                'environment' => $data['ieducar_processing_environment'],
             ];
-            $ip['homolog'] = [
-                'base_url' => ($data['ieducar_homolog_base_url'] ?? '') !== '' ? trim($data['ieducar_homolog_base_url']) : null,
-                'access_key' => ($data['ieducar_homolog_access_key'] ?? '') !== ''
-                    ? trim($data['ieducar_homolog_access_key'])
-                    : ($prevHomolog['access_key'] ?? null),
-            ];
-            $extra['ieducar_processing'] = $ip;
 
             $integration->extra = $extra;
 
@@ -250,7 +234,10 @@ class IntegrationController extends Controller
             'ieducar_processing_environment' => (string) data_get($integration->extra, 'ieducar_processing.environment', ''),
         ], 'integration', $integration->id);
 
-        return redirect('/dashboard')->with('status', 'Integração Gestor atualizada.');
+        return redirect()
+            ->route('integrations.gestor')
+            ->with('status', 'Configuração Gestor salva no banco (SDK, convite, ambiente de presença e demais campos do formulário).')
+            ->with('status_level', 'success');
     }
 
     public function rotateGestorHmac(Request $request)
@@ -262,7 +249,9 @@ class IntegrationController extends Controller
 
         UserAuditLogger::recordAuthenticated('integration.gestor.hmac_rotated', [], 'integration', $integration->id);
 
-        return back()->with('status', 'Segredo HMAC do Gestor gerado/rotacionado.');
+        return back()
+            ->with('status', 'Segredo HMAC do Gestor gerado/rotacionado.')
+            ->with('status_level', 'success');
     }
 
     public function testGestorAuth(Request $request)

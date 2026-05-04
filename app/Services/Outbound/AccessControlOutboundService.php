@@ -6,6 +6,7 @@ use App\Models\GestorGuestLink;
 use App\Models\Integration;
 use App\Models\OutboundDelivery;
 use App\Services\Gestor\GestorClient;
+use App\Support\GestorStoredIds;
 use Carbon\CarbonImmutable;
 
 class AccessControlOutboundService
@@ -258,16 +259,15 @@ class AccessControlOutboundService
         $checks = [
             ['source' => 'integrations.extra.onboarding.unity_id', 'raw' => data_get($integration->extra, 'onboarding.unity_id')],
             ['source' => 'integrations.extra.defaults.unity_id', 'raw' => data_get($integration->extra, 'defaults.unity_id')],
-            ['source' => 'config(integrations.gestor.default_unity_id) [GESTOR_DEFAULT_UNITY_ID]', 'raw' => config('integrations.gestor.default_unity_id')],
         ];
         foreach ($checks as $c) {
-            $v = (int) ($c['raw'] ?? 0);
-            if ($v > 0) {
-                return ['value' => $v, 'source' => $c['source']];
+            $v = GestorStoredIds::positiveIntOrNull($c['raw']);
+            if ($v !== null) {
+                return ['value' => $v, 'source' => $c['source'].' (> 0)'];
             }
         }
 
-        throw new \RuntimeException('unityId não configurado: defina em /integracoes/gestor (integrations.extra) ou GESTOR_DEFAULT_UNITY_ID no .env.');
+        throw new \RuntimeException('unityId não configurado: defina em /integracoes/gestor (onboarding ou defaults com valor inteiro > 0; 0 é ignorado).');
     }
 
     /**
@@ -278,16 +278,15 @@ class AccessControlOutboundService
         $checks = [
             ['source' => 'integrations.extra.onboarding.access_profile_id', 'raw' => data_get($integration->extra, 'onboarding.access_profile_id')],
             ['source' => 'integrations.extra.defaults.access_profile_id', 'raw' => data_get($integration->extra, 'defaults.access_profile_id')],
-            ['source' => 'config(integrations.gestor.default_access_profile_id) [GESTOR_DEFAULT_ACCESS_PROFILE_ID]', 'raw' => config('integrations.gestor.default_access_profile_id')],
         ];
         foreach ($checks as $c) {
-            $v = (int) ($c['raw'] ?? 0);
-            if ($v > 0) {
-                return ['value' => $v, 'source' => $c['source']];
+            $v = GestorStoredIds::positiveIntOrNull($c['raw']);
+            if ($v !== null) {
+                return ['value' => $v, 'source' => $c['source'].' (> 0)'];
             }
         }
 
-        throw new \RuntimeException('accessProfileId não configurado: defina em /integracoes/gestor (integrations.extra) ou GESTOR_DEFAULT_ACCESS_PROFILE_ID no .env.');
+        throw new \RuntimeException('accessProfileId não configurado: defina em /integracoes/gestor (onboarding ou defaults com valor inteiro > 0; 0 é ignorado).');
     }
 
     private function backoffSeconds(int $attempts): int

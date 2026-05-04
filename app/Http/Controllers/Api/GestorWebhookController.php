@@ -8,7 +8,6 @@ use App\Models\AccessEvent;
 use App\Models\Integration;
 use App\Services\Presence\PresenceMarker;
 use App\Services\Presence\PresenceRuleEngine;
-use App\Support\GestorIeducarProcessing;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -44,12 +43,12 @@ class GestorWebhookController extends Controller
             $ieducar = Integration::query()->where('key', 'ieducar')->where('enabled', true)->first();
             if ($ieducar) {
                 $gestor = Integration::query()->where('key', 'gestor')->first();
-                $ieducarApi = $gestor
-                    ? GestorIeducarProcessing::resolveApiIntegrationForGestorInbound($gestor, $ieducar)
-                    : $ieducar;
 
                 $analysis = (new PresenceRuleEngine)->analyze($payload, $occurredAt, $ieducar);
-                $analysis['marker'] = (new PresenceMarker)->mark($ieducarApi, $analysis);
+                if ($gestor) {
+                    $analysis['gestor_ieducar_environment'] = (string) data_get($gestor->extra, 'ieducar_processing.environment', 'homolog');
+                }
+                $analysis['marker'] = (new PresenceMarker)->mark($ieducar, $analysis);
 
                 $record->analysis = $analysis;
                 $record->processed_at = now();

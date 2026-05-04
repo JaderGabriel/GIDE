@@ -55,6 +55,10 @@ class IeducarEnrollmentApiTest extends TestCase
                 'endpoints' => [
                     'enrollment_sync_path' => '/SDK/Invite',
                 ],
+                'defaults' => [
+                    'unity_id' => 1,
+                    'access_profile_id' => 2,
+                ],
             ],
         ]);
 

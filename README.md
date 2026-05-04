@@ -207,11 +207,12 @@ Client: `app/Services/Ieducar/IeducarClient.php`
 
 No MVP, o GIDE usa:
 
-- `base_url`: definir em `/integracoes/gestor` ou, para primeiro seed/ambiente, `GESTOR_DEFAULT_BASE_URL` no `.env` (ver `config/integrations.php`)
+- `base_url`: apenas via `/integracoes/gestor` (banco); não há fallback em `.env` para Gestor
 - `extra.application_key`: valor do header obrigatório `ApplicationKey`
 - `extra.auth.username` / `extra.auth.password`: credenciais para `/Auth/Signin`
+- `extra.endpoints.enrollment_sync_path`: path do POST de convite (ex. `/SDK/Invite`), só banco
+- `extra.defaults.unity_id` / `extra.defaults.access_profile_id` (ou `extra.onboarding.*`): inteiros **> 0**; **0** ou vazio é ignorado (como não configurado)
 - `extra.onboarding.condominium_id`: filtro para Unities
-- `extra.onboarding.access_profile_id`: perfil de acesso a ser usado em convites (quando endpoints de Invite estiverem disponíveis)
 
 Client: `app/Services/Gestor/GestorClient.php`
 

@@ -28,6 +28,65 @@
 
         <link rel="stylesheet" href="/home.css">
         <script defer src="/home.js"></script>
+        <style>
+            .gestor-section {
+                margin-top: 22px;
+                padding-top: 18px;
+                border-top: 1px solid var(--border);
+            }
+            .gestor-section--first {
+                margin-top: 14px;
+                padding-top: 0;
+                border-top: none;
+            }
+            .gestor-section__title {
+                font-weight: 750;
+                font-size: 15px;
+                margin: 0 0 8px;
+                letter-spacing: 0.02em;
+            }
+            .gestor-section__lead {
+                margin: 0 0 12px;
+                color: var(--muted);
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            .gestor-save-note {
+                margin-top: 14px;
+                padding: 10px 12px;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                background: color-mix(in srgb, var(--bg0) 60%, transparent);
+                font-size: 13px;
+                color: var(--muted);
+                line-height: 1.45;
+            }
+            .gestor-inbound-card {
+                margin-top: 12px;
+                padding: 14px;
+                border-radius: 14px;
+                border: 1px solid var(--border);
+                background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+            }
+            .gestor-inbound-card__k {
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: var(--muted);
+            }
+            .gestor-inbound-card__t {
+                font-weight: 700;
+                margin-top: 6px;
+                font-size: 14px;
+            }
+            .gestor-inbound-card__p {
+                margin-top: 8px;
+                font-size: 13px;
+                color: var(--muted);
+                line-height: 1.45;
+            }
+        </style>
     </head>
     <body>
         <div class="bridge-shell">
@@ -52,8 +111,16 @@
                         <div class="bridge-panel">
                             <div class="bridge-panel__head">
                                 <div class="bridge-panel__title">Integração Gestor (Porter/Kiper SDK)</div>
-                                <div class="bridge-panel__meta">credenciais • token bearer • inbound/outbound</div>
+                                <div class="bridge-panel__meta">tudo nesta página grava na linha <span class="mono">integrations</span> (<span class="mono">key=gestor</span>)</div>
                             </div>
+
+                            @if ($errors->any())
+                                <div class="bridge-error" style="margin-top: 12px;">
+                                    @foreach ($errors->all() as $err)
+                                        <div>{{ $err }}</div>
+                                    @endforeach
+                                </div>
+                            @endif
 
                             @if (session('status'))
                                 @php
@@ -75,250 +142,210 @@
                                 </div>
                             @endif
 
-                            <form method="POST" action="{{ route('integrations.gestor.update') }}" class="bridge-form">
+                            <form method="POST" action="{{ route('integrations.gestor.update') }}" class="bridge-form" id="gestor-main-form">
                                 @csrf
 
-                                <label class="bridge-check">
-                                    <input type="checkbox" name="enabled" value="1" {{ $integration->enabled ? 'checked' : '' }} />
-                                    <span>Habilitar integração Gestor (validação HMAC inbound + envio outbound)</span>
-                                </label>
+                                <div class="gestor-section gestor-section--first">
+                                    <div class="gestor-section__title">1. SDK — saída GIDE → Gestor</div>
+                                    <p class="gestor-section__lead">
+                                        Credenciais e URL usadas pelo GIDE para <strong>Signin</strong> e chamadas autenticadas ao SDK (matrícula, convite, etc.).
+                                    </p>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="base_url">Base URL do SDK</label>
-                                    <input class="bridge-input" id="base_url" name="base_url" type="text" value="{{ old('base_url', $integration->base_url ?? '') }}" placeholder="{{ filled(config('integrations.gestor.default_base_url')) ? (string) config('integrations.gestor.default_base_url') : 'URL base HTTPS do SDK (fornecida pelo seu ambiente)' }}" />
-                                    @error('base_url')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                    <label class="bridge-check">
+                                        <input type="checkbox" name="enabled" value="1" {{ $integration->enabled ? 'checked' : '' }} />
+                                        <span>Habilitar integração Gestor (outbound + validação de eventos recebidos)</span>
+                                    </label>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="application_key">ApplicationKey (header obrigatório do SDK)</label>
-                                    <input class="bridge-input" id="application_key" name="application_key" type="text" value="{{ old('application_key', data_get($integration->extra, 'application_key') ?? '') }}" placeholder="ApplicationKey" />
-                                    @error('application_key')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="base_url">Base URL do SDK</label>
+                                        <input class="bridge-input" id="base_url" name="base_url" type="text" value="{{ old('base_url', $integration->base_url ?? '') }}" placeholder="https://… (coluna integrations.base_url)" />
+                                        @error('base_url')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="auth_username">Username (Signin)</label>
-                                    <input class="bridge-input" id="auth_username" name="auth_username" type="text" value="{{ old('auth_username', data_get($integration->extra, 'auth.username') ?? '') }}" placeholder="usuário do gestor" />
-                                    @error('auth_username')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="application_key">ApplicationKey</label>
+                                        <input class="bridge-input" id="application_key" name="application_key" type="text" value="{{ old('application_key', data_get($integration->extra, 'application_key') ?? '') }}" placeholder="Header obrigatório do SDK" />
+                                        @error('application_key')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="auth_password">Password (Signin)</label>
-                                    <input class="bridge-input" id="auth_password" name="auth_password" type="password" value="{{ old('auth_password', data_get($integration->extra, 'auth.password') ?? '') }}" placeholder="senha do gestor" />
-                                    @error('auth_password')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="auth_username">Username (Signin)</label>
+                                        <input class="bridge-input" id="auth_username" name="auth_username" type="text" value="{{ old('auth_username', data_get($integration->extra, 'auth.username') ?? '') }}" />
+                                        @error('auth_username')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="signature_ttl_seconds">TTL da assinatura (segundos)</label>
-                                    <input class="bridge-input" id="signature_ttl_seconds" name="signature_ttl_seconds" type="number" min="30" max="3600" value="{{ old('signature_ttl_seconds', $integration->signature_ttl_seconds) }}" />
-                                    @error('signature_ttl_seconds')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="auth_password">Password (Signin)</label>
+                                        <input class="bridge-input" id="auth_password" name="auth_password" type="password" value="{{ old('auth_password', data_get($integration->extra, 'auth.password') ?? '') }}" placeholder="deixe em branco para manter a senha já salva" />
+                                        @error('auth_password')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="outbound_enrollment_path">Endpoint outbound (sync matrícula/aluno → Gestor)</label>
-                                    <input class="bridge-input" id="outbound_enrollment_path" name="outbound_enrollment_path" type="text" value="{{ old('outbound_enrollment_path', data_get($integration->extra, 'endpoints.enrollment_sync_path') ?? '') }}" placeholder="/SDK/Invite (exemplo)" />
-                                    @error('outbound_enrollment_path')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                    <div class="bridge-muted" style="margin-top: 6px;">
-                                        Este path define para onde o GIDE envia o payload recebido do iEducar (matrícula) para o sistema de controle de acesso.
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="signature_ttl_seconds">TTL da assinatura HMAC (segundos)</label>
+                                        <input class="bridge-input" id="signature_ttl_seconds" name="signature_ttl_seconds" type="number" min="30" max="3600" value="{{ old('signature_ttl_seconds', $integration->signature_ttl_seconds) }}" />
+                                        @error('signature_ttl_seconds')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                        <div class="bridge-muted" style="margin-top: 6px;">Usado na validação de pedidos assinados que o Gestor envia ao GIDE.</div>
                                     </div>
                                 </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="unity_id">unityId (convite / Invite → Gestor)</label>
-                                    <input class="bridge-input mono" id="unity_id" name="unity_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ old('unity_id', data_get($integration->extra, 'defaults.unity_id') ?? data_get($integration->extra, 'onboarding.unity_id') ?? '') }}" placeholder="ex.: 123" />
-                                    @error('unity_id')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                    <div class="bridge-muted" style="margin-top: 6px;">
-                                        Enviado no JSON de criação de convite (<span class="mono">unityId</span>). Se vazio, vale <span class="mono">onboarding.unity_id</span> ou variável de ambiente.
+                                <div class="gestor-section">
+                                    <div class="gestor-section__title">2. Outbound — matrícula → convite no Gestor</div>
+                                    <p class="gestor-section__lead">
+                                        Quando o iEducar envia matrícula ao GIDE, o job usa estes valores para montar o JSON do <strong>Invite</strong> no Gestor.
+                                    </p>
+
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="outbound_enrollment_path">Path do POST (enrollment / convite)</label>
+                                        <input class="bridge-input mono" id="outbound_enrollment_path" name="outbound_enrollment_path" type="text" value="{{ old('outbound_enrollment_path', data_get($integration->extra, 'endpoints.enrollment_sync_path') ?? '') }}" placeholder="/SDK/Invite" />
+                                        @error('outbound_enrollment_path')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                        <div class="bridge-muted" style="margin-top: 6px;">Gravado em <span class="mono">extra.endpoints.enrollment_sync_path</span>.</div>
+                                    </div>
+
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="unity_id">unityId</label>
+                                        <input class="bridge-input mono" id="unity_id" name="unity_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ \App\Support\GestorStoredIds::stringForNumericInput(old('unity_id', data_get($integration->extra, 'defaults.unity_id') ?? data_get($integration->extra, 'onboarding.unity_id'))) }}" placeholder="inteiro &gt; 0" />
+                                        @error('unity_id')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                        <div class="bridge-muted" style="margin-top: 6px;">
+                                            Resolução no envio: primeiro <span class="mono">extra.onboarding.unity_id</span> &gt; 0, senão <span class="mono">extra.defaults.unity_id</span> &gt; 0. Vazio ou <strong>0</strong> ignora esse nível.
+                                        </div>
+                                    </div>
+
+                                    <div class="bridge-field">
+                                        <label class="bridge-label" for="access_profile_id">accessProfileId</label>
+                                        <input class="bridge-input mono" id="access_profile_id" name="access_profile_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ \App\Support\GestorStoredIds::stringForNumericInput(old('access_profile_id', data_get($integration->extra, 'defaults.access_profile_id') ?? data_get($integration->extra, 'onboarding.access_profile_id'))) }}" placeholder="inteiro &gt; 0" />
+                                        @error('access_profile_id')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                        <div class="bridge-muted" style="margin-top: 6px;">
+                                            Mesma regra: <span class="mono">onboarding.access_profile_id</span> primeiro, depois <span class="mono">defaults.access_profile_id</span> (apenas valores &gt; 0).
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="access_profile_id">accessProfileId (convite / Invite → Gestor)</label>
-                                    <input class="bridge-input mono" id="access_profile_id" name="access_profile_id" type="text" inputmode="numeric" pattern="[0-9]*" value="{{ old('access_profile_id', data_get($integration->extra, 'defaults.access_profile_id') ?? data_get($integration->extra, 'onboarding.access_profile_id') ?? '') }}" placeholder="ex.: 456" />
-                                    @error('access_profile_id')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                    <div class="bridge-muted" style="margin-top: 6px;">
-                                        Enviado no convite como <span class="mono">accessProfileId</span>. Se vazio, vale <span class="mono">onboarding.access_profile_id</span> ou variável de ambiente.
+                                <div class="gestor-section">
+                                    <div class="gestor-section__title">3. Presença — após <span class="mono">POST /api/v1/gestor/access-events</span></div>
+                                    <p class="gestor-section__lead">
+                                        O GIDE aplica janelas e mapeamento de payload usando a integração <strong>iEducar</strong> em <span class="mono">/integracoes/ieducar</span> (API do Diário: mesma <span class="mono">base_url</span> e <span class="mono">access_key</span> para preview e homologação). Abaixo só indica qual <strong>rótulo de ambiente</strong> fica registrado para auditoria e alinhamento com o iEducar.
+                                    </p>
+                                    <div class="bridge-field">
+                                        <div class="bridge-label">Ambiente iEducar (registro)</div>
+                                        <div style="margin-top: 10px; display: grid; gap: 10px;">
+                                            <label class="bridge-check">
+                                                <input type="radio" name="ieducar_processing_environment" value="preview" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'preview' ? 'checked' : '' }} />
+                                                <span>Preview</span>
+                                            </label>
+                                            <label class="bridge-check">
+                                                <input type="radio" name="ieducar_processing_environment" value="homolog" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'homolog' ? 'checked' : '' }} />
+                                                <span>Homologação</span>
+                                            </label>
+                                        </div>
+                                        @error('ieducar_processing_environment')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                        <div class="bridge-muted" style="margin-top: 8px;">Gravado em <span class="mono">extra.ieducar_processing.environment</span>.</div>
                                     </div>
                                 </div>
 
+                                <div class="gestor-save-note">
+                                    <strong>Salvar</strong> grava de uma vez: URL e credenciais do SDK, path de convite, <span class="mono">unityId</span>/<span class="mono">accessProfileId</span> em <span class="mono">defaults</span>, TTL HMAC, opção de ambiente acima e estado habilitado. A coluna <span class="mono">auth_token</span> (Bearer do Signin) é <strong>limpa</strong> ao salvar para forçar novo Signin na próxima chamada ao Gestor.
+                                </div>
+
+                                <div class="bridge-form__actions" style="margin-top: 16px;">
+                                    <button type="submit" class="bridge-btn bridge-btn--primary">Salvar configuração completa</button>
+                                    <a class="bridge-btn" href="{{ url('/dashboard') }}">Voltar</a>
+                                </div>
+                            </form>
+
+                            <div class="gestor-section">
+                                <div class="gestor-section__title">4. Bearer Signin (GIDE → Gestor)</div>
+                                <p class="gestor-section__lead">
+                                    Após Signin bem-sucedido, o token fica em <span class="mono">integrations.auth_token</span> (criptografado). Use “Testar auth” depois de salvar credenciais novas.
+                                </p>
                                 <div class="bridge-field">
-                                    <div class="bridge-label">Processamento iEducar para eventos recebidos do Gestor</div>
-                                    <div class="bridge-muted" style="margin-top: 6px;">
-                                        Ao processar presença após webhook <span class="mono">/api/v1/gestor/access-events</span>, o GIDE usa o ambiente marcado abaixo. Janelas e mapeamento de payload continuam vindo da integração <strong>iEducar</strong>; apenas <span class="mono">base_url</span> e <span class="mono">access_key</span> da API do Diário podem ser sobrescritos por ambiente.
+                                    <label class="bridge-label">Estado do token</label>
+                                    <input class="bridge-input" type="text" readonly value="{{ $integration->auth_token ? '•••••••••••••••• (há token salvo)' : '(não configurado — rode Signin)' }}" />
+                                </div>
+                                <form method="POST" action="{{ route('integrations.gestor.test-auth') }}" class="bridge-form" style="margin-top: 8px;">
+                                    @csrf
+                                    <div class="bridge-form__actions">
+                                        <button type="submit" class="bridge-btn">Testar auth (Signin)</button>
                                     </div>
-                                    <div style="margin-top: 10px; display: grid; gap: 10px;">
-                                        <label class="bridge-check">
-                                            <input type="radio" name="ieducar_processing_environment" value="preview" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'preview' ? 'checked' : '' }} />
-                                            <span>API preview do iEducar</span>
-                                        </label>
-                                        <label class="bridge-check">
-                                            <input type="radio" name="ieducar_processing_environment" value="homolog" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'homolog' ? 'checked' : '' }} />
-                                            <span>Homologação do iEducar</span>
-                                        </label>
+                                </form>
+                                <form method="POST" action="{{ route('integrations.gestor.test-unities') }}" class="bridge-form" style="margin-top: 8px;">
+                                    @csrf
+                                    <div class="bridge-form__actions">
+                                        <button type="submit" class="bridge-btn">Testar listagem de Unities</button>
                                     </div>
-                                    @error('ieducar_processing_environment')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="ieducar_preview_base_url">URL base iEducar (preview)</label>
-                                    <input class="bridge-input" id="ieducar_preview_base_url" name="ieducar_preview_base_url" type="text" value="{{ old('ieducar_preview_base_url', data_get($integration->extra, 'ieducar_processing.preview.base_url') ?? '') }}" placeholder="https://… (opcional)" />
-                                    @error('ieducar_preview_base_url')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="ieducar_preview_access_key">access_key (preview)</label>
-                                    <input class="bridge-input mono" id="ieducar_preview_access_key" name="ieducar_preview_access_key" type="password" autocomplete="new-password" value="{{ old('ieducar_preview_access_key') }}" placeholder="{{ filled(data_get($integration->extra, 'ieducar_processing.preview.access_key')) ? 'preencha para substituir a chave já salva' : 'opcional; vazio = usar da integração iEducar' }}" />
-                                    @error('ieducar_preview_access_key')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="ieducar_homolog_base_url">URL base iEducar (homologação)</label>
-                                    <input class="bridge-input" id="ieducar_homolog_base_url" name="ieducar_homolog_base_url" type="text" value="{{ old('ieducar_homolog_base_url', data_get($integration->extra, 'ieducar_processing.homolog.base_url') ?? '') }}" placeholder="https://… (opcional)" />
-                                    @error('ieducar_homolog_base_url')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="ieducar_homolog_access_key">access_key (homologação)</label>
-                                    <input class="bridge-input mono" id="ieducar_homolog_access_key" name="ieducar_homolog_access_key" type="password" autocomplete="new-password" value="{{ old('ieducar_homolog_access_key') }}" placeholder="{{ filled(data_get($integration->extra, 'ieducar_processing.homolog.access_key')) ? 'preencha para substituir a chave já salva' : 'opcional; vazio = usar da integração iEducar' }}" />
-                                    @error('ieducar_homolog_access_key')
-                                        <div class="bridge-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="bridge-form__actions">
-                                    <button type="submit" class="bridge-btn bridge-btn--primary">Salvar</button>
-                                    <a class="bridge-btn" href="/dashboard">Voltar</a>
-                                </div>
-                            </form>
-
-                            <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border);" />
-
-                            <div class="bridge-panel__head" style="margin-top: 8px;">
-                                <div class="bridge-panel__title">Token bearer (GIDE → Gestor)</div>
-                                <div class="bridge-panel__meta">Signin</div>
+                                </form>
                             </div>
 
-                            @if (session('status'))
-                                @php
-                                    $level = session('status_level') ?: 'info';
-                                    $border = 'color-mix(in srgb, var(--border) 80%, transparent)';
-                                    $bg = 'color-mix(in srgb, var(--bg0) 55%, transparent)';
-                                    $color = 'var(--text)';
-                                    if ($level === 'success') {
-                                        $border = 'color-mix(in srgb, var(--accent-c) 35%, var(--border))';
-                                        $bg = 'color-mix(in srgb, var(--accent-c) 12%, transparent)';
-                                    } elseif ($level === 'error') {
-                                        $border = 'color-mix(in srgb, #ef4444 35%, var(--border))';
-                                        $bg = 'color-mix(in srgb, #ef4444 10%, transparent)';
-                                        $color = '#ef4444';
-                                    }
-                                @endphp
-                                <div style="margin-top: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid {{ $border }}; background: {{ $bg }}; color: {{ $color }};">
-                                    <strong>{{ session('status') }}</strong>
+                            <div class="gestor-section">
+                                <div class="gestor-section__title">5. Gestor → GIDE — como o Gestor autentica o envio de eventos</div>
+                                <p class="gestor-section__lead">
+                                    O catraca/Gestor pode chamar o GIDE de <strong>duas formas</strong> (contratos diferentes). Configure a que o seu fornecedor usa. Em ambas a integração alvo continua sendo <span class="mono">gestor</span> no GIDE.
+                                </p>
+
+                                <div class="gestor-inbound-card">
+                                    <div class="gestor-inbound-card__k">Opção A</div>
+                                    <div class="gestor-inbound-card__t">HMAC — <span class="mono">POST /api/v1/gestor/access-events</span></div>
+                                    <p class="gestor-inbound-card__p">
+                                        O corpo JSON é assinado com o <strong>segredo HMAC</strong> guardado no GIDE. Cabeçalhos de evento e timestamp seguem o contrato do middleware HMAC.
+                                    </p>
+                                    <div class="bridge-field">
+                                        <label class="bridge-label">Segredo HMAC</label>
+                                        <input class="bridge-input" type="text" readonly value="{{ $integration->hmac_secret ? '•••••••••••••••• (configurado)' : '(não configurado)' }}" />
+                                    </div>
+                                    <form method="POST" action="{{ route('integrations.gestor.rotate-hmac') }}" class="bridge-form" style="margin-top: 8px;">
+                                        @csrf
+                                        <div class="bridge-form__actions">
+                                            <button type="submit" class="bridge-btn">Gerar ou rotacionar segredo HMAC</button>
+                                        </div>
+                                    </form>
                                 </div>
-                            @endif
 
-                            <p class="bridge-muted" style="margin-top: 12px;">
-                                O GIDE autentica no SDK via <strong>POST /Auth/Signin</strong> e armazena o token bearer em <code>integrations.auth_token</code>.
-                            </p>
+                                <div class="gestor-inbound-card">
+                                    <div class="gestor-inbound-card__k">Opção B</div>
+                                    <div class="gestor-inbound-card__t">Bearer — <span class="mono">POST {{ $catracaWebhookUrl ?? url('/api/v1/catraca/access-events') }}</span></div>
+                                    <p class="gestor-inbound-card__p">
+                                        Cabeçalho <span class="mono">Authorization: Bearer &lt;token&gt;</span>. O GIDE guarda só o <strong>hash</strong> do token; o texto em claro aparece <strong>uma única vez</strong> logo após gerar (como abaixo). Documentação: <code>docs/CATRACA_WEBHOOK.md</code>.
+                                    </p>
+                                    <div style="margin-top: 8px;">
+                                        <span class="bridge-chip" style="{{ ! empty($catracaWebhookBearerConfigured) ? 'border-color: color-mix(in srgb, var(--accent-c) 40%, var(--border));' : '' }}">
+                                            {{ ! empty($catracaWebhookBearerConfigured) ? 'Bearer da catraca: configurado' : 'Bearer da catraca: não configurado' }}
+                                        </span>
+                                    </div>
 
-                            <div class="bridge-field">
-                                <label class="bridge-label">Token atual</label>
-                                <input class="bridge-input" type="text" readonly value="{{ $integration->auth_token ? '•••••••••••••••••••••••••••••••• (configurado)' : '(não configurado)' }}" />
+                                    @if (session('gestor_catraca_webhook_bearer_plaintext'))
+                                        <div style="margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 2px solid color-mix(in srgb, var(--accent-c) 45%, var(--border)); background: color-mix(in srgb, var(--accent-c) 10%, var(--surface-1));">
+                                            <div style="font-weight: 800; margin-bottom: 8px;">Token Bearer — copie agora (não será exibido de novo)</div>
+                                            <label class="bridge-label" for="catraca_wh_once">Valor do token</label>
+                                            <input class="bridge-input mono" id="catraca_wh_once" type="text" readonly value="{{ session('gestor_catraca_webhook_bearer_plaintext') }}" onclick="this.select()" style="font-size: 13px;" />
+                                            <div class="bridge-muted" style="margin-top: 8px; font-size: 12px;">Some após recarregar a página. Guarde na catraca ou em cofre.</div>
+                                        </div>
+                                    @endif
+
+                                    <form method="POST" action="{{ route('integrations.gestor.generate-catraca-webhook-bearer') }}" class="bridge-form" style="margin-top: 12px;" onsubmit="return confirm('Gerar um novo token invalida o anterior na catraca. Continuar?');">
+                                        @csrf
+                                        <div class="bridge-form__actions">
+                                            <button type="submit" class="bridge-btn">{{ ! empty($catracaWebhookBearerConfigured) ? 'Gerar novo Bearer (invalida o atual)' : 'Gerar token Bearer da catraca' }}</button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
-
-                            <form method="POST" action="{{ route('integrations.gestor.test-auth') }}" class="bridge-form">
-                                @csrf
-                                <div class="bridge-form__actions">
-                                    <button type="submit" class="bridge-btn">Testar auth (Signin)</button>
-                                </div>
-                            </form>
-
-                            <form method="POST" action="{{ route('integrations.gestor.test-unities') }}" class="bridge-form" style="margin-top: 8px;">
-                                @csrf
-                                <div class="bridge-form__actions">
-                                    <button type="submit" class="bridge-btn">Testar listagem de Unities</button>
-                                </div>
-                            </form>
-
-                            <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border);" />
-
-                            <div class="bridge-panel__head" style="margin-top: 8px;">
-                                <div class="bridge-panel__title">Token de envio (Gestor → GIDE)</div>
-                                <div class="bridge-panel__meta">HMAC inbound</div>
-                            </div>
-
-                            <p class="bridge-muted" style="margin-top: 12px;">
-                                O Gestor deve chamar o GIDE em <strong>/api/v1/gestor/access-events</strong> enviando JSON e assinando o corpo com HMAC.
-                            </p>
-
-                            <div class="bridge-field">
-                                <label class="bridge-label">Segredo HMAC atual</label>
-                                <input class="bridge-input" type="text" readonly value="{{ $integration->hmac_secret ? '•••••••••••••••••••••••••••••••• (configurado)' : '(não configurado)' }}" />
-                            </div>
-
-                            <form method="POST" action="{{ route('integrations.gestor.rotate-hmac') }}" class="bridge-form">
-                                @csrf
-                                <div class="bridge-form__actions">
-                                    <button type="submit" class="bridge-btn">Gerar/rotacionar segredo HMAC</button>
-                                </div>
-                            </form>
-
-                            <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border);" />
-
-                            <div class="bridge-panel__head" style="margin-top: 8px;">
-                                <div class="bridge-panel__title">Webhook JSON da catraca (Bearer)</div>
-                                <div class="bridge-panel__meta">alternativa ao HMAC</div>
-                            </div>
-
-                            <p class="bridge-muted" style="margin-top: 12px;">
-                                Endpoint <strong class="mono">POST {{ $catracaWebhookUrl ?? url('/api/v1/catraca/access-events') }}</strong> com cabeçalho
-                                <span class="mono">Authorization: Bearer &lt;token&gt;</span> e corpo JSON (ver <code>docs/CATRACA_WEBHOOK.md</code>).
-                                O token é guardado apenas como <strong>hash</strong>; depois de gerado, a interface <strong>não mostra</strong> o valor salvo — só é possível ver o texto na hora da geração ou gerar outro (o anterior deixa de valer).
-                            </p>
-
-                            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                                <span class="pill {{ ! empty($catracaWebhookBearerConfigured) ? 'pill--ok' : '' }}">
-                                    {{ ! empty($catracaWebhookBearerConfigured) ? 'Token webhook configurado' : 'Token webhook não configurado' }}
-                                </span>
-                            </div>
-
-                            @if (session('gestor_catraca_webhook_bearer_plaintext'))
-                                <div style="margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 2px solid color-mix(in srgb, var(--accent-c) 45%, var(--border)); background: color-mix(in srgb, var(--accent-c) 10%, var(--surface-1));">
-                                    <div style="font-weight: 800; margin-bottom: 8px;">Copie o token agora</div>
-                                    <label class="bridge-label" for="catraca_wh_once">Bearer (uso único na tela)</label>
-                                    <input class="bridge-input mono" id="catraca_wh_once" type="text" readonly value="{{ session('gestor_catraca_webhook_bearer_plaintext') }}" onclick="this.select()" style="font-size: 13px;" />
-                                    <div class="bridge-muted" style="margin-top: 8px; font-size: 12px;">Este campo some no próximo carregamento. Guarde em cofre ou na configuração da catraca.</div>
-                                </div>
-                            @endif
-
-                            <form method="POST" action="{{ route('integrations.gestor.generate-catraca-webhook-bearer') }}" class="bridge-form" style="margin-top: 12px;" onsubmit="return confirm('Gerar novo token invalida o anterior. Continuar?');">
-                                @csrf
-                                <div class="bridge-form__actions">
-                                    <button type="submit" class="bridge-btn">{{ ! empty($catracaWebhookBearerConfigured) ? 'Gerar novo token (invalida o atual)' : 'Gerar token do webhook' }}</button>
-                                </div>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -339,4 +366,3 @@
         </div>
     </body>
 </html>
-

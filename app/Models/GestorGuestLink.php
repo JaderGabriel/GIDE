@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Ligação aluno iEducar (`cod_aluno`) ↔ convite/guest no Gestor após outbound de matrícula.
+ */
 class GestorGuestLink extends Model
 {
     protected $fillable = [

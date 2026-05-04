@@ -6,6 +6,12 @@ use App\Support\OutboundDeliveryStatuses;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Tentativa de envio outbound (ex.: matrícula → Gestor, `integration_key` = gestor).
+ *
+ * `payload` guarda o JSON do Invite montado a partir de `integrations.extra` do Gestor
+ * (unityId, accessProfileId, path em `endpoint`, etc.).
+ */
 class OutboundDelivery extends Model
 {
     protected $fillable = [
