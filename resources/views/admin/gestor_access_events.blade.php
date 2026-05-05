@@ -40,6 +40,12 @@
             .fac-badge--info { border-color: color-mix(in srgb, var(--gae-info) 40%, var(--border)); color: var(--gae-info); }
             .fac-btn-ico { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); text-decoration: none; color: var(--text); }
             .fac-btn-ico:hover { background: color-mix(in srgb, var(--bg0) 80%, transparent); }
+            .fac-btn-ico--ok { border-color: color-mix(in srgb, var(--gae-ok) 40%, var(--border)); background: color-mix(in srgb, var(--gae-ok) 10%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-ok)); }
+            .fac-btn-ico--ok:hover { border-color: color-mix(in srgb, var(--gae-ok) 55%, var(--border)); background: color-mix(in srgb, var(--gae-ok) 16%, var(--surface-1)); }
+            .fac-btn-ico--warn { border-color: color-mix(in srgb, var(--gae-warn) 40%, var(--border)); background: color-mix(in srgb, var(--gae-warn) 10%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-warn)); }
+            .fac-btn-ico--warn:hover { border-color: color-mix(in srgb, var(--gae-warn) 55%, var(--border)); background: color-mix(in srgb, var(--gae-warn) 16%, var(--surface-1)); }
+            .fac-btn-ico--info { border-color: color-mix(in srgb, var(--gae-info) 40%, var(--border)); background: color-mix(in srgb, var(--gae-info) 10%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-info)); }
+            .fac-btn-ico--info:hover { border-color: color-mix(in srgb, var(--gae-info) 55%, var(--border)); background: color-mix(in srgb, var(--gae-info) 16%, var(--surface-1)); }
         </style>
     </head>
     <body>
@@ -128,7 +134,7 @@
                                             <td class="mono">{{ $row->ieducar_frequencia_http_status ?? '—' }}</td>
                                             <td class="mono">{{ $row->created_at ? \App\Support\DateDisplay::formatHuman($row->created_at, true) : '' }}</td>
                                             <td style="text-align:right;">
-                                                <a class="fac-btn-ico" href="{{ route('admin.gestor-access-events.show', ['id' => $row->id]) }}" title="Detalhe">→</a>
+                                                <a class="fac-btn-ico fac-btn-ico--info" href="{{ route('admin.gestor-access-events.show', ['id' => $row->id]) }}" title="Detalhe">→</a>
                                             </td>
                                             <td style="text-align:right;">
                                                 @php $act = data_get($row->analysis_json, 'action'); @endphp
@@ -136,16 +142,16 @@
                                                     @if ($act !== 'mark_presence')
                                                         <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $row->id]) }}" style="display:inline;" onsubmit="return confirm('Forçar mark_presence=true e reenviar ao iEducar?');">
                                                             @csrf
-                                                            <button type="submit" class="fac-btn-ico" title="Forçar presença e reenviar ao iEducar">✎</button>
+                                                            <button type="submit" class="fac-btn-ico fac-btn-ico--warn" title="Forçar presença e reenviar ao iEducar">✎</button>
                                                         </form>
                                                     @elseif ($row->processing_status === 'pending')
                                                         <form method="post" action="{{ route('admin.gestor-access-events.requeue', ['id' => $row->id]) }}" style="display:inline;">
                                                             @csrf
-                                                            <button type="submit" class="fac-btn-ico" title="Reenfileirar pendente">⟲</button>
+                                                            <button type="submit" class="fac-btn-ico fac-btn-ico--info" title="Reenfileirar pendente">⟲</button>
                                                         </form>
                                                         <form method="post" action="{{ route('admin.gestor-access-events.force-process', ['id' => $row->id]) }}" style="display:inline;" onsubmit="return confirm('Executar o processamento agora (sync)?');">
                                                             @csrf
-                                                            <button type="submit" class="fac-btn-ico" title="Forçar processamento (sync)">▶</button>
+                                                            <button type="submit" class="fac-btn-ico fac-btn-ico--ok" title="Forçar processamento (sync)">▶</button>
                                                         </form>
                                                     @endif
                                                 @endif

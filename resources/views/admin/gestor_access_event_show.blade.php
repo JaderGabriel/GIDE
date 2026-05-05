@@ -43,6 +43,14 @@
             .gae-btn:hover { background: color-mix(in srgb, var(--bg0) 82%, transparent); border-color: color-mix(in srgb, var(--accent-a) 28%, var(--border)); text-decoration: none; }
             .gae-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
             .gae-btn--primary { border-color: color-mix(in srgb, var(--accent-a) 35%, var(--border)); background: color-mix(in srgb, var(--accent-a) 10%, var(--surface-1)); color: color-mix(in srgb, var(--text) 80%, var(--accent-a)); }
+            .gae-btn--ok { border-color: color-mix(in srgb, var(--gae-ok) 42%, var(--border)); background: color-mix(in srgb, var(--gae-ok) 12%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-ok)); }
+            .gae-btn--ok:hover { border-color: color-mix(in srgb, var(--gae-ok) 58%, var(--border)); background: color-mix(in srgb, var(--gae-ok) 18%, var(--surface-1)); }
+            .gae-btn--warn { border-color: color-mix(in srgb, var(--gae-warn) 42%, var(--border)); background: color-mix(in srgb, var(--gae-warn) 12%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-warn)); }
+            .gae-btn--warn:hover { border-color: color-mix(in srgb, var(--gae-warn) 58%, var(--border)); background: color-mix(in srgb, var(--gae-warn) 18%, var(--surface-1)); }
+            .gae-btn--info { border-color: color-mix(in srgb, var(--gae-info) 42%, var(--border)); background: color-mix(in srgb, var(--gae-info) 12%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-info)); }
+            .gae-btn--info:hover { border-color: color-mix(in srgb, var(--gae-info) 58%, var(--border)); background: color-mix(in srgb, var(--gae-info) 18%, var(--surface-1)); }
+            .gae-btn--danger { border-color: color-mix(in srgb, var(--gae-bad) 45%, var(--border)); background: color-mix(in srgb, var(--gae-bad) 12%, var(--surface-1)); color: color-mix(in srgb, var(--text) 86%, var(--gae-bad)); }
+            .gae-btn--danger:hover { border-color: color-mix(in srgb, var(--gae-bad) 62%, var(--border)); background: color-mix(in srgb, var(--gae-bad) 18%, var(--surface-1)); }
 
             .gae-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 650; border: 1px solid var(--border); line-height: 1.2; }
             .gae-badge--neutral { background: color-mix(in srgb, var(--muted) 8%, transparent); color: var(--muted); }
@@ -140,7 +148,7 @@
                                     @if ($ieducarEnabled && $analysisAction !== 'mark_presence')
                                         <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $delivery->id]) }}" style="display:inline;" onsubmit="return confirm('Forçar mark_presence=true e reenviar ao iEducar?');">
                                             @csrf
-                                            <button type="submit" class="gae-btn" title="Override administrativo: força mark_presence=true e reprocessa o envio ao iEducar">
+                                            <button type="submit" class="gae-btn gae-btn--warn" title="Override administrativo: força mark_presence=true e reprocessa o envio ao iEducar">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                                 Forçar presença + reenviar
                                             </button>
@@ -149,14 +157,14 @@
                                     @if ($ieducarEnabled && $st === \App\Models\GestorAccessEventDelivery::STATUS_PENDING)
                                         <form method="post" action="{{ route('admin.gestor-access-events.requeue', ['id' => $delivery->id]) }}" style="display:inline;">
                                             @csrf
-                                            <button type="submit" class="gae-btn" title="Reenfileira a entrega pendente (útil quando o worker não drenou a fila)">
+                                            <button type="submit" class="gae-btn gae-btn--info" title="Reenfileira a entrega pendente (útil quando o worker não drenou a fila)">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                                 Reenfileirar pendente
                                             </button>
                                         </form>
                                         <form method="post" action="{{ route('admin.gestor-access-events.force-process', ['id' => $delivery->id]) }}" style="display:inline;" onsubmit="return confirm('Executar o processamento agora (sync)?');">
                                             @csrf
-                                            <button type="submit" class="gae-btn" title="Executa o processamento imediatamente (sem depender do worker)">
+                                            <button type="submit" class="gae-btn gae-btn--ok" title="Executa o processamento imediatamente (sem depender do worker)">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                                 Forçar processamento
                                             </button>
@@ -165,7 +173,7 @@
                                     @if ($ieducarEnabled && in_array($st, [\App\Models\GestorAccessEventDelivery::STATUS_FAILED, \App\Models\GestorAccessEventDelivery::STATUS_PROCESSING], true))
                                         <form method="post" action="{{ route('admin.gestor-access-events.retry', ['id' => $delivery->id]) }}" style="display:inline;">
                                             @csrf
-                                            <button type="submit" class="gae-btn" title="Enfileira novamente o preview catraca-frequência ao iEducar">
+                                            <button type="submit" class="gae-btn gae-btn--danger" title="Enfileira novamente o envio ao iEducar">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                                 Reenviar ao iEducar
                                             </button>
