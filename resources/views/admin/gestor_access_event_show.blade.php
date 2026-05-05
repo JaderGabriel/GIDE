@@ -137,7 +137,25 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
                                         Fila frequência iEducar
                                     </a>
-                                    @if ($ieducarEnabled && in_array($st, [\App\Models\GestorAccessEventDelivery::STATUS_PENDING, \App\Models\GestorAccessEventDelivery::STATUS_FAILED, \App\Models\GestorAccessEventDelivery::STATUS_PROCESSING], true))
+                                    @if ($ieducarEnabled && $analysisAction !== 'mark_presence')
+                                        <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $delivery->id]) }}" style="display:inline;" onsubmit="return confirm('Forçar mark_presence=true e reenviar ao iEducar?');">
+                                            @csrf
+                                            <button type="submit" class="gae-btn" title="Override administrativo: força mark_presence=true e reprocessa o envio ao iEducar">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                                Forçar presença + reenviar
+                                            </button>
+                                        </form>
+                                    @endif
+                                    @if ($ieducarEnabled && $st === \App\Models\GestorAccessEventDelivery::STATUS_PENDING)
+                                        <form method="post" action="{{ route('admin.gestor-access-events.requeue', ['id' => $delivery->id]) }}" style="display:inline;">
+                                            @csrf
+                                            <button type="submit" class="gae-btn" title="Reenfileira a entrega pendente (útil quando o worker não drenou a fila)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                                Reenfileirar pendente
+                                            </button>
+                                        </form>
+                                    @endif
+                                    @if ($ieducarEnabled && in_array($st, [\App\Models\GestorAccessEventDelivery::STATUS_FAILED, \App\Models\GestorAccessEventDelivery::STATUS_PROCESSING], true))
                                         <form method="post" action="{{ route('admin.gestor-access-events.retry', ['id' => $delivery->id]) }}" style="display:inline;">
                                             @csrf
                                             <button type="submit" class="gae-btn" title="Enfileira novamente o preview catraca-frequência ao iEducar">
@@ -164,14 +182,13 @@
                                 (2) o motor de presença devolver <span class="mono">action=mark_presence</span>
                                 (neste evento: <span class="mono">{{ $analysisAction !== null && $analysisAction !== '' ? $analysisAction : '—' }}</span>),
                                 (3) existir <span class="mono">cod_aluno</span> válido após o mapeamento do payload.
+                                Por padrão, o motor considera presença <strong>permitida</strong> quando <span class="mono">action.mark_presence</span> não vem; ele só bloqueia quando <span class="mono">action.mark_presence=false</span> é declarado.
                                 A rota <span class="mono">/admin/frequencia-ieducar</span> lista outra tabela (<span class="mono">ieducar_frequencia_registro_deliveries</span>) — fluxos que enfileiram registo diretamente; sucesso lá não implica que este evento tenha enviado JSON ao iEducar.
                             </div>
 
-                            @if ($delivery->gestor_ie_environment === 'preview')
-                                <div class="gae-callout" style="margin-top: 12px;">
-                                    <strong>Modo técnico:</strong> quando há POST ao iEducar, usa-se sempre <span class="mono">meta.preview=true</span> em catraca-frequência (simulação), independentemente do rótulo preview/homolog no Gestor.
-                                </div>
-                            @endif
+                            <div class="gae-callout" style="margin-top: 12px;">
+                                <strong>Modo técnico:</strong> quando há POST ao iEducar, usa-se <span class="mono">meta.preview</span> conforme o setup em <span class="mono">/integracoes/gestor</span> (Presença). Aqui: <span class="mono">{{ $delivery->ieducar_preview_only ? 'true' : 'false' }}</span>.
+                            </div>
 
                             <div class="gae-grid">
                                 <div class="gae-card">

@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\Api\CatracaAccessWebhookController;
+use App\Http\Controllers\Api\GestorWebhookController;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Uma linha por POST em {@see \App\Http\Controllers\Api\GestorWebhookController}
- * ou {@see \App\Http\Controllers\Api\CatracaAccessWebhookController} (fila/auditoria).
- * Envio ao iEducar: apenas {@see IeducarClient::postCatracaFrequenciaRegistro} com meta.preview=true (MVP).
+ * Uma linha por POST em {@see GestorWebhookController}
+ * ou {@see CatracaAccessWebhookController} (fila/auditoria).
+ * Envio ao iEducar: {@see IeducarClient::postCatracaFrequenciaRegistro} com `meta.preview` alinhado ao setup do Gestor
+ * (extra.ieducar_processing.environment) e à intenção do fluxo.
  */
 class GestorAccessEventDelivery extends Model
 {

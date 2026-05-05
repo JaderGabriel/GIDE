@@ -208,7 +208,8 @@ class GideSimulateCatracaAccessPipelineCommand extends Command
 
         $this->newLine();
         $this->titleBlock('Resumo');
-        $this->line('• O preview ao iEducar deste fluxo fica na auditoria de access-events (não na fila de registo manual).');
+        $this->line('• O envio ao iEducar deste fluxo fica na auditoria de access-events (não na fila de registo manual).');
+        $this->line('  O meta.preview segue o setup em /integracoes/gestor → Presença (extra.ieducar_processing.environment).');
         $this->line('  Abrir: /admin/gestor-access-events/'.$deliveryId.' — secção «JSON enviado ao iEducar (catraca-frequência)».');
         $this->line('• /admin/frequencia-ieducar lista ieducar_frequencia_registro_deliveries (Integrações → frequência / Artisan); este pipeline não grava nessa tabela.');
         $this->line('• SMS após presença: /sms?event_id='.urlencode($eventId).' (requer mark_presence, access_event novo, SMS+templates activos e job executado).');

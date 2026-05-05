@@ -243,6 +243,9 @@
                                     <p class="gestor-section__lead">
                                         O GIDE aplica janelas e mapeamento de payload usando a integração <strong>iEducar</strong> em <span class="mono">/integracoes/ieducar</span> (API do Diário: mesma <span class="mono">base_url</span> e <span class="mono">access_key</span> para preview e homologação). Abaixo só indica qual <strong>rótulo de ambiente</strong> fica registrado para auditoria e alinhamento com o iEducar.
                                     </p>
+                                    <p class="bridge-muted" style="margin-top: 10px; line-height: 1.55;">
+                                        <strong>Regra do payload:</strong> se <span class="mono">action.mark_presence</span> não vier no JSON, o motor assume presença <strong>permitida</strong> e decide pelas janelas configuradas. Só bloqueia presença quando <span class="mono">action.mark_presence=false</span> for declarado. Para forçar presença sem depender das janelas, envie <span class="mono">action.mark_presence=true</span>.
+                                    </p>
                                     <div class="bridge-field">
                                         <div class="bridge-label">Ambiente iEducar (registro)</div>
                                         <div style="margin-top: 10px; display: grid; gap: 10px;">

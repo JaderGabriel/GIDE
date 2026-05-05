@@ -8,6 +8,38 @@ use Carbon\CarbonInterface;
 class PresenceRuleEngine
 {
     /**
+     * Regra:
+     * - Se não vier nada: assume "permitido" e decide pelas janelas (comportamento padrão).
+     * - Só impede presença se vier explicitamente false.
+     * - Também aceita formatos legados para "forçar true".
+     *
+     * @return array{explicit_true: bool, explicit_false: bool}
+     */
+    private function payloadPresenceExplicitness(array $payload): array
+    {
+        $v = data_get($payload, 'action.mark_presence');
+        if ($v === false || $v === 0 || $v === '0' || (is_string($v) && strtolower(trim($v)) === 'false')) {
+            return ['explicit_true' => false, 'explicit_false' => true];
+        }
+        if (filter_var($v, FILTER_VALIDATE_BOOLEAN)) {
+            return ['explicit_true' => true, 'explicit_false' => false];
+        }
+
+        // Compatibilidade: alguns emissores enviam action="mark_presence".
+        $action = data_get($payload, 'action');
+        if (is_string($action) && strtolower(trim($action)) === 'mark_presence') {
+            return ['explicit_true' => true, 'explicit_false' => false];
+        }
+
+        // Compatibilidade: action=true (sem subchave).
+        if ($action === true) {
+            return ['explicit_true' => true, 'explicit_false' => false];
+        }
+
+        return ['explicit_true' => false, 'explicit_false' => false];
+    }
+
+    /**
      * Retorna uma análise com decisão e justificativa.
      *
      * Espera em integrations.extra.presence:
@@ -33,7 +65,16 @@ class PresenceRuleEngine
             }
         }
 
-        if (filter_var(data_get($payload, 'action.mark_presence'), FILTER_VALIDATE_BOOLEAN)) {
+        $explicit = $this->payloadPresenceExplicitness($payload);
+
+        if ($explicit['explicit_false']) {
+            return [
+                'action' => 'ignore',
+                'reason' => 'action.mark_presence=false declarado no payload.',
+            ];
+        }
+
+        if ($explicit['explicit_true']) {
             $alunoIdKey = (string) ($payloadMap['aluno_id'] ?? 'aluno_id');
             $matriculaIdKey = (string) ($payloadMap['matricula_id'] ?? 'matricula_id');
             $alunoId = data_get($payload, $alunoIdKey);
@@ -41,7 +82,7 @@ class PresenceRuleEngine
             if ($alunoId === null && $matriculaId === null) {
                 return [
                     'action' => 'ignore',
-                    'reason' => 'action.mark_presence=true sem aluno_id/matricula_id resolvíveis no payload.',
+                    'reason' => 'Ação explícita de presença sem aluno_id/matricula_id resolvíveis no payload.',
                 ];
             }
             $windows = $presenceCfg['windows'] ?? [];
@@ -55,7 +96,7 @@ class PresenceRuleEngine
                 'window' => $windowMeta,
                 'aluno_id' => $alunoId,
                 'matricula_id' => $matriculaId,
-                'reason' => 'action.mark_presence=true no payload (ex.: simulação CLI catraca_bearer).',
+                'reason' => 'Ação explícita de presença no payload.',
             ];
         }
 

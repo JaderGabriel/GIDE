@@ -9,6 +9,7 @@ use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
 use App\Services\Ieducar\IeducarClient;
 use App\Support\Ieducar\GideFrequenciaRegistroPlanB;
+use App\Support\Ieducar\IeducarFrequenciaPreviewMode;
 use App\Support\SmsTemplateKey;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -97,7 +98,8 @@ class GestorAccessEventWebhookService
             return;
         }
 
-        $previewOutcome = $this->runIeducarFrequenciaPreviewOnly($ieducar, $analysis, $occurredAt);
+        $metaPreview = (bool) ($delivery->ieducar_preview_only ?? true);
+        $previewOutcome = $this->runIeducarFrequenciaRegistro($ieducar, $analysis, $occurredAt, $metaPreview);
         $analysis['marker'] = $previewOutcome['marker'];
         $analysis['inbound_channel'] = $analysis['inbound_channel'] ?? $delivery->inbound_channel;
 
@@ -150,6 +152,7 @@ class GestorAccessEventWebhookService
         if ($gestorEnv !== 'preview' && $gestorEnv !== 'homolog') {
             $gestorEnv = 'homolog';
         }
+        $metaPreview = IeducarFrequenciaPreviewMode::resolveMetaPreview($gestorEnv, false, false);
 
         $delivery = GestorAccessEventDelivery::query()->create([
             'event_id' => $eventId,
@@ -157,7 +160,7 @@ class GestorAccessEventWebhookService
             'inbound_payload' => $inboundPayloadForAudit,
             'processing_status' => GestorAccessEventDelivery::STATUS_PENDING,
             'gestor_ie_environment' => $gestorEnv,
-            'ieducar_preview_only' => true,
+            'ieducar_preview_only' => $metaPreview,
         ]);
 
         $record = AccessEvent::query()->firstOrCreate(
@@ -189,7 +192,7 @@ class GestorAccessEventWebhookService
         $analysis = (new PresenceRuleEngine)->analyze($payloadForPresence, $occurredAt, $ieducar);
         $analysis['gestor_ieducar_environment'] = $gestorEnv;
         $analysis['ieducar_outbound_channel'] = 'catraca_frequencia_registro';
-        $analysis['ieducar_outbound_preview_only'] = true;
+        $analysis['ieducar_outbound_preview_only'] = $metaPreview;
         $analysis['inbound_channel'] = $inboundChannel;
 
         if ($this->shouldQueueIeducarPreview($analysis)) {
@@ -220,7 +223,7 @@ class GestorAccessEventWebhookService
             ];
         }
 
-        $previewOutcome = $this->runIeducarFrequenciaPreviewOnly($ieducar, $analysis, $occurredAt);
+        $previewOutcome = $this->runIeducarFrequenciaRegistro($ieducar, $analysis, $occurredAt, $metaPreview);
 
         $analysis['marker'] = $previewOutcome['marker'];
 
@@ -377,11 +380,11 @@ class GestorAccessEventWebhookService
      *   delivery_status: string
      * }
      */
-    private function runIeducarFrequenciaPreviewOnly(Integration $ieducar, array $analysis, ?Carbon $occurredAt): array
+    private function runIeducarFrequenciaRegistro(Integration $ieducar, array $analysis, ?Carbon $occurredAt, bool $metaPreview): array
     {
         $markerBase = [
             'channel' => 'catraca_frequencia_registro',
-            'meta_preview' => true,
+            'meta_preview' => $metaPreview,
         ];
 
         if (($analysis['action'] ?? null) !== 'mark_presence') {
@@ -423,6 +426,7 @@ class GestorAccessEventWebhookService
         $row = [
             'meta' => [
                 'contract_version' => IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION,
+                'preview' => $metaPreview,
             ],
             'fonte' => 'gide',
             'presente' => true,

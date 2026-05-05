@@ -102,6 +102,7 @@
                                         <th style="width:8%;">HTTP iEd.</th>
                                         <th style="width:14%;">Quando</th>
                                         <th style="width:6%;"></th>
+                                        <th style="width:8%;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -129,9 +130,25 @@
                                             <td style="text-align:right;">
                                                 <a class="fac-btn-ico" href="{{ route('admin.gestor-access-events.show', ['id' => $row->id]) }}" title="Detalhe">→</a>
                                             </td>
+                                            <td style="text-align:right;">
+                                                @php $act = data_get($row->analysis_json, 'action'); @endphp
+                                                @if ($ieducarEnabled ?? true)
+                                                    @if ($act !== 'mark_presence')
+                                                        <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $row->id]) }}" style="display:inline;" onsubmit="return confirm('Forçar mark_presence=true e reenviar ao iEducar?');">
+                                                            @csrf
+                                                            <button type="submit" class="fac-btn-ico" title="Forçar presença e reenviar ao iEducar">✎</button>
+                                                        </form>
+                                                    @elseif ($row->processing_status === 'pending')
+                                                        <form method="post" action="{{ route('admin.gestor-access-events.requeue', ['id' => $row->id]) }}" style="display:inline;">
+                                                            @csrf
+                                                            <button type="submit" class="fac-btn-ico" title="Reenfileirar pendente">⟲</button>
+                                                        </form>
+                                                    @endif
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="8" style="padding:20px;color:var(--muted);">Nenhum registro.</td></tr>
+                                        <tr><td colspan="9" style="padding:20px;color:var(--muted);">Nenhum registro.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
