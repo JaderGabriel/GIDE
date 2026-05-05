@@ -143,6 +143,10 @@
                                                             @csrf
                                                             <button type="submit" class="fac-btn-ico" title="Reenfileirar pendente">⟲</button>
                                                         </form>
+                                                        <form method="post" action="{{ route('admin.gestor-access-events.force-process', ['id' => $row->id]) }}" style="display:inline;" onsubmit="return confirm('Executar o processamento agora (sync)?');">
+                                                            @csrf
+                                                            <button type="submit" class="fac-btn-ico" title="Forçar processamento (sync)">▶</button>
+                                                        </form>
                                                     @endif
                                                 @endif
                                             </td>

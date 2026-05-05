@@ -179,6 +179,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/gestor-access-events', [GestorAccessEventAdminController::class, 'index'])->name('admin.gestor-access-events.index');
         Route::post('/admin/gestor-access-events/{id}/retry', [GestorAccessEventAdminController::class, 'retry'])->name('admin.gestor-access-events.retry');
         Route::post('/admin/gestor-access-events/{id}/requeue', [GestorAccessEventAdminController::class, 'requeue'])->name('admin.gestor-access-events.requeue');
+        Route::post('/admin/gestor-access-events/{id}/force-process', [GestorAccessEventAdminController::class, 'forceProcess'])->name('admin.gestor-access-events.force-process');
         Route::post('/admin/gestor-access-events/{id}/force-mark-presence', [GestorAccessEventAdminController::class, 'forceMarkPresence'])->name('admin.gestor-access-events.force-mark-presence');
         Route::get('/admin/gestor-access-events/{id}', [GestorAccessEventAdminController::class, 'show'])->name('admin.gestor-access-events.show');
 

@@ -154,6 +154,13 @@
                                                 Reenfileirar pendente
                                             </button>
                                         </form>
+                                        <form method="post" action="{{ route('admin.gestor-access-events.force-process', ['id' => $delivery->id]) }}" style="display:inline;" onsubmit="return confirm('Executar o processamento agora (sync)?');">
+                                            @csrf
+                                            <button type="submit" class="gae-btn" title="Executa o processamento imediatamente (sem depender do worker)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                                Forçar processamento
+                                            </button>
+                                        </form>
                                     @endif
                                     @if ($ieducarEnabled && in_array($st, [\App\Models\GestorAccessEventDelivery::STATUS_FAILED, \App\Models\GestorAccessEventDelivery::STATUS_PROCESSING], true))
                                         <form method="post" action="{{ route('admin.gestor-access-events.retry', ['id' => $delivery->id]) }}" style="display:inline;">

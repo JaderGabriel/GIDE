@@ -101,6 +101,29 @@ class GestorAccessEventAdminController extends Controller
             ->with('status', 'Entrega pendente reenfileirada.');
     }
 
+    public function forceProcess(int $id): RedirectResponse
+    {
+        $delivery = GestorAccessEventDelivery::query()->findOrFail($id);
+
+        if ($delivery->processing_status !== GestorAccessEventDelivery::STATUS_PENDING) {
+            return redirect()
+                ->back()
+                ->withErrors(['retry' => 'Só é possível forçar processamento quando a entrega está pendente.']);
+        }
+
+        try {
+            ProcessGestorAccessEventDeliveryJob::dispatchSync($delivery->id);
+        } catch (\Throwable $e) {
+            return redirect()
+                ->back()
+                ->withErrors(['retry' => 'Falha ao processar agora: '.$e->getMessage()]);
+        }
+
+        return redirect()
+            ->back()
+            ->with('status', 'Processamento forçado executado (sync).');
+    }
+
     public function forceMarkPresence(int $id): RedirectResponse
     {
         $delivery = GestorAccessEventDelivery::query()->with('accessEvent')->findOrFail($id);
