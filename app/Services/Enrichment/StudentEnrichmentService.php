@@ -62,7 +62,10 @@ class StudentEnrichmentService
         try {
             $client = new IeducarClient($ieducar);
             $response = $client->postCatracaFrequenciaAlunoConsulta([
-                'cod_aluno' => $codAluno,
+                'identificacao' => [
+                    'cod_aluno' => $codAluno,
+                    'idpes' => null,
+                ],
             ]);
 
             if (! $response->successful()) {
@@ -107,17 +110,40 @@ class StudentEnrichmentService
      */
     private function normalize(array $body, int $codAluno): array
     {
-        $aluno = $body['aluno'] ?? $body;
-
         return [
             'cod_aluno' => $codAluno,
-            'nome' => $aluno['nome'] ?? $aluno['name'] ?? $aluno['nm_aluno'] ?? null,
-            'turma' => $aluno['turma'] ?? $aluno['nm_turma'] ?? null,
-            'serie' => $aluno['serie'] ?? $aluno['nm_serie'] ?? null,
-            'etapa' => $aluno['etapa'] ?? null,
-            'instituicao_id' => $aluno['instituicao_id'] ?? $aluno['ref_cod_instituicao'] ?? null,
-            'situacao' => $aluno['situacao'] ?? $aluno['situacao_matricula'] ?? null,
-            'matricula_id' => $aluno['matricula_id'] ?? $aluno['cod_matricula'] ?? null,
+            'nome' => data_get($body, 'pessoa.nome')
+                ?? data_get($body, 'pessoa.nome_completo')
+                ?? data_get($body, 'status.aluno.nome')
+                ?? data_get($body, 'aluno.nome')
+                ?? data_get($body, 'nome')
+                ?? null,
+            'turma' => data_get($body, 'matricula.turma')
+                ?? data_get($body, 'status.matricula.turma')
+                ?? data_get($body, 'status.matricula.turma_nome')
+                ?? data_get($body, 'status.matricula.nm_turma')
+                ?? data_get($body, 'turma')
+                ?? null,
+            'serie' => data_get($body, 'matricula.serie')
+                ?? data_get($body, 'status.matricula.serie')
+                ?? data_get($body, 'status.matricula.nm_serie')
+                ?? data_get($body, 'serie')
+                ?? null,
+            'etapa' => data_get($body, 'matricula.etapa')
+                ?? data_get($body, 'status.matricula.etapa')
+                ?? data_get($body, 'etapa')
+                ?? null,
+            'instituicao_id' => data_get($body, 'matricula.ref_cod_instituicao')
+                ?? data_get($body, 'instituicao_id')
+                ?? null,
+            'situacao' => data_get($body, 'matricula.situacao_descricao')
+                ?? data_get($body, 'status.matricula.situacao_descricao')
+                ?? data_get($body, 'situacao')
+                ?? null,
+            'matricula_id' => data_get($body, 'matricula.cod_matricula')
+                ?? data_get($body, 'status.matricula.cod_matricula')
+                ?? data_get($body, 'cod_matricula')
+                ?? null,
         ];
     }
 }
