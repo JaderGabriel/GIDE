@@ -202,6 +202,7 @@ class GestorAccessEventWebhookService
         $analysis['timestamp_info'] = [
             'raw' => $tsInfo['raw'],
             'original_tz' => $tsInfo['original_tz'],
+            'tz_declared' => $tsInfo['tz_declared'],
             'normalized_br' => $tsInfo['normalized'],
         ];
 
@@ -354,7 +355,7 @@ class GestorAccessEventWebhookService
     }
 
     /**
-     * @return array{occurred_at: ?Carbon, raw: ?string, original_tz: ?string, normalized: ?string}
+     * @return array{occurred_at: ?Carbon, raw: ?string, original_tz: ?string, tz_declared: bool, normalized: ?string}
      */
     private function resolveOccurredAtFromPayload(array $payload): array
     {
@@ -364,11 +365,13 @@ class GestorAccessEventWebhookService
             ?? data_get($payload, 'creationDate')
             ?? data_get($payload, 'creation_date');
 
-        $empty = ['occurred_at' => null, 'raw' => null, 'original_tz' => null, 'normalized' => null];
+        $empty = ['occurred_at' => null, 'raw' => null, 'original_tz' => null, 'tz_declared' => false, 'normalized' => null];
 
         if (! is_string($candidateTs) || $candidateTs === '') {
             return $empty;
         }
+
+        $tzDeclared = (bool) preg_match('/[Zz]$|[+\-]\d{2}:\d{2}$|[+\-]\d{4}$/', trim($candidateTs));
 
         try {
             $parsed = Carbon::parse($candidateTs);
@@ -377,13 +380,20 @@ class GestorAccessEventWebhookService
         }
 
         $appTz = config('app.timezone', 'America/Sao_Paulo');
-        $originalTz = $parsed->format('P');
-        $normalized = $parsed->copy()->timezone($appTz);
+
+        if ($tzDeclared) {
+            $originalTz = $parsed->format('P');
+            $normalized = $parsed->copy()->timezone($appTz);
+        } else {
+            $originalTz = null;
+            $normalized = $parsed->copy()->timezone($appTz);
+        }
 
         return [
             'occurred_at' => $normalized,
             'raw' => $candidateTs,
             'original_tz' => $originalTz,
+            'tz_declared' => $tzDeclared,
             'normalized' => $normalized->toIso8601String(),
         ];
     }
