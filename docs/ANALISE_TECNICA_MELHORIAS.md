@@ -158,8 +158,9 @@ Estado atual: **✅ Implementado**
 - ~~Consolidar páginas de integrações em um "menu"/painel único.~~ **✅ Feito** (abas com salvamento independente em `/integracoes/gestor`)
 - ~~Adicionar textos explicativos e agrupamento claro na configuração.~~ **✅ Feito** (callouts, descrições por campo, separação SDK vs Motor)
 - Adicionar "preview" de template SMS com contexto de exemplo.
-- Adicionar visão "timeline" por aluno/matrícula (ingest → enroll facial → access-event → SMS).
+- ~~Adicionar visão "timeline" por aluno/matrícula.~~ **✅ Feito** (tela `/admin/timeline/{cod_aluno}` com cronologia unificada)
 - ~~Visualização de reprocessamentos/ações admin em eventos de acesso.~~ **✅ Feito** (`reprocessing_log` na tela de detalhes)
+- ~~Dashboard operacional consolidado.~~ **✅ Feito** (`/admin/operacional` — KPIs, volume diário, distribuição status/canal, filas SMS/outbound/frequência, saúde do sistema, detalhes técnicos)
 
 ---
 

@@ -99,6 +99,7 @@ flowchart TD
 - `GET /integracoes/sms` / `POST /integracoes/sms`
 - `GET /sms` (lista e filtros)
 - `GET /sms/{id}` (detalhe)
+- `GET /admin/operacional` — dashboard operacional consolidado (KPIs, gráficos de volume, filas, distribuição por status/canal, saúde do sistema, detalhes técnicos)
 - `GET /admin/timeline/{cod_aluno}` — timeline unificada do aluno (access-events, SMS, facial)
 - `POST /admin/timeline/{cod_aluno}/refresh` — força refresh dos dados do iEducar
 

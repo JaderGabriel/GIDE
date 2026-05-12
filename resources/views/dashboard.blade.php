@@ -735,6 +735,19 @@
                                                 </div>
                                             </div>
 
+                                            <div class="dash-quick__group" style="margin-bottom: 10px;">
+                                                <div class="dash-quick__label">Operacional</div>
+                                                <div class="dash-quick__btns">
+                                                    <a class="bridge-btn dash-qbtn dash-chip--strong" href="{{ route('admin.operational-dashboard') }}">
+                                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <path d="M3 3v18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                            <path d="M7 14l4-4 4 4 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                        Dashboard Operacional
+                                                    </a>
+                                                </div>
+                                            </div>
+
                                             <div class="dash-quick__group dash-quick__group--audit">
                                                 <div class="dash-quick__label">Auditoria e entregas</div>
                                                 <div class="dash-quick__btns">
