@@ -118,6 +118,12 @@ class StudentEnrichmentService
                 ?? data_get($body, 'aluno.nome')
                 ?? data_get($body, 'nome')
                 ?? null,
+            'curso' => data_get($body, 'matricula.curso')
+                ?? data_get($body, 'status.matricula.curso')
+                ?? data_get($body, 'status.matricula.curso_nome')
+                ?? data_get($body, 'status.matricula.nm_curso')
+                ?? data_get($body, 'curso')
+                ?? null,
             'turma' => data_get($body, 'matricula.turma')
                 ?? data_get($body, 'status.matricula.turma')
                 ?? data_get($body, 'status.matricula.turma_nome')
