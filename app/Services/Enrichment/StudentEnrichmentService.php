@@ -82,6 +82,13 @@ class StudentEnrichmentService
                 return null;
             }
 
+            Log::debug('student_enrichment.raw_response', [
+                'cod_aluno' => $codAluno,
+                'http_status' => $response->status(),
+                'body_keys' => array_keys($body),
+                'body_excerpt' => mb_substr(json_encode($body, JSON_UNESCAPED_UNICODE), 0, 2000),
+            ]);
+
             $normalized = $this->normalize($body, $codAluno);
 
             StudentEnrichmentCache::query()->updateOrCreate(

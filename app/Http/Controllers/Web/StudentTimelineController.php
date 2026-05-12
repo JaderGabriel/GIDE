@@ -32,16 +32,20 @@ class StudentTimelineController extends Controller
     {
         $data = (new StudentEnrichmentService)->refresh($codAluno);
 
-        if ($data) {
+        if ($data === null) {
             return redirect()
                 ->route('admin.student-timeline', ['cod_aluno' => $codAluno])
-                ->with('status', 'Dados do aluno atualizados do iEducar.')
-                ->with('status_level', 'success');
+                ->with('status', 'Não foi possível buscar dados no iEducar. Verifique se a integração iEducar está habilitada e acessível.')
+                ->with('status_level', 'error');
         }
+
+        $hasFields = collect($data)->except('cod_aluno')->filter()->isNotEmpty();
 
         return redirect()
             ->route('admin.student-timeline', ['cod_aluno' => $codAluno])
-            ->with('status', 'Não foi possível buscar dados no iEducar. Verifique se a integração iEducar está habilitada e acessível.')
-            ->with('status_level', 'error');
+            ->with('status', $hasFields
+                ? 'Dados do aluno atualizados do iEducar.'
+                : 'iEducar respondeu, mas não retornou campos esperados (nome, turma, etc.). Verifique a matrícula do aluno.')
+            ->with('status_level', $hasFields ? 'success' : 'warning');
     }
 }

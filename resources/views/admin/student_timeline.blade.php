@@ -84,6 +84,7 @@
                                     $stColor = match ($lvl) {
                                         'success' => '#059669',
                                         'error' => '#dc2626',
+                                        'warning' => '#d97706',
                                         default => '#0284c7',
                                     };
                                 @endphp
@@ -108,44 +109,26 @@
                             </div>
 
                             @if ($studentData)
-                                <div class="tl-student-card">
-                                    @if ($studentData['nome'] ?? null)
-                                        <div class="tl-student-card__item">
-                                            <div class="tl-student-card__label">Nome</div>
-                                            <div class="tl-student-card__value">{{ $studentData['nome'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if ($studentData['turma'] ?? null)
-                                        <div class="tl-student-card__item">
-                                            <div class="tl-student-card__label">Turma</div>
-                                            <div class="tl-student-card__value">{{ $studentData['turma'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if ($studentData['serie'] ?? null)
-                                        <div class="tl-student-card__item">
-                                            <div class="tl-student-card__label">Série</div>
-                                            <div class="tl-student-card__value">{{ $studentData['serie'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if ($studentData['etapa'] ?? null)
-                                        <div class="tl-student-card__item">
-                                            <div class="tl-student-card__label">Etapa</div>
-                                            <div class="tl-student-card__value">{{ $studentData['etapa'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if ($studentData['situacao'] ?? null)
-                                        <div class="tl-student-card__item">
-                                            <div class="tl-student-card__label">Situação</div>
-                                            <div class="tl-student-card__value">{{ $studentData['situacao'] }}</div>
-                                        </div>
-                                    @endif
-                                    @if ($studentData['matricula_id'] ?? null)
-                                        <div class="tl-student-card__item">
-                                            <div class="tl-student-card__label">Matrícula</div>
-                                            <div class="tl-student-card__value">{{ $studentData['matricula_id'] }}</div>
-                                        </div>
-                                    @endif
-                                </div>
+                                @php
+                                    $hasVisibleData = collect($studentData)->except('cod_aluno')->filter()->isNotEmpty();
+                                @endphp
+                                @if ($hasVisibleData)
+                                    <div class="tl-student-card">
+                                        @foreach (['nome' => 'Nome', 'curso' => 'Curso', 'turma' => 'Turma', 'serie' => 'Série', 'etapa' => 'Etapa', 'situacao' => 'Situação', 'matricula_id' => 'Matrícula'] as $key => $label)
+                                            @if ($studentData[$key] ?? null)
+                                                <div class="tl-student-card__item">
+                                                    <div class="tl-student-card__label">{{ $label }}</div>
+                                                    <div class="tl-student-card__value">{{ $studentData[$key] }}</div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div style="margin-top: 14px; padding: 10px 14px; border-radius: 12px; border: 1px dashed color-mix(in srgb, #f59e0b 30%, var(--border)); background: color-mix(in srgb, #f59e0b 5%, transparent); font-size: 13px; color: #b45309;">
+                                        Cache atualizado, mas o iEducar não retornou campos esperados (nome, turma, etc.) para <strong>cod_aluno={{ $codAluno }}</strong>.
+                                        Verifique se o aluno possui matrícula ativa no iEducar.
+                                    </div>
+                                @endif
                             @else
                                 <div style="margin-top: 14px; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--border); font-size: 13px; color: var(--muted);">
                                     Dados do aluno ainda não cacheados. Clique em "Atualizar dados do iEducar" para buscar.
