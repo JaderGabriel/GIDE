@@ -76,6 +76,15 @@
 
             .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
             .gae-json { margin-top: 10px; padding: 12px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg0) 72%, transparent); white-space: pre-wrap; word-break: break-word; max-height: min(48vh, 480px); overflow: auto; }
+
+            .gae-reproc-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+            .gae-reproc-table th { text-align: left; font-weight: 700; padding: 6px 8px; border-bottom: 2px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+            .gae-reproc-table td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); vertical-align: top; }
+            .gae-reproc-action { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 650; font-size: 11px; }
+            .gae-reproc-action--reevaluate { background: var(--gae-warn-bg); border: 1px solid color-mix(in srgb, var(--gae-warn) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-warn)); }
+            .gae-reproc-action--retry { background: var(--gae-bad-bg); border: 1px solid color-mix(in srgb, var(--gae-bad) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-bad)); }
+            .gae-reproc-action--requeue { background: var(--gae-info-bg); border: 1px solid color-mix(in srgb, var(--gae-info) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-info)); }
+            .gae-reproc-action--force { background: var(--gae-ok-bg); border: 1px solid color-mix(in srgb, var(--gae-ok) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-ok)); }
         </style>
     </head>
     <body>
@@ -145,12 +154,12 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
                                         Fila frequência iEducar
                                     </a>
-                                    @if ($ieducarEnabled && $analysisAction !== 'mark_presence')
-                                        <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $delivery->id]) }}" style="display:inline;" onsubmit="return confirm('Forçar mark_presence=true e reenviar ao iEducar?');">
+                                    @if ($ieducarEnabled)
+                                        <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $delivery->id]) }}" style="display:inline;" onsubmit="return confirm('Reavaliar pelo motor de presença e, se aprovado, reenviar ao iEducar?');">
                                             @csrf
-                                            <button type="submit" class="gae-btn gae-btn--warn" title="Override administrativo: força mark_presence=true e reprocessa o envio ao iEducar">
+                                            <button type="submit" class="gae-btn gae-btn--warn" title="Reavalia o evento pelo motor de presença; só enfileira envio ao iEducar se action=mark_presence">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                                Forçar presença + reenviar
+                                                Reavaliar presença
                                             </button>
                                         </form>
                                     @endif
@@ -284,6 +293,66 @@
                                     <p class="bridge-muted" style="margin:0;">Sem payload de envio registado. Consulte o resumo acima e a análise do motor.</p>
                                 @endif
                             </div>
+
+                            @php $reprocLog = is_array($delivery->reprocessing_log) ? $delivery->reprocessing_log : []; @endphp
+                            @if (count($reprocLog) > 0)
+                            <div class="gae-card" style="margin-top: 14px;">
+                                <div class="gae-card__head">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                    <div>
+                                        <h2 class="gae-card__title">Histórico de reprocessamentos ({{ count($reprocLog) }})</h2>
+                                        <p class="gae-card__hint">Ações administrativas aplicadas a esta entrega.</p>
+                                    </div>
+                                </div>
+                                <table class="gae-reproc-table mono">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Ação</th>
+                                            <th>Quando</th>
+                                            <th>Usuário</th>
+                                            <th>Detalhes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($reprocLog as $idx => $entry)
+                                            @php
+                                                $actionLabel = match ($entry['action'] ?? '?') {
+                                                    'reevaluate_presence' => 'Reavaliar presença',
+                                                    'retry' => 'Reenviar ao iEducar',
+                                                    'requeue' => 'Reenfileirar',
+                                                    'force_process' => 'Forçar processamento',
+                                                    default => $entry['action'] ?? '?',
+                                                };
+                                                $actionCls = match ($entry['action'] ?? '') {
+                                                    'reevaluate_presence' => 'gae-reproc-action--reevaluate',
+                                                    'retry' => 'gae-reproc-action--retry',
+                                                    'requeue' => 'gae-reproc-action--requeue',
+                                                    'force_process' => 'gae-reproc-action--force',
+                                                    default => '',
+                                                };
+                                                $details = collect($entry)->except(['action', 'at', 'user'])->filter(fn($v) => $v !== null)->toArray();
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $idx + 1 }}</td>
+                                                <td><span class="gae-reproc-action {{ $actionCls }}">{{ $actionLabel }}</span></td>
+                                                <td>{{ isset($entry['at']) ? \Carbon\Carbon::parse($entry['at'])->timezone(config('app.timezone'))->format('d/m/Y H:i:s') : '—' }}</td>
+                                                <td>{{ $entry['user'] ?? '—' }}</td>
+                                                <td>
+                                                    @if (count($details) > 0)
+                                                        @foreach ($details as $k => $v)
+                                                            <span class="bridge-muted">{{ $k }}:</span> {{ is_bool($v) ? ($v ? 'true' : 'false') : $v }}@if (! $loop->last), @endif
+                                                        @endforeach
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @endif
 
                             <div class="gae-card" style="margin-top: 14px;">
                                 <div class="gae-card__head">

@@ -239,23 +239,83 @@
                                 </div>
 
                                 <div class="gestor-section">
-                                    <div class="gestor-section__title">3. Presença — após <span class="mono">POST /api/v1/gestor/access-events</span></div>
+                                    <div class="gestor-section__title">3. Motor de presença — após <span class="mono">POST /api/v1/gestor/access-events</span></div>
                                     <p class="gestor-section__lead">
-                                        O GIDE aplica janelas e mapeamento de payload usando a integração <strong>iEducar</strong> em <span class="mono">/integracoes/ieducar</span> (API do Diário: mesma <span class="mono">base_url</span> e <span class="mono">access_key</span> para preview e homologação). Abaixo só indica qual <strong>rótulo de ambiente</strong> fica registrado para auditoria e alinhamento com o iEducar.
+                                        Configura como o GIDE decide se marca presença no iEducar quando recebe eventos de acesso. A configuração abaixo é gravada em <span class="mono">ieducar.extra.presence</span>. Documentação: <code>docs/MOTOR_PRESENCA.md</code>.
                                     </p>
-                                    <p class="bridge-muted" style="margin-top: 10px; line-height: 1.55;">
-                                        <strong>Regra do payload:</strong> se <span class="mono">action.mark_presence</span> não vier no JSON, o motor assume presença <strong>permitida</strong> e decide pelas janelas configuradas. Só bloqueia presença quando <span class="mono">action.mark_presence=false</span> for declarado. Para forçar presença sem depender das janelas, envie <span class="mono">action.mark_presence=true</span>.
-                                    </p>
+
                                     <div class="bridge-field">
+                                        <div class="bridge-label">Modo do motor</div>
+                                        @php $curMode = old('presence_mode', $presenceMode ?? 'auto'); @endphp
+                                        <div style="margin-top: 10px; display: grid; gap: 10px;">
+                                            <label class="bridge-check">
+                                                <input type="radio" name="presence_mode" value="auto" @checked($curMode === 'auto') />
+                                                <span><strong>Automático (janelas)</strong> — marca presença conforme janelas de horário; <span class="mono">action.mark_presence</span> pode sobrepor.</span>
+                                            </label>
+                                            <label class="bridge-check">
+                                                <input type="radio" name="presence_mode" value="always_mark" @checked($curMode === 'always_mark') />
+                                                <span><strong>Sempre marcar</strong> — marca presença em todos os eventos com aluno identificado (ignora janelas).</span>
+                                            </label>
+                                            <label class="bridge-check">
+                                                <input type="radio" name="presence_mode" value="explicit_only" @checked($curMode === 'explicit_only') />
+                                                <span><strong>Somente explícito</strong> — só marca se <span class="mono">action.mark_presence=true</span> vier no payload.</span>
+                                            </label>
+                                            <label class="bridge-check">
+                                                <input type="radio" name="presence_mode" value="disabled" @checked($curMode === 'disabled') />
+                                                <span><strong>Desabilitado</strong> — nunca marca presença (motor inerte).</span>
+                                            </label>
+                                        </div>
+                                        @error('presence_mode')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="bridge-field" style="margin-top: 16px;">
+                                        <label class="bridge-check">
+                                            <input type="checkbox" name="presence_ignore_exit" value="1" @checked(old('presence_ignore_exit', $presenceIgnoreExit ?? true)) />
+                                            <span>Ignorar eventos de saída (<span class="mono">type</span> contém "saida" ou "exit")</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="bridge-field" style="margin-top: 16px;">
+                                        <div class="bridge-label">Janelas de horário (modo automático)</div>
+                                        <p class="bridge-muted" style="margin-top: 6px; line-height: 1.45;">Defina as faixas de horário em que o motor marca presença automaticamente. A <strong>tolerância</strong> (±min) expande a janela: se a janela é 07:00–09:30 com ±15min, eventos entre 06:45 e 09:45 são aceites. Fora das janelas (incluindo tolerância), presença não é registrada (exceto com <span class="mono">action.mark_presence=true</span>).</p>
+                                        <div id="presence-windows-editor" style="margin-top: 10px;"></div>
+                                        <input type="hidden" name="presence_windows" id="presence_windows_json" value="" />
+                                        @error('presence_windows')
+                                            <div class="bridge-error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="bridge-field" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+                                        <div class="bridge-label">Mapeamento de campos do payload</div>
+                                        <p class="bridge-muted" style="margin-top: 6px; line-height: 1.45;">Nomes dos campos no JSON do webhook que o motor usa para resolver aluno, matrícula e tipo de evento.</p>
+                                        <div style="margin-top: 10px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr 1fr;">
+                                            <div>
+                                                <label class="bridge-label" for="presence_map_aluno_id" style="font-size: 12px;">aluno_id</label>
+                                                <input class="bridge-input mono" id="presence_map_aluno_id" name="presence_map_aluno_id" type="text" value="{{ old('presence_map_aluno_id', $presencePayloadMap['aluno_id'] ?? 'aluno_id') }}" placeholder="aluno_id" />
+                                            </div>
+                                            <div>
+                                                <label class="bridge-label" for="presence_map_matricula_id" style="font-size: 12px;">matricula_id</label>
+                                                <input class="bridge-input mono" id="presence_map_matricula_id" name="presence_map_matricula_id" type="text" value="{{ old('presence_map_matricula_id', $presencePayloadMap['matricula_id'] ?? 'matricula_id') }}" placeholder="matricula_id" />
+                                            </div>
+                                            <div>
+                                                <label class="bridge-label" for="presence_map_event_type" style="font-size: 12px;">event_type</label>
+                                                <input class="bridge-input mono" id="presence_map_event_type" name="presence_map_event_type" type="text" value="{{ old('presence_map_event_type', $presencePayloadMap['event_type'] ?? 'type') }}" placeholder="type" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bridge-field" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
                                         <div class="bridge-label">Ambiente iEducar (registro)</div>
                                         <div style="margin-top: 10px; display: grid; gap: 10px;">
                                             <label class="bridge-check">
                                                 <input type="radio" name="ieducar_processing_environment" value="preview" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'preview' ? 'checked' : '' }} />
-                                                <span>Preview</span>
+                                                <span>Preview (<span class="mono">meta.preview=true</span> — iEducar não grava)</span>
                                             </label>
                                             <label class="bridge-check">
                                                 <input type="radio" name="ieducar_processing_environment" value="homolog" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'homolog' ? 'checked' : '' }} />
-                                                <span>Homologação</span>
+                                                <span>Homologação (<span class="mono">meta.preview=false</span> — iEducar grava frequência)</span>
                                             </label>
                                         </div>
                                         @error('ieducar_processing_environment')
@@ -369,5 +429,86 @@
                 </div>
             </footer>
         </div>
+
+        <style>
+            .pw-editor { display: flex; flex-direction: column; gap: 8px; }
+            .pw-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+            .pw-row input { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); color: var(--text); }
+            .pw-row input[type="text"] { flex: 1; min-width: 0; }
+            .pw-row input[type="time"] { width: 110px; }
+            .pw-row input[type="number"] { width: 68px; text-align: center; }
+            .pw-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
+            .pw-rm { appearance: none; border: none; background: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 4px; line-height: 1; }
+            .pw-rm:hover { color: #ef4444; }
+            .pw-add { appearance: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 10px; border: 1px dashed var(--border); background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+            .pw-add:hover { border-color: color-mix(in srgb, var(--accent-a) 40%, var(--border)); color: var(--text); }
+            .pw-empty { font-size: 13px; color: var(--muted); padding: 8px 0; }
+        </style>
+
+        <script>
+        (function () {
+            var initial = @json($presenceWindows ?? []);
+            var container = document.getElementById('presence-windows-editor');
+            var hidden = document.getElementById('presence_windows_json');
+            var windows = Array.isArray(initial) ? initial.map(function (w) {
+                return { name: w.name || '', start: w.start || '', end: w.end || '', tolerance_minutes: parseInt(w.tolerance_minutes) || 0 };
+            }) : [];
+
+            function render() {
+                hidden.value = JSON.stringify(windows);
+                var html = '<div class="pw-editor">';
+                if (windows.length === 0) {
+                    html += '<div class="pw-empty">Nenhuma janela configurada. Clique em "Adicionar janela" para criar.</div>';
+                }
+                for (var i = 0; i < windows.length; i++) {
+                    var tol = windows[i].tolerance_minutes || 0;
+                    html += '<div class="pw-row" data-idx="' + i + '">'
+                        + '<input type="text" placeholder="Nome (ex: Matutino)" value="' + esc(windows[i].name) + '" data-field="name" />'
+                        + '<input type="time" value="' + esc(windows[i].start) + '" data-field="start" title="Início" />'
+                        + '<span style="color:var(--muted);font-weight:700;">—</span>'
+                        + '<input type="time" value="' + esc(windows[i].end) + '" data-field="end" title="Fim" />'
+                        + '<span class="pw-lbl">±</span>'
+                        + '<input type="number" min="0" max="120" value="' + tol + '" data-field="tolerance_minutes" title="Tolerância em minutos" />'
+                        + '<span class="pw-lbl">min</span>'
+                        + '<button type="button" class="pw-rm" data-rm="' + i + '" title="Remover">×</button>'
+                        + '</div>';
+                }
+                html += '<button type="button" class="pw-add" id="pw-add-btn">+ Adicionar janela</button>';
+                html += '</div>';
+                container.innerHTML = html;
+                bind();
+            }
+
+            function bind() {
+                container.querySelectorAll('.pw-row input').forEach(function (inp) {
+                    inp.addEventListener('input', function () {
+                        var idx = parseInt(this.closest('.pw-row').dataset.idx);
+                        var field = this.dataset.field;
+                        var val = this.value;
+                        if (field === 'tolerance_minutes') { val = parseInt(val) || 0; }
+                        windows[idx][field] = val;
+                        hidden.value = JSON.stringify(windows);
+                    });
+                });
+                container.querySelectorAll('.pw-rm').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        windows.splice(parseInt(this.dataset.rm), 1);
+                        render();
+                    });
+                });
+                var addBtn = document.getElementById('pw-add-btn');
+                if (addBtn) {
+                    addBtn.addEventListener('click', function () {
+                        windows.push({ name: '', start: '07:00', end: '09:30', tolerance_minutes: 15 });
+                        render();
+                    });
+                }
+            }
+
+            function esc(s) { return (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+            render();
+        })();
+        </script>
     </body>
 </html>

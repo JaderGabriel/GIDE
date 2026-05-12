@@ -47,6 +47,7 @@ class GestorAccessEventDelivery extends Model
         'ieducar_frequencia_response_json',
         'ieducar_frequencia_error',
         'ieducar_attempts',
+        'reprocessing_log',
         'processed_at',
     ];
 
@@ -62,6 +63,7 @@ class GestorAccessEventDelivery extends Model
             'ieducar_frequencia_http_status' => 'integer',
             'ieducar_frequencia_response_json' => 'array',
             'ieducar_attempts' => 'integer',
+            'reprocessing_log' => 'array',
             'processed_at' => 'datetime',
         ];
     }

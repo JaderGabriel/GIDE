@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Integration;
 use App\Models\SmsTemplate;
 use App\Services\Gestor\GestorClient;
+use App\Services\Presence\PresenceRuleEngine;
 use App\Services\UserAuditLogger;
 use App\Support\BrPhoneNormalizer;
 use App\Support\GestorCatracaAccessToken;
@@ -134,10 +135,17 @@ class IntegrationController extends Controller
             ],
         );
 
+        $ieducar = Integration::query()->where('key', 'ieducar')->first();
+        $presenceCfg = (array) data_get($ieducar?->extra, 'presence', []);
+
         return view('integrations.gestor', [
             'integration' => $integration,
             'catracaWebhookUrl' => url('/api/v1/catraca/access-events'),
             'catracaWebhookBearerConfigured' => GestorCatracaAccessToken::isConfigured($integration),
+            'presenceMode' => (string) ($presenceCfg['mode'] ?? PresenceRuleEngine::MODE_AUTO),
+            'presenceIgnoreExit' => (bool) ($presenceCfg['ignore_exit_events'] ?? true),
+            'presenceWindows' => is_array($presenceCfg['windows'] ?? null) ? $presenceCfg['windows'] : [],
+            'presencePayloadMap' => (array) ($presenceCfg['payload_map'] ?? ['aluno_id' => 'aluno_id', 'matricula_id' => 'matricula_id', 'event_type' => 'type']),
         ]);
     }
 
@@ -181,6 +189,12 @@ class IntegrationController extends Controller
                 'unity_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
                 'access_profile_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
                 'ieducar_processing_environment' => ['required', Rule::in(['preview', 'homolog'])],
+                'presence_mode' => ['required', Rule::in(PresenceRuleEngine::VALID_MODES)],
+                'presence_ignore_exit' => ['nullable'],
+                'presence_windows' => ['nullable', 'string'],
+                'presence_map_aluno_id' => ['nullable', 'string', 'max:64'],
+                'presence_map_matricula_id' => ['nullable', 'string', 'max:64'],
+                'presence_map_event_type' => ['nullable', 'string', 'max:64'],
             ]);
 
             $integration->enabled = (bool) $request->boolean('enabled');
@@ -228,24 +242,80 @@ class IntegrationController extends Controller
 
             $integration->extra = $extra;
 
-            // invalidar token para forçar reauth quando credenciais mudarem
             $integration->auth_type = 'bearer';
             $integration->auth_token = null;
 
             $integration->save();
+
+            $this->savePresenceConfig($data);
         } catch (\Throwable $e) {
-            return back()->withErrors(['base_url' => $e->getMessage()]);
+            return back()->withErrors(['base_url' => $e->getMessage()])->withInput();
         }
 
         UserAuditLogger::recordAuthenticated('integration.gestor.updated', [
             'enabled' => (bool) $integration->enabled,
             'ieducar_processing_environment' => (string) data_get($integration->extra, 'ieducar_processing.environment', ''),
+            'presence_mode' => $data['presence_mode'] ?? '',
         ], 'integration', $integration->id);
 
         return redirect()
             ->route('integrations.gestor')
-            ->with('status', 'Configuração Gestor salva no banco (SDK, convite, ambiente de presença e demais campos do formulário).')
+            ->with('status', 'Configuração Gestor salva (SDK, convite, ambiente, motor de presença).')
             ->with('status_level', 'success');
+    }
+
+    /**
+     * Grava configuração do motor de presença em ieducar.extra.presence.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function savePresenceConfig(array $data): void
+    {
+        $ieducar = Integration::query()->where('key', 'ieducar')->first();
+        if (! $ieducar) {
+            return;
+        }
+
+        $ieExtra = (array) ($ieducar->extra ?? []);
+
+        $windows = [];
+        $rawWindows = trim((string) ($data['presence_windows'] ?? ''));
+        if ($rawWindows !== '') {
+            $decoded = json_decode($rawWindows, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $w) {
+                    if (! is_array($w)) {
+                        continue;
+                    }
+                    $start = trim((string) ($w['start'] ?? ''));
+                    $end = trim((string) ($w['end'] ?? ''));
+                    if ($start === '' || $end === '') {
+                        continue;
+                    }
+                    $tolerance = max(0, (int) ($w['tolerance_minutes'] ?? 0));
+                    $windows[] = [
+                        'name' => trim((string) ($w['name'] ?? '')),
+                        'start' => $start,
+                        'end' => $end,
+                        'tolerance_minutes' => $tolerance,
+                    ];
+                }
+            }
+        }
+
+        $ieExtra['presence'] = [
+            'mode' => $data['presence_mode'] ?? PresenceRuleEngine::MODE_AUTO,
+            'ignore_exit_events' => (bool) ($data['presence_ignore_exit'] ?? false),
+            'windows' => $windows,
+            'payload_map' => [
+                'aluno_id' => trim((string) ($data['presence_map_aluno_id'] ?? '')) !== '' ? trim($data['presence_map_aluno_id']) : 'aluno_id',
+                'matricula_id' => trim((string) ($data['presence_map_matricula_id'] ?? '')) !== '' ? trim($data['presence_map_matricula_id']) : 'matricula_id',
+                'event_type' => trim((string) ($data['presence_map_event_type'] ?? '')) !== '' ? trim($data['presence_map_event_type']) : 'type',
+            ],
+        ];
+
+        $ieducar->extra = $ieExtra;
+        $ieducar->save();
     }
 
     public function rotateGestorHmac(Request $request)

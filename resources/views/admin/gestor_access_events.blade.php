@@ -137,14 +137,12 @@
                                                 <a class="fac-btn-ico fac-btn-ico--info" href="{{ route('admin.gestor-access-events.show', ['id' => $row->id]) }}" title="Detalhe">→</a>
                                             </td>
                                             <td style="text-align:right;">
-                                                @php $act = data_get($row->analysis_json, 'action'); @endphp
                                                 @if ($ieducarEnabled ?? true)
-                                                    @if ($act !== 'mark_presence')
-                                                        <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $row->id]) }}" style="display:inline;" onsubmit="return confirm('Forçar mark_presence=true e reenviar ao iEducar?');">
-                                                            @csrf
-                                                            <button type="submit" class="fac-btn-ico fac-btn-ico--warn" title="Forçar presença e reenviar ao iEducar">✎</button>
-                                                        </form>
-                                                    @elseif ($row->processing_status === 'pending')
+                                                    <form method="post" action="{{ route('admin.gestor-access-events.force-mark-presence', ['id' => $row->id]) }}" style="display:inline;" onsubmit="return confirm('Reavaliar pelo motor de presença?');">
+                                                        @csrf
+                                                        <button type="submit" class="fac-btn-ico fac-btn-ico--warn" title="Reavaliar presença pelo motor">✎</button>
+                                                    </form>
+                                                    @if ($row->processing_status === 'pending')
                                                         <form method="post" action="{{ route('admin.gestor-access-events.requeue', ['id' => $row->id]) }}" style="display:inline;">
                                                             @csrf
                                                             <button type="submit" class="fac-btn-ico fac-btn-ico--info" title="Reenfileirar pendente">⟲</button>

@@ -12,6 +12,7 @@ use App\Support\Ieducar\IeducarFrequenciaPreviewMode;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class GestorAccessEventAdminController extends Controller
 {
@@ -70,12 +71,18 @@ class GestorAccessEventAdminController extends Controller
                 ->withErrors(['retry' => 'Só é possível reenfileirar entregas pendentes, em processamento ou com falha no iEducar.']);
         }
 
+        $previousStatus = $delivery->processing_status;
+
         if ($delivery->processing_status !== GestorAccessEventDelivery::STATUS_PENDING) {
             $delivery->update([
                 'processing_status' => GestorAccessEventDelivery::STATUS_PENDING,
                 'processed_at' => null,
             ]);
         }
+
+        $this->appendReprocessingLog($delivery, 'retry', [
+            'previous_status' => $previousStatus,
+        ]);
 
         ProcessGestorAccessEventDeliveryJob::dispatch($delivery->id);
 
@@ -93,6 +100,8 @@ class GestorAccessEventAdminController extends Controller
                 ->back()
                 ->withErrors(['retry' => 'Só é possível reenfileirar quando a entrega está pendente.']);
         }
+
+        $this->appendReprocessingLog($delivery, 'requeue', []);
 
         ProcessGestorAccessEventDeliveryJob::dispatch($delivery->id);
 
@@ -114,16 +123,31 @@ class GestorAccessEventAdminController extends Controller
         try {
             ProcessGestorAccessEventDeliveryJob::dispatchSync($delivery->id);
         } catch (\Throwable $e) {
+            $this->appendReprocessingLog($delivery, 'force_process', [
+                'result' => 'error',
+                'error' => mb_substr($e->getMessage(), 0, 500),
+            ]);
+
             return redirect()
                 ->back()
                 ->withErrors(['retry' => 'Falha ao processar agora: '.$e->getMessage()]);
         }
+
+        $delivery->refresh();
+        $this->appendReprocessingLog($delivery, 'force_process', [
+            'result' => 'ok',
+            'new_status' => $delivery->processing_status,
+        ]);
 
         return redirect()
             ->back()
             ->with('status', 'Processamento forçado executado (sync).');
     }
 
+    /**
+     * Reavalia o evento pelo motor de presença (sem forçar mark_presence=true).
+     * Só enfileira envio ao iEducar se a reavaliação resultar em action=mark_presence.
+     */
     public function forceMarkPresence(int $id): RedirectResponse
     {
         $delivery = GestorAccessEventDelivery::query()->with('accessEvent')->findOrFail($id);
@@ -135,12 +159,13 @@ class GestorAccessEventAdminController extends Controller
                 ->withErrors(['retry' => 'Integração iEducar inexistente ou com enabled=false; não é possível enviar.']);
         }
 
+        $previousAnalysis = $delivery->analysis_json ?? [];
+        $previousStatus = $delivery->processing_status;
+
         $payload = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
         $payload = $this->normalizePayloadForPresence($delivery->inbound_channel ?? null, $payload);
-        data_set($payload, 'action.mark_presence', true);
 
         $occurredAt = $this->resolveOccurredAtFromPayload($payload);
-
         $analysis = (new PresenceRuleEngine)->analyze($payload, $occurredAt, $ieducar);
 
         $gestorEnv = strtolower(trim((string) ($delivery->gestor_ie_environment ?? 'homolog')));
@@ -153,31 +178,57 @@ class GestorAccessEventAdminController extends Controller
         $analysis['ieducar_outbound_channel'] = 'catraca_frequencia_registro';
         $analysis['ieducar_outbound_preview_only'] = $metaPreview;
         $analysis['inbound_channel'] = (string) ($delivery->inbound_channel ?? '');
-        $analysis['reason'] = ($analysis['reason'] ?? '').' (override admin: mark_presence=true)';
+        $analysis['reason'] = ($analysis['reason'] ?? '').' (reavaliação admin)';
 
-        $delivery->update([
-            'analysis_json' => $analysis,
-            'processing_status' => GestorAccessEventDelivery::STATUS_PENDING,
-            'processed_at' => null,
-            'ieducar_marker_summary' => null,
-            'ieducar_frequencia_request_json' => null,
-            'ieducar_frequencia_http_status' => null,
-            'ieducar_frequencia_response_json' => null,
-            'ieducar_frequencia_error' => null,
-            'ieducar_preview_only' => $metaPreview,
-        ]);
+        $willSend = ($analysis['action'] ?? '') === 'mark_presence';
 
-        if ($delivery->accessEvent) {
-            $delivery->accessEvent->analysis = $analysis;
-            $delivery->accessEvent->processed_at = null;
-            $delivery->accessEvent->save();
+        $logExtra = [
+            'previous_action' => $previousAnalysis['action'] ?? null,
+            'previous_status' => $previousStatus,
+            'new_action' => $analysis['action'] ?? null,
+            'new_reason' => $analysis['reason'] ?? null,
+            'will_send_ieducar' => $willSend,
+        ];
+
+        if ($willSend) {
+            $delivery->update([
+                'analysis_json' => $analysis,
+                'processing_status' => GestorAccessEventDelivery::STATUS_PENDING,
+                'processed_at' => null,
+                'ieducar_marker_summary' => null,
+                'ieducar_frequencia_request_json' => null,
+                'ieducar_frequencia_http_status' => null,
+                'ieducar_frequencia_response_json' => null,
+                'ieducar_frequencia_error' => null,
+                'ieducar_preview_only' => $metaPreview,
+            ]);
+
+            if ($delivery->accessEvent) {
+                $delivery->accessEvent->analysis = $analysis;
+                $delivery->accessEvent->processed_at = null;
+                $delivery->accessEvent->save();
+            }
+
+            $this->appendReprocessingLog($delivery, 'reevaluate_presence', $logExtra);
+
+            ProcessGestorAccessEventDeliveryJob::dispatch($delivery->id);
+
+            return redirect()
+                ->back()
+                ->with('status', 'Motor reavaliou: action=mark_presence. Envio ao iEducar enfileirado.');
         }
 
-        ProcessGestorAccessEventDeliveryJob::dispatch($delivery->id);
+        $delivery->update(['analysis_json' => $analysis]);
+
+        $this->appendReprocessingLog($delivery, 'reevaluate_presence', $logExtra);
 
         return redirect()
             ->back()
-            ->with('status', 'Override aplicado: mark_presence=true. Envio ao iEducar reenfileirado.');
+            ->withErrors(['retry' => 'Motor reavaliou e decidiu: action='
+                .($analysis['action'] ?? '?')
+                .' — '
+                .($analysis['reason'] ?? '')
+                .'. Sem envio ao iEducar.']);
     }
 
     /**
@@ -217,5 +268,21 @@ class GestorAccessEventAdminController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function appendReprocessingLog(GestorAccessEventDelivery $delivery, string $action, array $extra): void
+    {
+        $log = is_array($delivery->reprocessing_log) ? $delivery->reprocessing_log : [];
+
+        $log[] = array_filter([
+            'action' => $action,
+            'at' => now()->toIso8601String(),
+            'user' => Auth::user()?->name ?? Auth::user()?->email ?? 'system',
+        ] + $extra, fn ($v) => $v !== null);
+
+        $delivery->update(['reprocessing_log' => $log]);
     }
 }
