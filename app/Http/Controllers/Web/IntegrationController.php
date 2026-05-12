@@ -173,7 +173,10 @@ class IntegrationController extends Controller
             ->with('gestor_catraca_webhook_bearer_plaintext', $plain);
     }
 
-    public function updateGestor(Request $request)
+    /**
+     * Salva bloco 1 — SDK credentials + outbound (convite).
+     */
+    public function updateGestorSdk(Request $request)
     {
         $integration = Integration::query()->where('key', 'gestor')->firstOrFail();
 
@@ -188,13 +191,6 @@ class IntegrationController extends Controller
                 'outbound_enrollment_path' => ['nullable', 'string'],
                 'unity_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
                 'access_profile_id' => ['nullable', 'string', 'max:32', 'regex:/^[0-9]*$/'],
-                'ieducar_processing_environment' => ['required', Rule::in(['preview', 'homolog'])],
-                'presence_mode' => ['required', Rule::in(PresenceRuleEngine::VALID_MODES)],
-                'presence_ignore_exit' => ['nullable'],
-                'presence_windows' => ['nullable', 'string'],
-                'presence_map_aluno_id' => ['nullable', 'string', 'max:64'],
-                'presence_map_matricula_id' => ['nullable', 'string', 'max:64'],
-                'presence_map_event_type' => ['nullable', 'string', 'max:64'],
             ]);
 
             $integration->enabled = (bool) $request->boolean('enabled');
@@ -236,32 +232,72 @@ class IntegrationController extends Controller
                 $extra['defaults'] = $defaults;
             }
 
-            $extra['ieducar_processing'] = [
-                'environment' => $data['ieducar_processing_environment'],
-            ];
-
             $integration->extra = $extra;
-
             $integration->auth_type = 'bearer';
             $integration->auth_token = null;
 
             $integration->save();
-
-            $this->savePresenceConfig($data);
         } catch (\Throwable $e) {
             return back()->withErrors(['base_url' => $e->getMessage()])->withInput();
         }
 
-        UserAuditLogger::recordAuthenticated('integration.gestor.updated', [
+        UserAuditLogger::recordAuthenticated('integration.gestor.sdk_updated', [
             'enabled' => (bool) $integration->enabled,
-            'ieducar_processing_environment' => (string) data_get($integration->extra, 'ieducar_processing.environment', ''),
-            'presence_mode' => $data['presence_mode'] ?? '',
         ], 'integration', $integration->id);
 
         return redirect()
-            ->route('integrations.gestor')
-            ->with('status', 'Configuração Gestor salva (SDK, convite, ambiente, motor de presença).')
+            ->route('integrations.gestor', ['tab' => 'sdk'])
+            ->with('status', 'Credenciais SDK e convite salvos. O token Signin foi limpo — será renovado automaticamente.')
             ->with('status_level', 'success');
+    }
+
+    /**
+     * Salva bloco 2 — Motor de presença + ambiente iEducar.
+     */
+    public function updateGestorPresence(Request $request)
+    {
+        $integration = Integration::query()->where('key', 'gestor')->firstOrFail();
+
+        try {
+            $data = $request->validate([
+                'ieducar_processing_environment' => ['required', Rule::in(['preview', 'homolog'])],
+                'presence_mode' => ['required', Rule::in(PresenceRuleEngine::VALID_MODES)],
+                'presence_ignore_exit' => ['nullable'],
+                'presence_windows' => ['nullable', 'string'],
+                'presence_map_aluno_id' => ['nullable', 'string', 'max:64'],
+                'presence_map_matricula_id' => ['nullable', 'string', 'max:64'],
+                'presence_map_event_type' => ['nullable', 'string', 'max:64'],
+            ]);
+
+            $extra = (array) ($integration->extra ?? []);
+            $extra['ieducar_processing'] = [
+                'environment' => $data['ieducar_processing_environment'],
+            ];
+            $integration->extra = $extra;
+            $integration->save();
+
+            $this->savePresenceConfig($data);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['presence_mode' => $e->getMessage()])->withInput();
+        }
+
+        UserAuditLogger::recordAuthenticated('integration.gestor.presence_updated', [
+            'ieducar_processing_environment' => $data['ieducar_processing_environment'],
+            'presence_mode' => $data['presence_mode'],
+        ], 'integration', $integration->id);
+
+        return redirect()
+            ->route('integrations.gestor', ['tab' => 'presenca'])
+            ->with('status', 'Motor de presença e ambiente iEducar salvos.')
+            ->with('status_level', 'success');
+    }
+
+    /**
+     * @deprecated Usar updateGestorSdk + updateGestorPresence. Mantido para compat.
+     */
+    public function updateGestor(Request $request)
+    {
+        return $this->updateGestorSdk($request);
     }
 
     /**

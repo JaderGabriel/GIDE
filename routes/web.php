@@ -162,6 +162,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/integracoes/gestor', [IntegrationController::class, 'gestor'])->name('integrations.gestor');
         Route::post('/integracoes/gestor', [IntegrationController::class, 'updateGestor'])->name('integrations.gestor.update');
+        Route::post('/integracoes/gestor/sdk', [IntegrationController::class, 'updateGestorSdk'])->name('integrations.gestor.update-sdk');
+        Route::post('/integracoes/gestor/presenca', [IntegrationController::class, 'updateGestorPresence'])->name('integrations.gestor.update-presence');
         Route::post('/integracoes/gestor/rotacionar-hmac', [IntegrationController::class, 'rotateGestorHmac'])->name('integrations.gestor.rotate-hmac');
         Route::post('/integracoes/gestor/gerar-token-webhook-catraca', [IntegrationController::class, 'generateGestorCatracaWebhookBearer'])->name('integrations.gestor.generate-catraca-webhook-bearer');
         Route::post('/integracoes/gestor/testar-auth', [IntegrationController::class, 'testGestorAuth'])->name('integrations.gestor.test-auth');
