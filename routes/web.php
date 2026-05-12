@@ -206,6 +206,7 @@ Route::middleware('auth')->group(function () {
         });
 
         Route::get('/admin/operacional', [OperationalDashboardController::class, 'index'])->name('admin.operational-dashboard');
+        Route::get('/admin/operacional/queue-live', [OperationalDashboardController::class, 'queueLive'])->name('admin.operational-dashboard.queue-live');
 
         Route::get('/admin/timeline/{cod_aluno}', [StudentTimelineController::class, 'show'])->name('admin.student-timeline');
         Route::post('/admin/timeline/{cod_aluno}/refresh', [StudentTimelineController::class, 'refresh'])->name('admin.student-timeline.refresh');

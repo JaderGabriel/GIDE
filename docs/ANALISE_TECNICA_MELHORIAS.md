@@ -160,7 +160,7 @@ Estado atual: **✅ Implementado**
 - Adicionar "preview" de template SMS com contexto de exemplo.
 - ~~Adicionar visão "timeline" por aluno/matrícula.~~ **✅ Feito** (tela `/admin/timeline/{cod_aluno}` com cronologia unificada)
 - ~~Visualização de reprocessamentos/ações admin em eventos de acesso.~~ **✅ Feito** (`reprocessing_log` na tela de detalhes)
-- ~~Dashboard operacional consolidado.~~ **✅ Feito** (`/admin/operacional` — KPIs, volume diário, distribuição status/canal, filas SMS/outbound/frequência, saúde do sistema, detalhes técnicos)
+- ~~Dashboard operacional consolidado.~~ **✅ Feito** (`/admin/operacional` — health score composto com gauge SVG por subsistema, KPIs com ícones, gráfico de volume diário, distribuição status/canal, filas em tempo real com polling 10s, detalhes técnicos). CSS/JS extraídos para `public/operational-dashboard.{css,js}`.
 
 ---
 
