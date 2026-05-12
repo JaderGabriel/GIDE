@@ -489,7 +489,7 @@ class GestorAccessEventWebhookService
         $normalized = GideFrequenciaRegistroPlanB::refreshDataRefsWithRandomClock($normalized);
         $meta = (array) ($normalized['meta'] ?? []);
         $meta['contract_version'] = IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION;
-        $meta['preview'] = true;
+        $meta['preview'] = $metaPreview;
         $normalized['meta'] = $meta;
 
         try {
