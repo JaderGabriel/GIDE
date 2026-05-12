@@ -10,13 +10,15 @@ Este documento aponta **padrões atuais do projeto**, possíveis **gargalos**, r
 - **Autenticação web**: sessão (`Auth::attempt`) por `username`, com middleware `auth`.
 - **Autorização admin**: middleware `admin` baseado em `users.is_admin`.
 - **Integrações**: tabela única `integrations` (config + tokens + secrets); `extra` é armazenado como **TEXT criptografado** (PostgreSQL).
-- **Inbound security**: HMAC via middleware `verify.hmac:{integrationKey}`.
+- **Inbound security**: HMAC via middleware `verify.hmac:{integrationKey}` + Bearer token (catraca).
 - **Outbound**:
   - Gestor: client com bearer token + ApplicationKey e retry simples em 401.
-  - iEducar: client legacy via `access_key` e callback “API nova” via Bearer token.
+  - iEducar: client legacy via `access_key` e callback "API nova" via Bearer token.
   - SMS: cliente HTTP atual via header `X-API-TOKEN` (token na integração).
 - **Async**: jobs para outbound (matrícula→Gestor, SMS pós-presença). Execução depende do worker `queue:listen`.
-- **Auditoria**: tabelas para ingests/events/outbound/sms.
+- **Auditoria**: tabelas para ingests/events/outbound/sms + `reprocessing_log` JSON em deliveries.
+- **Motor de presença**: `PresenceRuleEngine` com 4 modos (`auto`, `always_mark`, `explicit_only`, `disabled`), janelas de horário com tolerância (±min), mapeamento configurável de campos.
+- **Tela de configuração Gestor**: interface com abas (Conexão/Convite, Motor de presença, Canais/Testes), salvamento independente por bloco, textos explicativos.
 
 ---
 
@@ -32,7 +34,7 @@ Risco:
 Sugestões (refino):
 
 - Monitorar `failed_jobs` e alertar se crescer; opcionalmente rodar `gide:deliveries:retry-due --recover-stale` em horário de baixa.
-- Definir **tentativas máximas** e “dead-letter” (ex.: `status=dead`) para evitar loop infinito.
+- Definir **tentativas máximas** e "dead-letter" (ex.: `status=dead`) para evitar loop infinito.
 
 Estado atual:
 
@@ -48,10 +50,10 @@ Risco:
 
 Sugestões:
 
-- Usar **encriptação de atributos** (Laravel “encrypted cast”) para `auth_token` e subcampos sensíveis no `extra`.
+- Usar **encriptação de atributos** (Laravel "encrypted cast") para `auth_token` e subcampos sensíveis no `extra`.
 - Separar credenciais em colunas dedicadas (ou outra tabela) se a complexidade crescer.
 
-Estado atual:
+Estado atual: **✅ Implementado**
 
 - `auth_token` e `hmac_secret` usam cast `encrypted`
 - `extra` usa cast `encrypted:array`
@@ -66,13 +68,13 @@ Risco:
 Sugestões:
 
 - Formalizar contratos via **OpenAPI** interno e fixtures (ex.: payload esperado).
-- Criar “modo simulado” (`fake`) para testes end‑to‑end.
+- Criar "modo simulado" (`fake`) para testes end‑to‑end.
 
 ### 4) Presença no iEducar (enriquecimento insuficiente)
 
 Risco:
 
-- `PresenceMarker` pode “skipped” por falta de dados (instituicao_id/etapa/turmas). Isso reduz a efetividade do MVP.
+- `PresenceMarker` pode "skipped" por falta de dados (instituicao_id/etapa/turmas). Isso reduz a efetividade do MVP.
 
 Sugestões:
 
@@ -81,11 +83,20 @@ Sugestões:
   - persistir mapeamentos (matricula→turma/etapa/instituição)
 - Criar dashboard/admin para visualizar eventos **skipped** e motivo.
 
-### 5) SMS: “enviado” vs “entregue”
+Estado atual: **✅ Parcialmente resolvido**
+
+- `PresenceRuleEngine` agora oferece 4 modos configuráveis (`auto`, `always_mark`, `explicit_only`, `disabled`) — administradores escolhem o comportamento via interface.
+- Modo `auto` usa **janelas de horário com tolerância** (±min) para decisão automática.
+- Motor retorna `reason` detalhado (ex.: janela mais próxima, diferença em minutos), visível no admin.
+- Mapeamento de campos do payload é configurável (resolve nomes diferentes de `aluno_id`, `matricula_id`, `type`).
+- Administradores podem **reavaliar** eventos pelo motor via `/admin/gestor-access-events` com log completo.
+- **Pendente**: enriquecimento automático (buscar turma/etapa no iEducar a partir da matrícula).
+
+### 5) SMS: "enviado" vs "entregue"
 
 Risco:
 
-- status `sent` significa “API aceitou”, não “entregue ao destinatário”.
+- status `sent` significa "API aceitou", não "entregue ao destinatário".
 
 Sugestões:
 
@@ -102,7 +113,14 @@ Sugestões:
 
 - Padronizar logs com `event_id` e `integration_key`.
 - Para inbound/outbound HTTP, registrar `request_id`, status, latência e body truncado.
-- Adicionar tela admin “Eventos” (access_events/enrollment_ingests) com filtros.
+- Adicionar tela admin "Eventos" (access_events/enrollment_ingests) com filtros.
+
+Estado atual: **✅ Parcialmente resolvido**
+
+- Tela admin `/admin/gestor-access-events` implementada com listagem, filtros e detalhamento.
+- Cada delivery armazena `reprocessing_log` (JSON) com histórico completo de ações administrativas: quem, quando, ação, status anterior/novo, motivo.
+- Ações de retry, requeue, force-process e reavaliação pelo motor são registradas com auditoria (`UserAuditLogger`).
+- **Pendente**: correlação de request_id em logs estruturados; timeline unificada por aluno.
 
 ---
 
@@ -110,7 +128,7 @@ Sugestões:
 
 ### Segurança
 
-- Encriptar tokens e segredos sensíveis no DB.
+- ~~Encriptar tokens e segredos sensíveis no DB.~~ **✅ Feito** (encrypted cast)
 - Rate limit e proteção adicional nas rotas inbound (além do HMAC).
 - Rotacionar `auth_token` do Gestor automaticamente e armazenar `expires_at` (se o SDK fornecer).
 
@@ -131,13 +149,16 @@ Sugestões:
   - VerifyHmacSignature (casos TTL/assinatura)
   - SmsTemplateRenderer (tags)
   - Normalização de telefone BR
+  - **PresenceRuleEngine** (modos, janelas, tolerância, payload map)
 - Testes de integração com `Http::fake()` para Gestor/iEducar e API SMS.
 
 ### UX/Admin
 
-- Consolidar páginas de integrações em um “menu”/painel único.
-- Adicionar “preview” de template SMS com contexto de exemplo.
-- Adicionar visão “timeline” por aluno/matrícula (ingest → enroll facial → access-event → SMS).
+- ~~Consolidar páginas de integrações em um "menu"/painel único.~~ **✅ Feito** (abas com salvamento independente em `/integracoes/gestor`)
+- ~~Adicionar textos explicativos e agrupamento claro na configuração.~~ **✅ Feito** (callouts, descrições por campo, separação SDK vs Motor)
+- Adicionar "preview" de template SMS com contexto de exemplo.
+- Adicionar visão "timeline" por aluno/matrícula (ingest → enroll facial → access-event → SMS).
+- ~~Visualização de reprocessamentos/ações admin em eventos de acesso.~~ **✅ Feito** (`reprocessing_log` na tela de detalhes)
 
 ---
 
