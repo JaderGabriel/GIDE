@@ -164,7 +164,8 @@
                     <div class="op-chart-wrap">
                         <div style="font-weight: 700; font-size: 14px; margin-bottom: 10px;">Volume diário de eventos (últimos 14 dias)</div>
                         @php
-                            $maxCount = max(array_column($dailyChart, 'count'), 1);
+                            $counts = array_column($dailyChart, 'count');
+                            $maxCount = max(1, ...$counts);
                         @endphp
                         <div class="op-chart">
                             @foreach ($dailyChart as $day)
