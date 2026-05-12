@@ -244,6 +244,33 @@
                                 </div>
                             @endif
 
+                            @php $tsInfo = data_get($delivery->analysis_json, 'timestamp_info'); @endphp
+                            @if (is_array($tsInfo) && ($tsInfo['raw'] ?? null))
+                                <div class="gae-card" style="margin-top: 14px; border-color: color-mix(in srgb, #0891b2 25%, var(--border)); background: color-mix(in srgb, #0891b2 4%, var(--card-strong));">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Horário do evento</h2>
+                                            <p class="gae-card__hint">Timestamp original da catraca normalizado para o fuso da aplicação.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; font-size: 13px;">
+                                        <div>
+                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Valor original</div>
+                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['raw'] }}</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Fuso original</div>
+                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['original_tz'] ?? '—' }}</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Normalizado ({{ config('app.timezone', 'America/Sao_Paulo') }})</div>
+                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['normalized_br'] ?? '—' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="gae-grid">
                                 <div class="gae-card">
                                     <div class="gae-card__head">

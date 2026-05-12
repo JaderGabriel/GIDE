@@ -85,7 +85,8 @@ class GestorAccessEventWebhookService
         $ieducar = Integration::query()->where('key', 'ieducar')->where('enabled', true)->first();
         $analysis = is_array($delivery->analysis_json) ? $delivery->analysis_json : [];
         $payloadForPresence = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
-        $occurredAt = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $tsInfo = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $occurredAt = $tsInfo['occurred_at'];
         $eventId = (string) $delivery->event_id;
 
         if (! $ieducar) {
@@ -146,7 +147,8 @@ class GestorAccessEventWebhookService
         array $inboundPayloadForAudit,
         array $payloadForPresence,
     ): array {
-        $occurredAt = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $tsInfo = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $occurredAt = $tsInfo['occurred_at'];
 
         $gestor = Integration::query()->where('key', 'gestor')->first();
         $gestorEnv = strtolower(trim((string) data_get($gestor?->extra, 'ieducar_processing.environment', 'homolog')));
@@ -197,6 +199,11 @@ class GestorAccessEventWebhookService
         $analysis['ieducar_outbound_channel'] = 'catraca_frequencia_registro';
         $analysis['ieducar_outbound_preview_only'] = $metaPreview;
         $analysis['inbound_channel'] = $inboundChannel;
+        $analysis['timestamp_info'] = [
+            'raw' => $tsInfo['raw'],
+            'original_tz' => $tsInfo['original_tz'],
+            'normalized_br' => $tsInfo['normalized'],
+        ];
 
         $analysis['enrichment'] = $this->tryEnrich($analysis);
         if ($requestId) {
@@ -346,7 +353,10 @@ class GestorAccessEventWebhookService
         return $codAluno >= 1;
     }
 
-    private function resolveOccurredAtFromPayload(array $payload): ?Carbon
+    /**
+     * @return array{occurred_at: ?Carbon, raw: ?string, original_tz: ?string, normalized: ?string}
+     */
+    private function resolveOccurredAtFromPayload(array $payload): array
     {
         $candidateTs = data_get($payload, 'occurred_at')
             ?? data_get($payload, 'timestamp')
@@ -354,15 +364,28 @@ class GestorAccessEventWebhookService
             ?? data_get($payload, 'creationDate')
             ?? data_get($payload, 'creation_date');
 
+        $empty = ['occurred_at' => null, 'raw' => null, 'original_tz' => null, 'normalized' => null];
+
         if (! is_string($candidateTs) || $candidateTs === '') {
-            return null;
+            return $empty;
         }
 
         try {
-            return Carbon::parse($candidateTs);
+            $parsed = Carbon::parse($candidateTs);
         } catch (Throwable) {
-            return null;
+            return array_merge($empty, ['raw' => $candidateTs]);
         }
+
+        $appTz = config('app.timezone', 'America/Sao_Paulo');
+        $originalTz = $parsed->format('P');
+        $normalized = $parsed->copy()->timezone($appTz);
+
+        return [
+            'occurred_at' => $normalized,
+            'raw' => $candidateTs,
+            'original_tz' => $originalTz,
+            'normalized' => $normalized->toIso8601String(),
+        ];
     }
 
     /**
