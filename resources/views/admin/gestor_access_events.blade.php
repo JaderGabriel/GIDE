@@ -100,19 +100,21 @@
                             <table class="fac-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:8%;">ID</th>
-                                        <th style="width:14%;">ID do evento</th>
-                                        <th style="width:12%;">Canal</th>
-                                        <th style="width:12%;">Estado</th>
-                                        <th style="width:10%;">Gestor (rótulo)</th>
-                                        <th style="width:8%;">HTTP iEd.</th>
-                                        <th style="width:14%;">Quando</th>
+                                        <th style="width:7%;">ID</th>
+                                        <th style="width:12%;">ID do evento</th>
+                                        <th style="width:10%;">Canal</th>
+                                        <th style="width:10%;">Estado</th>
+                                        <th style="width:8%;">Gestor</th>
+                                        <th style="width:7%;">HTTP iEd.</th>
+                                        <th style="width:7%;">Aluno</th>
+                                        <th style="width:13%;">Quando</th>
                                         <th style="width:6%;"></th>
                                         <th style="width:8%;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($items as $row)
+                                        @php $rowCodAluno = (int) data_get($row->analysis_json, 'aluno_id', data_get($row->inbound_payload, 'aluno_id', 0)); @endphp
                                         <tr>
                                             <td class="mono"><strong>#{{ $row->id }}</strong></td>
                                             <td class="mono clip" title="{{ $row->event_id }}">{{ $row->event_id }}</td>
@@ -132,6 +134,13 @@
                                             </td>
                                             <td class="mono">{{ $row->gestor_ie_environment }}</td>
                                             <td class="mono">{{ $row->ieducar_frequencia_http_status ?? '—' }}</td>
+                                            <td class="mono">
+                                                @if ($rowCodAluno > 0)
+                                                    <a href="{{ route('admin.student-timeline', ['cod_aluno' => $rowCodAluno]) }}" title="Ver timeline" style="color: var(--accent-a); text-decoration: none; font-weight: 600;">#{{ $rowCodAluno }}</a>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
                                             <td class="mono">{{ $row->created_at ? \App\Support\DateDisplay::formatHuman($row->created_at, true) : '' }}</td>
                                             <td style="text-align:right;">
                                                 <a class="fac-btn-ico fac-btn-ico--info" href="{{ route('admin.gestor-access-events.show', ['id' => $row->id]) }}" title="Detalhe">→</a>
@@ -156,7 +165,7 @@
                                             </td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="9" style="padding:20px;color:var(--muted);">Nenhum registro.</td></tr>
+                                        <tr><td colspan="10" style="padding:20px;color:var(--muted);">Nenhum registro.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>

@@ -90,13 +90,17 @@ flowchart TD
 
 - `GET /integracoes/ieducar` / `POST /integracoes/ieducar`
 - `POST /integracoes/ieducar/rotacionar-hmac`
-- `GET /integracoes/gestor` / `POST /integracoes/gestor`
+- `GET /integracoes/gestor` (abas: Conexão/Convite, Motor de presença, Canais/Testes)
+- `POST /integracoes/gestor/sdk` (salva credenciais SDK + outbound)
+- `POST /integracoes/gestor/presenca` (salva motor de presença + ambiente)
 - `POST /integracoes/gestor/rotacionar-hmac`
 - `POST /integracoes/gestor/testar-auth`
 - `POST /integracoes/gestor/testar-unities`
 - `GET /integracoes/sms` / `POST /integracoes/sms`
 - `GET /sms` (lista e filtros)
 - `GET /sms/{id}` (detalhe)
+- `GET /admin/timeline/{cod_aluno}` — timeline unificada do aluno (access-events, SMS, facial)
+- `POST /admin/timeline/{cod_aluno}/refresh` — força refresh dos dados do iEducar
 
 ### API (v1) — inbound (HMAC)
 
@@ -112,6 +116,8 @@ flowchart TD
   - **Auth**: `verify.hmac:gestor` (`X-Event-Id`, `X-Timestamp`, `X-Signature` + corpo JSON assinado; ver `VerifyHmacSignature`)
   - **Persistência**: `access_events` e auditoria `gestor_access_event_deliveries` (resposta com `delivery_id`; admin `GET /admin/gestor-access-events`)
   - **Processamento**: motor de presença (`PresenceRuleEngine`) com 4 modos configuráveis (`auto`, `always_mark`, `explicit_only`, `disabled`) — configuração via `/integracoes/gestor`, seção "Motor de presença". Documentação: `docs/MOTOR_PRESENCA.md`.
+  - **Enriquecimento**: após análise, `StudentEnrichmentService` busca dados do aluno no iEducar (turma, etapa, nome) via `postCatracaFrequenciaAlunoConsulta` e cacheia em `student_enrichment_cache` (TTL 24h). Resultado gravado em `analysis_json.enrichment`.
+  - **Correlação**: middleware `AssignRequestId` gera UUID por request e grava em `analysis_json.request_id`. Header `X-Request-Id` retornado na response.
   - **Notificação**: job de SMS (se integração SMS habilitada)
   - **Catraca (token)**: `POST /api/v1/catraca/access-events` — Bearer + JSON equipamento; mesma tabela de auditoria `gestor_access_event_deliveries` (`inbound_channel=catraca_bearer`).
 

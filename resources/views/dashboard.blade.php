@@ -783,6 +783,24 @@
                                         <p class="bridge-muted" style="margin-top: 12px;">
                                             A coleta facial <strong>não</strong> é iniciada por aqui — ela deve abrir somente via URL com token gerada pelo iEducar.
                                         </p>
+
+                                        @php
+                                            $recentStudents = (new \App\Services\Timeline\StudentTimelineService)->getRecentActiveStudents(8);
+                                        @endphp
+                                        @if ($recentStudents->isNotEmpty())
+                                            <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);">
+                                                <div style="font-weight: 700; font-size: 14px; margin-bottom: 10px;">Últimos alunos ativos</div>
+                                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                                    @foreach ($recentStudents as $student)
+                                                        <a href="{{ route('admin.student-timeline', ['cod_aluno' => $student['cod_aluno']]) }}" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); text-decoration: none; color: var(--text); font-size: 13px; transition: border-color .12s;">
+                                                            <span style="font-weight: 700; min-width: 54px;" class="mono">#{{ $student['cod_aluno'] }}</span>
+                                                            <span style="flex: 1; color: var(--text);">{{ $student['nome'] ?? '(sem nome no cache)' }}</span>
+                                                            <span style="font-size: 11px; color: var(--muted);">{{ $student['last_event_at'] ? \Carbon\Carbon::parse($student['last_event_at'])->diffForHumans() : '' }}</span>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
                                     </aside>
                                 </div>
                             </div>

@@ -188,6 +188,13 @@
                                             </button>
                                         </form>
                                     @endif
+                                    @php $showCodAluno = (int) data_get($delivery->analysis_json, 'aluno_id', data_get($delivery->inbound_payload, 'aluno_id', 0)); @endphp
+                                    @if ($showCodAluno > 0)
+                                        <a class="gae-btn gae-btn--info" href="{{ route('admin.student-timeline', ['cod_aluno' => $showCodAluno]) }}" title="Ver todos os eventos deste aluno">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                            Timeline #{{ $showCodAluno }}
+                                        </a>
+                                    @endif
                                 </x-slot:left>
                             </x-audit-toolbar>
 
@@ -213,6 +220,29 @@
                             <div class="gae-callout" style="margin-top: 12px;">
                                 <strong>Modo técnico:</strong> quando há POST ao iEducar, usa-se <span class="mono">meta.preview</span> conforme o setup em <span class="mono">/integracoes/gestor</span> (Presença). Aqui: <span class="mono">{{ $delivery->ieducar_preview_only ? 'true' : 'false' }}</span>.
                             </div>
+
+                            @php $enrichment = data_get($delivery->analysis_json, 'enrichment'); @endphp
+                            @if (is_array($enrichment) && ($enrichment['nome'] ?? $enrichment['turma'] ?? $enrichment['serie'] ?? null))
+                                <div class="gae-card" style="margin-top: 14px; border-color: color-mix(in srgb, var(--accent-a) 25%, var(--border)); background: color-mix(in srgb, var(--accent-a) 4%, var(--card-strong));">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Dados do aluno (cache iEducar)</h2>
+                                            <p class="gae-card__hint">Enriquecido automaticamente via consulta ao iEducar.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; font-size: 13px;">
+                                        @foreach (['nome' => 'Nome', 'turma' => 'Turma', 'serie' => 'Série', 'etapa' => 'Etapa', 'situacao' => 'Situação', 'matricula_id' => 'Matrícula'] as $key => $label)
+                                            @if ($enrichment[$key] ?? null)
+                                                <div>
+                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">{{ $label }}</div>
+                                                    <div style="font-weight: 600;">{{ $enrichment[$key] }}</div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <div class="gae-grid">
                                 <div class="gae-card">

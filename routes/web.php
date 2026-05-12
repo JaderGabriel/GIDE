@@ -10,6 +10,7 @@ use App\Http\Controllers\Web\IeducarFrequenciaRegistroController;
 use App\Http\Controllers\Web\IntegrationController;
 use App\Http\Controllers\Web\IntegrationOverviewController;
 use App\Http\Controllers\Web\SmsDeliveryController;
+use App\Http\Controllers\Web\StudentTimelineController;
 use App\Http\Controllers\Web\UserAuditLogController;
 use App\Http\Controllers\Web\UserManagementController;
 use App\Models\Integration;
@@ -202,6 +203,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/{user}/promover-admin', [UserManagementController::class, 'promoteAdmin'])->name('promote-admin');
             Route::post('/{user}/rebaixar-admin', [UserManagementController::class, 'demoteAdmin'])->name('demote-admin');
         });
+
+        Route::get('/admin/timeline/{cod_aluno}', [StudentTimelineController::class, 'show'])->name('admin.student-timeline');
+        Route::post('/admin/timeline/{cod_aluno}/refresh', [StudentTimelineController::class, 'refresh'])->name('admin.student-timeline.refresh');
 
         Route::get('/admin/auditoria-usuarios', [UserAuditLogController::class, 'index'])->name('admin.user-audit-logs.index');
     });

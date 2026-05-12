@@ -324,3 +324,26 @@ Durante fase de instalação e testes de catraca, o motor fica desabilitado. Eve
 }
 ```
 → **`ignore`** — sem aluno_id/matricula_id, em qualquer modo.
+
+---
+
+## Enriquecimento do aluno
+
+Após a análise do motor, se `aluno_id` for válido (≥ 1), o serviço `StudentEnrichmentService` consulta o iEducar via `postCatracaFrequenciaAlunoConsulta` para buscar dados adicionais (nome, turma, série, etapa, situação). O resultado é:
+
+- **Cacheado** na tabela `student_enrichment_cache` (TTL: 24h)
+- **Gravado** em `analysis_json.enrichment` da delivery
+- **Exibido** no card "Dados do aluno" na tela admin de detalhe e na timeline
+
+Isso permite visibilidade completa sem alterar o fluxo de marcação de presença (Plan B continua enviando apenas `cod_aluno`).
+
+## Correlação de requests
+
+Toda request à API recebe um `X-Request-Id` (UUID v4) via middleware `AssignRequestId`. Este ID é:
+
+- Retornado no header `X-Request-Id` da response
+- Gravado em `analysis_json.request_id` de cada delivery
+- Propagado ao `UserAuditLogger` (campo `meta.request_id`)
+- Compartilhado com logs do Laravel via `Log::shareContext()`
+
+Permite rastrear o caminho completo de um evento desde o POST até o resultado no iEducar.

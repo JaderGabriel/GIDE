@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\VerifyGestorCatracaWebhookBearer;
@@ -28,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'verify.bearer' => VerifyIntegrationBearerToken::class,
             'verify.catraca.webhook.bearer' => VerifyGestorCatracaWebhookBearer::class,
             'admin' => EnsureAdmin::class,
+        ]);
+        $middleware->api(prepend: [
+            AssignRequestId::class,
         ]);
         $middleware->web(append: [
             EnsureUserIsActive::class,

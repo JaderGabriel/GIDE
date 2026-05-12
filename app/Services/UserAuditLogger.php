@@ -22,12 +22,18 @@ final class UserAuditLogger
         $req = $request ?? request();
         $ip = null;
         $ua = null;
+        $requestId = null;
         if ($req) {
             try {
                 $ip = method_exists($req, 'ip') ? $req->ip() : null;
                 $ua = method_exists($req, 'userAgent') ? $req->userAgent() : null;
+                $requestId = $req->attributes->get('request_id');
             } catch (\Throwable) {
             }
+        }
+
+        if ($requestId) {
+            $meta['request_id'] = $requestId;
         }
 
         UserAuditLog::query()->create([

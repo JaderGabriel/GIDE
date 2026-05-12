@@ -83,14 +83,14 @@ Sugestões:
   - persistir mapeamentos (matricula→turma/etapa/instituição)
 - Criar dashboard/admin para visualizar eventos **skipped** e motivo.
 
-Estado atual: **✅ Parcialmente resolvido**
+Estado atual: **✅ Implementado**
 
 - `PresenceRuleEngine` agora oferece 4 modos configuráveis (`auto`, `always_mark`, `explicit_only`, `disabled`) — administradores escolhem o comportamento via interface.
 - Modo `auto` usa **janelas de horário com tolerância** (±min) para decisão automática.
 - Motor retorna `reason` detalhado (ex.: janela mais próxima, diferença em minutos), visível no admin.
 - Mapeamento de campos do payload é configurável (resolve nomes diferentes de `aluno_id`, `matricula_id`, `type`).
 - Administradores podem **reavaliar** eventos pelo motor via `/admin/gestor-access-events` com log completo.
-- **Pendente**: enriquecimento automático (buscar turma/etapa no iEducar a partir da matrícula).
+- **Enriquecimento automático**: `StudentEnrichmentService` busca turma/etapa/nome no iEducar via `postCatracaFrequenciaAlunoConsulta` e cacheia em `student_enrichment_cache` (TTL 24h). Dados exibidos no card "Dados do aluno" na tela de detalhe e na timeline.
 
 ### 5) SMS: "enviado" vs "entregue"
 
@@ -115,12 +115,13 @@ Sugestões:
 - Para inbound/outbound HTTP, registrar `request_id`, status, latência e body truncado.
 - Adicionar tela admin "Eventos" (access_events/enrollment_ingests) com filtros.
 
-Estado atual: **✅ Parcialmente resolvido**
+Estado atual: **✅ Implementado**
 
 - Tela admin `/admin/gestor-access-events` implementada com listagem, filtros e detalhamento.
 - Cada delivery armazena `reprocessing_log` (JSON) com histórico completo de ações administrativas: quem, quando, ação, status anterior/novo, motivo.
 - Ações de retry, requeue, force-process e reavaliação pelo motor são registradas com auditoria (`UserAuditLogger`).
-- **Pendente**: correlação de request_id em logs estruturados; timeline unificada por aluno.
+- **Correlação `request_id`**: middleware `AssignRequestId` gera UUID por request (API), propaga via `Log::shareContext`, grava em `analysis_json.request_id` e em `meta` do `UserAuditLogger`. Header `X-Request-Id` na response.
+- **Timeline por aluno**: tela `/admin/timeline/{cod_aluno}` agrega access-events, SMS e facial em cronologia unificada com filtros por tipo. Card "Últimos alunos ativos" no dashboard com link direto.
 
 ---
 

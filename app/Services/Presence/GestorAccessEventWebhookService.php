@@ -7,6 +7,7 @@ use App\Jobs\SendPresenceSms;
 use App\Models\AccessEvent;
 use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
+use App\Services\Enrichment\StudentEnrichmentService;
 use App\Services\Ieducar\IeducarClient;
 use App\Support\Ieducar\GideFrequenciaRegistroPlanB;
 use App\Support\Ieducar\IeducarFrequenciaPreviewMode;
@@ -154,6 +155,8 @@ class GestorAccessEventWebhookService
         }
         $metaPreview = IeducarFrequenciaPreviewMode::resolveMetaPreview($gestorEnv, false, false);
 
+        $requestId = request()->attributes->get('request_id');
+
         $delivery = GestorAccessEventDelivery::query()->create([
             'event_id' => $eventId,
             'inbound_channel' => $inboundChannel,
@@ -194,6 +197,11 @@ class GestorAccessEventWebhookService
         $analysis['ieducar_outbound_channel'] = 'catraca_frequencia_registro';
         $analysis['ieducar_outbound_preview_only'] = $metaPreview;
         $analysis['inbound_channel'] = $inboundChannel;
+
+        $analysis['enrichment'] = $this->tryEnrich($analysis);
+        if ($requestId) {
+            $analysis['request_id'] = $requestId;
+        }
 
         if ($this->shouldQueueIeducarPreview($analysis)) {
             $delivery->update([
@@ -368,6 +376,28 @@ class GestorAccessEventWebhookService
             'matricula_id' => $body['matricula_id'] ?? $body['matriculaId'] ?? null,
             'type' => $body['type'] ?? $body['way'] ?? $body['accessMedia'] ?? null,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @return array<string, mixed>|null
+     */
+    private function tryEnrich(array $analysis): ?array
+    {
+        $rawAluno = data_get($analysis, 'aluno_id');
+        $codAluno = is_numeric($rawAluno) ? (int) $rawAluno : (int) preg_replace('/\D/', '', (string) $rawAluno);
+
+        if ($codAluno < 1) {
+            return null;
+        }
+
+        try {
+            return (new StudentEnrichmentService)->enrich($codAluno);
+        } catch (Throwable $e) {
+            Log::debug('gestor_access_event.enrichment_failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /**
