@@ -450,8 +450,9 @@ class GestorAccessEventWebhookService
             ];
         }
 
-        $day = $occurredAt?->copy()->timezone(config('app.timezone', 'UTC')) ?? now(config('app.timezone', 'UTC'));
-        $dataRef = $day->format('Y-m-d');
+        $tz = config('app.timezone', 'America/Sao_Paulo');
+        $day = $occurredAt?->copy()->timezone($tz) ?? now($tz);
+        $dataRef = $day->toIso8601String();
 
         $row = [
             'meta' => [
@@ -486,7 +487,6 @@ class GestorAccessEventWebhookService
             ];
         }
 
-        $normalized = GideFrequenciaRegistroPlanB::refreshDataRefsWithRandomClock($normalized);
         $meta = (array) ($normalized['meta'] ?? []);
         $meta['contract_version'] = IeducarClient::CAT_FREQUENCIA_CONTRACT_VERSION;
         $meta['preview'] = $metaPreview;
