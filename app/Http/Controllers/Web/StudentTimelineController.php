@@ -30,11 +30,18 @@ class StudentTimelineController extends Controller
 
     public function refresh(Request $request, int $codAluno)
     {
-        (new StudentEnrichmentService)->refresh($codAluno);
+        $data = (new StudentEnrichmentService)->refresh($codAluno);
+
+        if ($data) {
+            return redirect()
+                ->route('admin.student-timeline', ['cod_aluno' => $codAluno])
+                ->with('status', 'Dados do aluno atualizados do iEducar.')
+                ->with('status_level', 'success');
+        }
 
         return redirect()
             ->route('admin.student-timeline', ['cod_aluno' => $codAluno])
-            ->with('status', 'Dados do aluno atualizados do iEducar.')
-            ->with('status_level', 'success');
+            ->with('status', 'Não foi possível buscar dados no iEducar. Verifique se a integração iEducar está habilitada e acessível.')
+            ->with('status_level', 'error');
     }
 }

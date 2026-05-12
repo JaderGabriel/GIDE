@@ -81,10 +81,13 @@
                             @if (session('status'))
                                 @php
                                     $lvl = session('status_level') ?: 'info';
-                                    $stBorder = $lvl === 'success' ? 'color-mix(in srgb, #059669 35%, var(--border))' : 'var(--border)';
-                                    $stBg = $lvl === 'success' ? 'color-mix(in srgb, #059669 10%, transparent)' : 'color-mix(in srgb, var(--bg0) 55%, transparent)';
+                                    $stColor = match ($lvl) {
+                                        'success' => '#059669',
+                                        'error' => '#dc2626',
+                                        default => '#0284c7',
+                                    };
                                 @endphp
-                                <div style="margin-bottom: 14px; padding: 10px 12px; border-radius: 14px; border: 1px solid {{ $stBorder }}; background: {{ $stBg }};">
+                                <div style="margin-bottom: 14px; padding: 10px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, {{ $stColor }} 35%, var(--border)); background: color-mix(in srgb, {{ $stColor }} 10%, transparent); color: {{ $stColor }};">
                                     <strong>{{ session('status') }}</strong>
                                 </div>
                             @endif
