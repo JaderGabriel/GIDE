@@ -86,6 +86,7 @@
                 color: var(--muted);
                 line-height: 1.45;
             }
+            .gestor-group-gap { margin-top: 24px; }
         </style>
     </head>
     <body>
@@ -108,47 +109,51 @@
             <main class="bridge-main">
                 <div class="bridge-container">
                     <div class="bridge-auth">
-                        <div class="bridge-panel">
-                            <div class="bridge-panel__head">
-                                <div class="bridge-panel__title">Integração Gestor (Porter/Kiper SDK)</div>
-                                <div class="bridge-panel__meta">tudo nesta página grava na linha <span class="mono">integrations</span> (<span class="mono">key=gestor</span>)</div>
+
+                        <x-audit-toolbar style="margin-bottom: 16px;" />
+
+                        @if ($errors->any())
+                            <div class="bridge-error" style="margin-bottom: 12px;">
+                                @foreach ($errors->all() as $err)
+                                    <div>{{ $err }}</div>
+                                @endforeach
                             </div>
+                        @endif
 
-                            <x-audit-toolbar style="margin-top: 12px;" />
+                        @if (session('status'))
+                            @php
+                                $level = session('status_level') ?: 'info';
+                                $border = 'color-mix(in srgb, var(--border) 80%, transparent)';
+                                $bg = 'color-mix(in srgb, var(--bg0) 55%, transparent)';
+                                $color = 'var(--text)';
+                                if ($level === 'success') {
+                                    $border = 'color-mix(in srgb, var(--accent-c) 35%, var(--border))';
+                                    $bg = 'color-mix(in srgb, var(--accent-c) 12%, transparent)';
+                                } elseif ($level === 'error') {
+                                    $border = 'color-mix(in srgb, #ef4444 35%, var(--border))';
+                                    $bg = 'color-mix(in srgb, #ef4444 10%, transparent)';
+                                    $color = '#ef4444';
+                                }
+                            @endphp
+                            <div style="margin-bottom: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid {{ $border }}; background: {{ $bg }}; color: {{ $color }};">
+                                <strong>{{ session('status') }}</strong>
+                            </div>
+                        @endif
 
-                            @if ($errors->any())
-                                <div class="bridge-error" style="margin-top: 12px;">
-                                    @foreach ($errors->all() as $err)
-                                        <div>{{ $err }}</div>
-                                    @endforeach
+                        <form method="POST" action="{{ route('integrations.gestor.update') }}" class="bridge-form" id="gestor-main-form">
+                            @csrf
+
+                            {{-- ═══════════════════════════════════════════════════
+                                 PAINEL 1 — Integração Gestor (SDK / Outbound)
+                                 ═══════════════════════════════════════════════════ --}}
+                            <div class="bridge-panel">
+                                <div class="bridge-panel__head">
+                                    <div class="bridge-panel__title">Integração Gestor (SDK / Outbound)</div>
+                                    <div class="bridge-panel__meta">credenciais, endpoints e convite — gravado em <span class="mono">integrations</span> (<span class="mono">key=gestor</span>)</div>
                                 </div>
-                            @endif
-
-                            @if (session('status'))
-                                @php
-                                    $level = session('status_level') ?: 'info';
-                                    $border = 'color-mix(in srgb, var(--border) 80%, transparent)';
-                                    $bg = 'color-mix(in srgb, var(--bg0) 55%, transparent)';
-                                    $color = 'var(--text)';
-                                    if ($level === 'success') {
-                                        $border = 'color-mix(in srgb, var(--accent-c) 35%, var(--border))';
-                                        $bg = 'color-mix(in srgb, var(--accent-c) 12%, transparent)';
-                                    } elseif ($level === 'error') {
-                                        $border = 'color-mix(in srgb, #ef4444 35%, var(--border))';
-                                        $bg = 'color-mix(in srgb, #ef4444 10%, transparent)';
-                                        $color = '#ef4444';
-                                    }
-                                @endphp
-                                <div style="margin-top: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid {{ $border }}; background: {{ $bg }}; color: {{ $color }};">
-                                    <strong>{{ session('status') }}</strong>
-                                </div>
-                            @endif
-
-                            <form method="POST" action="{{ route('integrations.gestor.update') }}" class="bridge-form" id="gestor-main-form">
-                                @csrf
 
                                 <div class="gestor-section gestor-section--first">
-                                    <div class="gestor-section__title">1. SDK — saída GIDE → Gestor</div>
+                                    <div class="gestor-section__title">SDK — saída GIDE → Gestor</div>
                                     <p class="gestor-section__lead">
                                         Credenciais e URL usadas pelo GIDE para <strong>Signin</strong> e chamadas autenticadas ao SDK (matrícula, convite, etc.).
                                     </p>
@@ -201,7 +206,7 @@
                                 </div>
 
                                 <div class="gestor-section">
-                                    <div class="gestor-section__title">2. Outbound — matrícula → convite no Gestor</div>
+                                    <div class="gestor-section__title">Outbound — matrícula → convite no Gestor</div>
                                     <p class="gestor-section__lead">
                                         Quando o iEducar envia matrícula ao GIDE, o job usa estes valores para montar o JSON do <strong>Invite</strong> no Gestor.
                                     </p>
@@ -237,45 +242,50 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="gestor-section">
-                                    <div class="gestor-section__title">3. Motor de presença — após <span class="mono">POST /api/v1/gestor/access-events</span></div>
-                                    <p class="gestor-section__lead">
-                                        Configura como o GIDE decide se marca presença no iEducar quando recebe eventos de acesso. A configuração abaixo é gravada em <span class="mono">ieducar.extra.presence</span>. Documentação: <code>docs/MOTOR_PRESENCA.md</code>.
-                                    </p>
+                            {{-- ═══════════════════════════════════════════════════
+                                 PAINEL 2 — Motor de presença GIDE
+                                 ═══════════════════════════════════════════════════ --}}
+                            <div class="bridge-panel gestor-group-gap">
+                                <div class="bridge-panel__head">
+                                    <div class="bridge-panel__title">Motor de presença GIDE</div>
+                                    <div class="bridge-panel__meta">como o GIDE decide se marca frequência no iEducar — gravado em <span class="mono">ieducar.extra.presence</span> · <a href="{{ url('docs/MOTOR_PRESENCA.md') }}" style="color: var(--accent-a);">docs</a></div>
+                                </div>
 
-                                    <div class="bridge-field">
-                                        <div class="bridge-label">Modo do motor</div>
-                                        @php $curMode = old('presence_mode', $presenceMode ?? 'auto'); @endphp
-                                        <div style="margin-top: 10px; display: grid; gap: 10px;">
-                                            <label class="bridge-check">
-                                                <input type="radio" name="presence_mode" value="auto" @checked($curMode === 'auto') />
-                                                <span><strong>Automático (janelas)</strong> — marca presença conforme janelas de horário; <span class="mono">action.mark_presence</span> pode sobrepor.</span>
-                                            </label>
-                                            <label class="bridge-check">
-                                                <input type="radio" name="presence_mode" value="always_mark" @checked($curMode === 'always_mark') />
-                                                <span><strong>Sempre marcar</strong> — marca presença em todos os eventos com aluno identificado (ignora janelas).</span>
-                                            </label>
-                                            <label class="bridge-check">
-                                                <input type="radio" name="presence_mode" value="explicit_only" @checked($curMode === 'explicit_only') />
-                                                <span><strong>Somente explícito</strong> — só marca se <span class="mono">action.mark_presence=true</span> vier no payload.</span>
-                                            </label>
-                                            <label class="bridge-check">
-                                                <input type="radio" name="presence_mode" value="disabled" @checked($curMode === 'disabled') />
-                                                <span><strong>Desabilitado</strong> — nunca marca presença (motor inerte).</span>
-                                            </label>
-                                        </div>
-                                        @error('presence_mode')
-                                            <div class="bridge-error">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <div class="bridge-field" style="margin-top: 16px;">
+                                <div class="gestor-section gestor-section--first">
+                                    <div class="gestor-section__title">Modo do motor</div>
+                                    @php $curMode = old('presence_mode', $presenceMode ?? 'auto'); @endphp
+                                    <div style="margin-top: 10px; display: grid; gap: 10px;">
                                         <label class="bridge-check">
-                                            <input type="checkbox" name="presence_ignore_exit" value="1" @checked(old('presence_ignore_exit', $presenceIgnoreExit ?? true)) />
-                                            <span>Ignorar eventos de saída (<span class="mono">type</span> contém "saida" ou "exit")</span>
+                                            <input type="radio" name="presence_mode" value="auto" @checked($curMode === 'auto') />
+                                            <span><strong>Automático (janelas)</strong> — marca presença conforme janelas de horário; <span class="mono">action.mark_presence</span> pode sobrepor.</span>
+                                        </label>
+                                        <label class="bridge-check">
+                                            <input type="radio" name="presence_mode" value="always_mark" @checked($curMode === 'always_mark') />
+                                            <span><strong>Sempre marcar</strong> — marca presença em todos os eventos com aluno identificado (ignora janelas).</span>
+                                        </label>
+                                        <label class="bridge-check">
+                                            <input type="radio" name="presence_mode" value="explicit_only" @checked($curMode === 'explicit_only') />
+                                            <span><strong>Somente explícito</strong> — só marca se <span class="mono">action.mark_presence=true</span> vier no payload.</span>
+                                        </label>
+                                        <label class="bridge-check">
+                                            <input type="radio" name="presence_mode" value="disabled" @checked($curMode === 'disabled') />
+                                            <span><strong>Desabilitado</strong> — nunca marca presença (motor inerte).</span>
                                         </label>
                                     </div>
+                                    @error('presence_mode')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="gestor-section">
+                                    <div class="gestor-section__title">Filtros e janelas de horário</div>
+
+                                    <label class="bridge-check">
+                                        <input type="checkbox" name="presence_ignore_exit" value="1" @checked(old('presence_ignore_exit', $presenceIgnoreExit ?? true)) />
+                                        <span>Ignorar eventos de saída (<span class="mono">type</span> contém "saida" ou "exit")</span>
+                                    </label>
 
                                     <div class="bridge-field" style="margin-top: 16px;">
                                         <div class="bridge-label">Janelas de horário (modo automático)</div>
@@ -286,59 +296,70 @@
                                             <div class="bridge-error">{{ $message }}</div>
                                         @enderror
                                     </div>
+                                </div>
 
-                                    <div class="bridge-field" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
-                                        <div class="bridge-label">Mapeamento de campos do payload</div>
-                                        <p class="bridge-muted" style="margin-top: 6px; line-height: 1.45;">Nomes dos campos no JSON do webhook que o motor usa para resolver aluno, matrícula e tipo de evento.</p>
-                                        <div style="margin-top: 10px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr 1fr;">
-                                            <div>
-                                                <label class="bridge-label" for="presence_map_aluno_id" style="font-size: 12px;">aluno_id</label>
-                                                <input class="bridge-input mono" id="presence_map_aluno_id" name="presence_map_aluno_id" type="text" value="{{ old('presence_map_aluno_id', $presencePayloadMap['aluno_id'] ?? 'aluno_id') }}" placeholder="aluno_id" />
-                                            </div>
-                                            <div>
-                                                <label class="bridge-label" for="presence_map_matricula_id" style="font-size: 12px;">matricula_id</label>
-                                                <input class="bridge-input mono" id="presence_map_matricula_id" name="presence_map_matricula_id" type="text" value="{{ old('presence_map_matricula_id', $presencePayloadMap['matricula_id'] ?? 'matricula_id') }}" placeholder="matricula_id" />
-                                            </div>
-                                            <div>
-                                                <label class="bridge-label" for="presence_map_event_type" style="font-size: 12px;">event_type</label>
-                                                <input class="bridge-input mono" id="presence_map_event_type" name="presence_map_event_type" type="text" value="{{ old('presence_map_event_type', $presencePayloadMap['event_type'] ?? 'type') }}" placeholder="type" />
-                                            </div>
+                                <div class="gestor-section">
+                                    <div class="gestor-section__title">Mapeamento de campos do payload</div>
+                                    <p class="gestor-section__lead">Nomes dos campos no JSON do webhook que o motor usa para resolver aluno, matrícula e tipo de evento.</p>
+                                    <div style="display: grid; gap: 10px; grid-template-columns: 1fr 1fr 1fr;">
+                                        <div>
+                                            <label class="bridge-label" for="presence_map_aluno_id" style="font-size: 12px;">aluno_id</label>
+                                            <input class="bridge-input mono" id="presence_map_aluno_id" name="presence_map_aluno_id" type="text" value="{{ old('presence_map_aluno_id', $presencePayloadMap['aluno_id'] ?? 'aluno_id') }}" placeholder="aluno_id" />
+                                        </div>
+                                        <div>
+                                            <label class="bridge-label" for="presence_map_matricula_id" style="font-size: 12px;">matricula_id</label>
+                                            <input class="bridge-input mono" id="presence_map_matricula_id" name="presence_map_matricula_id" type="text" value="{{ old('presence_map_matricula_id', $presencePayloadMap['matricula_id'] ?? 'matricula_id') }}" placeholder="matricula_id" />
+                                        </div>
+                                        <div>
+                                            <label class="bridge-label" for="presence_map_event_type" style="font-size: 12px;">event_type</label>
+                                            <input class="bridge-input mono" id="presence_map_event_type" name="presence_map_event_type" type="text" value="{{ old('presence_map_event_type', $presencePayloadMap['event_type'] ?? 'type') }}" placeholder="type" />
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div class="bridge-field" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
-                                        <div class="bridge-label">Ambiente iEducar (registro)</div>
-                                        <div style="margin-top: 10px; display: grid; gap: 10px;">
-                                            <label class="bridge-check">
-                                                <input type="radio" name="ieducar_processing_environment" value="preview" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'preview' ? 'checked' : '' }} />
-                                                <span>Preview (<span class="mono">meta.preview=true</span> — iEducar não grava)</span>
-                                            </label>
-                                            <label class="bridge-check">
-                                                <input type="radio" name="ieducar_processing_environment" value="homolog" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'homolog' ? 'checked' : '' }} />
-                                                <span>Homologação (<span class="mono">meta.preview=false</span> — iEducar grava frequência)</span>
-                                            </label>
-                                        </div>
-                                        @error('ieducar_processing_environment')
-                                            <div class="bridge-error">{{ $message }}</div>
-                                        @enderror
-                                        <div class="bridge-muted" style="margin-top: 8px;">Gravado em <span class="mono">extra.ieducar_processing.environment</span>.</div>
+                                <div class="gestor-section">
+                                    <div class="gestor-section__title">Ambiente iEducar (registro)</div>
+                                    <div style="margin-top: 10px; display: grid; gap: 10px;">
+                                        <label class="bridge-check">
+                                            <input type="radio" name="ieducar_processing_environment" value="preview" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'preview' ? 'checked' : '' }} />
+                                            <span>Preview (<span class="mono">meta.preview=true</span> — iEducar não grava)</span>
+                                        </label>
+                                        <label class="bridge-check">
+                                            <input type="radio" name="ieducar_processing_environment" value="homolog" {{ old('ieducar_processing_environment', data_get($integration->extra, 'ieducar_processing.environment', 'homolog')) === 'homolog' ? 'checked' : '' }} />
+                                            <span>Homologação (<span class="mono">meta.preview=false</span> — iEducar grava frequência)</span>
+                                        </label>
                                     </div>
+                                    @error('ieducar_processing_environment')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="bridge-muted" style="margin-top: 8px;">Gravado em <span class="mono">extra.ieducar_processing.environment</span>.</div>
                                 </div>
+                            </div>
 
-                                <div class="gestor-save-note">
-                                    <strong>Salvar</strong> grava de uma vez: URL e credenciais do SDK, path de convite, <span class="mono">unityId</span>/<span class="mono">accessProfileId</span> em <span class="mono">defaults</span>, TTL HMAC, opção de ambiente acima e estado habilitado. A coluna <span class="mono">auth_token</span> (Bearer do Signin) é <strong>limpa</strong> ao salvar para forçar novo Signin na próxima chamada ao Gestor.
-                                </div>
+                            {{-- ═══════════ Botão salvar (ambos os painéis) ═══════════ --}}
+                            <div class="gestor-save-note" style="margin-top: 20px;">
+                                <strong>Salvar</strong> grava de uma vez: credenciais SDK, path de convite, <span class="mono">unityId</span>/<span class="mono">accessProfileId</span>, TTL HMAC, estado habilitado e toda a configuração do motor de presença (modo, janelas, mapeamento, ambiente). A coluna <span class="mono">auth_token</span> (Bearer do Signin) é <strong>limpa</strong> ao salvar para forçar novo Signin na próxima chamada ao Gestor.
+                            </div>
 
-                                <div class="bridge-form__actions" style="margin-top: 16px;">
-                                    <button type="submit" class="bridge-btn bridge-btn--primary">Salvar configuração completa</button>
-                                    <a class="bridge-btn" href="{{ url('/dashboard') }}">Voltar</a>
-                                </div>
-                            </form>
+                            <div class="bridge-form__actions" style="margin-top: 16px;">
+                                <button type="submit" class="bridge-btn bridge-btn--primary">Salvar tudo</button>
+                                <a class="bridge-btn" href="{{ url('/dashboard') }}">Voltar</a>
+                            </div>
+                        </form>
 
-                            <div class="gestor-section">
-                                <div class="gestor-section__title">4. Bearer Signin (GIDE → Gestor)</div>
+                        {{-- ═══════════════════════════════════════════════════
+                             PAINEL 3 — Canais de recebimento e testes
+                             ═══════════════════════════════════════════════════ --}}
+                        <div class="bridge-panel gestor-group-gap">
+                            <div class="bridge-panel__head">
+                                <div class="bridge-panel__title">Canais de recebimento e testes</div>
+                                <div class="bridge-panel__meta">autenticação do SDK, HMAC inbound, token da catraca</div>
+                            </div>
+
+                            <div class="gestor-section gestor-section--first">
+                                <div class="gestor-section__title">Bearer Signin (GIDE → Gestor)</div>
                                 <p class="gestor-section__lead">
-                                    Após Signin bem-sucedido, o token fica em <span class="mono">integrations.auth_token</span> (criptografado). Use “Testar auth” depois de salvar credenciais novas.
+                                    Após Signin bem-sucedido, o token fica em <span class="mono">integrations.auth_token</span> (criptografado). Use "Testar auth" depois de salvar credenciais novas.
                                 </p>
                                 <div class="bridge-field">
                                     <label class="bridge-label">Estado do token</label>
@@ -359,9 +380,9 @@
                             </div>
 
                             <div class="gestor-section">
-                                <div class="gestor-section__title">5. Gestor → GIDE — eventos de acesso</div>
+                                <div class="gestor-section__title">Gestor → GIDE — eventos de acesso</div>
                                 <p class="gestor-section__lead">
-                                    Dois canais: <strong>HMAC</strong> em <span class="mono">POST /api/v1/gestor/access-events</span> (ver <span class="mono">README.md</span> e <span class="mono">VerifyHmacSignature</span>) ou <strong>token de acesso</strong> em <span class="mono">POST /api/v1/catraca/access-events</span> com <span class="mono">Authorization: Bearer</span> — documentação do contrato: <code>docs/CATRACA_WEBHOOK.md</code>. Auditoria: <span class="mono">/admin/gestor-access-events</span>.
+                                    Dois canais: <strong>HMAC</strong> em <span class="mono">POST /api/v1/gestor/access-events</span> ou <strong>token de acesso</strong> em <span class="mono">POST /api/v1/catraca/access-events</span>. Auditoria: <span class="mono">/admin/gestor-access-events</span>. Contrato: <code>docs/CATRACA_WEBHOOK.md</code>.
                                 </p>
 
                                 <div class="gestor-inbound-card">
@@ -386,7 +407,7 @@
                                     <div class="gestor-inbound-card__k">Catraca (token)</div>
                                     <div class="gestor-inbound-card__t"><span class="mono">POST {{ $catracaWebhookUrl ?? url('/api/v1/catraca/access-events') }}</span></div>
                                     <p class="gestor-inbound-card__p">
-                                        Autenticação: somente <span class="mono">Authorization: Bearer &lt;token&gt;</span>. O GIDE guarda <strong>só o hash</strong> em <span class="mono">extra.catraca_access_token_hash</span>; o valor em claro aparece <strong>uma vez</strong> após gerar. O JSON recebido e o processamento ficam em <span class="mono">gestor_access_event_deliveries</span> (TI: <span class="mono">/admin/gestor-access-events</span>).
+                                        Autenticação: somente <span class="mono">Authorization: Bearer &lt;token&gt;</span>. O GIDE guarda <strong>só o hash</strong>; o valor em claro aparece <strong>uma vez</strong> após gerar.
                                     </p>
                                     <div style="margin-top: 8px;">
                                         <span class="bridge-chip" style="{{ ! empty($catracaWebhookBearerConfigured) ? 'border-color: color-mix(in srgb, var(--accent-c) 40%, var(--border));' : '' }}">
@@ -412,6 +433,7 @@
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </main>
