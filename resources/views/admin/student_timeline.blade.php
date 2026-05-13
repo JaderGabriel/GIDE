@@ -188,7 +188,11 @@
                                             <div class="tl-track__rail">
                                                 <button type="button" class="tl-track__node" title="{{ $dotTitle }}" aria-label="{{ $dotTitle }}">
                                                     <span class="tl-track__dot" aria-hidden="true"></span>
-                                                    <span class="tl-track__glyph" aria-hidden="true">
+                                                </button>
+                                            </div>
+                                            <div class="tl-item__body tl-track__panel tl-item__body--{{ $item['type'] }} tl-item__body--flow-{{ $flow }}">
+                                                <div class="tl-item__head">
+                                                    <span class="tl-item__glyph" aria-hidden="true">
                                                         @if ($item['type'] === 'access_event')
                                                             @if ($flow === 'entry')
                                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -203,10 +207,6 @@
                                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                                                         @endif
                                                     </span>
-                                                </button>
-                                            </div>
-                                            <div class="tl-item__body tl-track__panel tl-item__body--{{ $item['type'] }} tl-item__body--flow-{{ $flow }}">
-                                                <div class="tl-item__head">
                                                     <span class="tl-item__badge tl-item__badge--{{ $item['type'] }}">
                                                         @if ($item['type'] === 'access_event')
                                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="14" height="10" rx="2"/><path d="M7 11V7a4 4 0 0 1 7.9-1"/></svg>

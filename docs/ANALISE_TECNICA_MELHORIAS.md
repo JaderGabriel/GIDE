@@ -121,7 +121,7 @@ Estado atual: **✅ Implementado**
 - Cada delivery armazena `reprocessing_log` (JSON) com histórico completo de ações administrativas: quem, quando, ação, status anterior/novo, motivo.
 - Ações de retry, requeue, force-process e reavaliação pelo motor são registradas com auditoria (`UserAuditLogger`).
 - **Correlação `request_id`**: middleware `AssignRequestId` gera UUID por request (API), propaga via `Log::shareContext`, grava em `analysis_json.request_id` e em `meta` do `UserAuditLogger`. Header `X-Request-Id` na response.
-- **Timeline por aluno**: tela `/admin/timeline/{cod_aluno}` agrega access-events, SMS e facial em cronologia unificada com filtros por tipo. Card "Últimos alunos ativos" no dashboard com link direto.
+- **Timeline por aluno**: tela `/admin/timeline/{cod_aluno}` agrega access-events, SMS e facial em cronologia unificada com filtros por tipo. Card "Últimos alunos ativos" no dashboard com link direto. **UI**: linha vertical com marcador circular centrado na altura de cada cartão; ícone de fluxo/tipo fica no cabeçalho do cartão (à esquerda), fora da linha — estilos em `public/student-timeline.css`.
 
 ---
 

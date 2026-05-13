@@ -60,6 +60,15 @@
             .gae-badge--info { border-color: color-mix(in srgb, var(--gae-info) 40%, var(--border)); background: var(--gae-info-bg); color: color-mix(in srgb, var(--text) 82%, var(--gae-info)); }
             .gae-badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
+            .gae-sms-flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: start; margin-top: 10px; max-width: 560px; }
+            .gae-sms-flow__arr { align-self: center; color: var(--muted); font-size: 13px; font-weight: 800; }
+            .gae-sms-flow__box { border-radius: 10px; border: 1px solid var(--border); padding: 8px 10px; background: color-mix(in srgb, var(--bg0) 40%, transparent); font-size: 11px; line-height: 1.45; }
+            .gae-sms-flow__box-title { font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+            @media (max-width: 720px) {
+                .gae-sms-flow { grid-template-columns: 1fr; }
+                .gae-sms-flow__arr { display: none; }
+            }
+
             .gae-callout { margin-top: 16px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); font-size: 14px; line-height: 1.55; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
             .gae-callout--info { border-color: color-mix(in srgb, var(--gae-info) 35%, var(--border)); background: color-mix(in srgb, var(--gae-info) 8%, var(--surface-1)); }
             .gae-callout--warn { border-color: color-mix(in srgb, var(--gae-warn) 38%, var(--border)); background: color-mix(in srgb, var(--gae-warn) 10%, var(--surface-1)); }
@@ -470,7 +479,7 @@
                                             <p class="gae-card__hint">Inclui metadados de canal e decisão do motor.</p>
                                         </div>
                                     </div>
-                                    <pre class="gae-json mono">{{ json_encode($delivery->analysis_json ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                    <pre class="gae-json mono">{{ json_encode(\Illuminate\Support\Arr::except(is_array($delivery->analysis_json) ? $delivery->analysis_json : [], ['enrichment']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
                                 </div>
 
                                 <div class="gae-card">
@@ -585,6 +594,7 @@
                                     'automated' => 'Disparo automático (fila)',
                                     'admin_resend_config' => 'Reenvio manual — conforme integração',
                                     'admin_resend_guardians' => 'Reenvio manual — responsáveis',
+                                    'registry_snapshot' => 'Registo atual (sem linhas em send_log)',
                                 ];
                                 $smsTemplateLabels = [
                                     'presence_catraca' => 'Presença na catraca',
@@ -597,55 +607,18 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                     <div>
                                         <h2 class="gae-card__title">SMS enviados neste evento</h2>
-                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> do painel nesta página. O histórico cronológico usa <span class="mono">context.send_log</span> (até 50 entradas por destinatário/template).</p>
+                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> do painel nesta página. Uma única tabela: histórico em <span class="mono">context.send_log</span> (até 50 entradas por destino) e, quando não há histórico gravado, uma linha de «registo atual». A coluna <strong>Entrega SMS</strong> usa o estado devolvido na última resposta HTTP de criação ao provedor (ex. Twilio), se existir — não substitui webhooks de entrega ao telemóvel.</p>
                                     </div>
                                 </div>
 
                                 @if ($smsDeliveries->isEmpty())
                                     <p class="bridge-muted" style="margin: 0;">Nenhum SMS registado para este <span class="mono">event_id</span>.</p>
                                 @else
-                                    <p style="margin: 0 0 10px; font-size: 13px; font-weight: 700;">Estado atual por destino</p>
-                                    <table class="gae-reproc-table" aria-label="Estado atual dos SMS">
-                                        <thead>
-                                            <tr>
-                                                <th>Template</th>
-                                                <th>Para</th>
-                                                <th>Estado</th>
-                                                <th>Enviado em</th>
-                                                <th>Provedor</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($smsDeliveries as $sd)
-                                                @php
-                                                    $tk = (string) $sd->template_key;
-                                                    $tplLabel = $smsTemplateLabels[$tk] ?? $tk;
-                                                    $toDigits = (string) $sd->to;
-                                                    $toMask = strlen($toDigits) <= 4 ? str_repeat('•', strlen($toDigits)) : str_repeat('•', strlen($toDigits) - 4).substr($toDigits, -4);
-                                                @endphp
-                                                <tr>
-                                                    <td><span class="mono">{{ $tk }}</span><br /><span style="font-size: 12px; color: var(--muted);">{{ $tplLabel }}</span></td>
-                                                    <td class="mono">{{ $toMask }}</td>
-                                                    <td><span class="gae-badge gae-badge--neutral">{{ $sd->status }}</span></td>
-                                                    <td class="mono" style="font-size: 12px;">{{ $sd->sent_at?->timezone(config('app.timezone'))->format('d/m/Y H:i:s') ?? '—' }}</td>
-                                                    <td class="mono" style="font-size: 12px;">{{ $sd->provider }}@if ($sd->provider_message_id)<br /><span style="color: var(--muted);">{{ \Illuminate\Support\Str::limit($sd->provider_message_id, 28) }}</span>@endif</td>
-                                                </tr>
-                                                <tr>
-                                                    <td colspan="5" style="padding-top: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);">
-                                                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 4px;">Texto atual</div>
-                                                        <div style="font-size: 13px; line-height: 1.45;">{{ \Illuminate\Support\Str::limit($sd->message, 400) }}</div>
-                                                        @if ($sd->last_error)
-                                                            <div style="margin-top: 8px; font-size: 12px; color: var(--gae-bad);"><strong>Último erro:</strong> {{ \Illuminate\Support\Str::limit($sd->last_error, 280) }}</div>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-
-                                    @if (count($smsSendTimeline) > 0)
-                                        <p style="margin: 18px 0 10px; font-size: 13px; font-weight: 700;">Histórico de envios (mais recente primeiro)</p>
-                                        <table class="gae-reproc-table" aria-label="Histórico de envios SMS">
+                                    <p style="margin: 0 0 10px; font-size: 13px; font-weight: 700;">Histórico e estado (mais recente primeiro)</p>
+                                    @if (count($smsSendTimeline) === 0)
+                                        <p class="bridge-muted" style="margin: 0;">Sem linhas para mostrar.</p>
+                                    @else
+                                        <table class="gae-reproc-table" aria-label="SMS deste evento">
                                             <thead>
                                                 <tr>
                                                     <th>Quando</th>
@@ -662,6 +635,28 @@
                                                         $ltk = (string) ($log['template_key'] ?? '');
                                                         $ltpl = $smsTemplateLabels[$ltk] ?? $ltk;
                                                         $stt = (string) ($log['status'] ?? '');
+                                                        $ui = is_array($log['_ui'] ?? null) ? $log['_ui'] : ['api' => 'neutral', 'api_label' => '', 'delivery' => 'na', 'delivery_label' => '—'];
+                                                        $badgeApi = match ($ui['api'] ?? 'neutral') {
+                                                            'success' => 'gae-badge--success',
+                                                            'danger' => 'gae-badge--danger',
+                                                            'warn' => 'gae-badge--warn',
+                                                            default => 'gae-badge--neutral',
+                                                        };
+                                                        $badgeDel = match ($ui['delivery'] ?? 'na') {
+                                                            'success' => 'gae-badge--success',
+                                                            'danger' => 'gae-badge--danger',
+                                                            'warn' => 'gae-badge--warn',
+                                                            'neutral' => 'gae-badge--neutral',
+                                                            default => 'gae-badge--neutral',
+                                                        };
+                                                        $meta = is_array($log['_delivery_meta'] ?? null) ? $log['_delivery_meta'] : [];
+                                                        $prov = (string) ($meta['provider'] ?? '');
+                                                        $provIdLog = (string) ($log['provider_message_id'] ?? '');
+                                                        $provIdMeta = (string) ($meta['provider_message_id'] ?? '');
+                                                        $provId = $provIdLog !== '' ? $provIdLog : $provIdMeta;
+                                                        $pv = (string) ($log['message_preview'] ?? '');
+                                                        $fullMsg = (string) ($meta['message'] ?? '');
+                                                        $lastErr = (string) ($meta['last_error'] ?? '');
                                                     @endphp
                                                     <tr>
                                                         <td class="mono" style="font-size: 12px;">{{ $log['at_display'] ?? '—' }}</td>
@@ -669,33 +664,60 @@
                                                         <td><span class="mono">{{ $ltk }}</span> · <span class="mono">{{ $log['to_masked'] ?? '—' }}</span><br /><span style="font-size: 12px; color: var(--muted);">{{ $ltpl }}</span></td>
                                                         <td>
                                                             @if ($stt === 'sent')
-                                                                <span class="gae-badge gae-badge--success">enviado</span>
+                                                                <span class="gae-badge gae-badge--success mono">sent</span>
                                                             @elseif ($stt === 'error')
-                                                                <span class="gae-badge gae-badge--danger">erro</span>
+                                                                <span class="gae-badge gae-badge--danger mono">error</span>
+                                                            @elseif ($stt === 'pending')
+                                                                <span class="gae-badge gae-badge--warn mono">pending</span>
                                                             @else
-                                                                <span class="gae-badge gae-badge--neutral">{{ $stt !== '' ? $stt : '—' }}</span>
+                                                                <span class="gae-badge gae-badge--neutral mono">{{ $stt !== '' ? $stt : '—' }}</span>
                                                             @endif
-                                                            @if (!empty($log['http_status']))
+                                                            @if (! empty($log['http_status']))
                                                                 <span class="bridge-muted mono" style="font-size: 11px;"> HTTP {{ $log['http_status'] }}</span>
                                                             @endif
-                                                            @if (!empty($log['provider_message_id']))
-                                                                <div class="mono" style="font-size: 11px; color: var(--muted); margin-top: 4px;">{{ \Illuminate\Support\Str::limit($log['provider_message_id'], 36) }}</div>
+                                                            @if ($prov !== '' || $provId !== '')
+                                                                <div class="mono" style="font-size: 11px; color: var(--muted); margin-top: 4px;">@if ($prov !== ''){{ $prov }}@endif @if ($provId !== '')· {{ \Illuminate\Support\Str::limit($provId, 42) }}@endif</div>
                                                             @endif
-                                                            @if (!empty($log['error_snippet']))
-                                                                <div style="font-size: 12px; color: var(--gae-bad); margin-top: 6px;">{{ $log['error_snippet'] }}</div>
+                                                            <div class="gae-sms-flow" role="group" aria-label="Aceite na API e estado de entrega">
+                                                                <div class="gae-sms-flow__box">
+                                                                    <div class="gae-sms-flow__box-title">Aceite na API</div>
+                                                                    <span class="gae-badge {{ $badgeApi }}">{{ $ui['api_label'] ?? '' }}</span>
+                                                                </div>
+                                                                <div class="gae-sms-flow__arr" aria-hidden="true">→</div>
+                                                                <div class="gae-sms-flow__box">
+                                                                    <div class="gae-sms-flow__box-title">Entrega SMS</div>
+                                                                    @if (($ui['delivery'] ?? 'na') === 'na')
+                                                                        <span class="bridge-muted" style="font-size: 12px;">{{ $ui['delivery_label'] ?? '—' }}</span>
+                                                                    @else
+                                                                        <span class="gae-badge {{ $badgeDel }}">{{ $ui['delivery_label'] ?? '—' }}</span>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                            @if (! empty($log['error_snippet']))
+                                                                <div style="font-size: 12px; color: var(--gae-bad); margin-top: 8px;">{{ $log['error_snippet'] }}</div>
                                                             @endif
                                                         </td>
                                                     </tr>
-                                                    <tr>
-                                                        <td colspan="4" style="padding-top: 0;">
-                                                            <div style="font-size: 12px; line-height: 1.45; color: var(--muted);">{{ \Illuminate\Support\Str::limit($log['message_preview'] ?? '', 360) }}</div>
-                                                        </td>
-                                                    </tr>
+                                                    @if ($pv !== '' || ($fullMsg !== '' && $fullMsg !== $pv) || $lastErr !== '')
+                                                        <tr>
+                                                            <td colspan="4" style="padding-top: 0;">
+                                                                @if ($pv !== '')
+                                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 4px;">Texto (pré-visualização)</div>
+                                                                    <div style="font-size: 12px; line-height: 1.45; color: var(--muted);">{{ \Illuminate\Support\Str::limit($pv, 360) }}</div>
+                                                                @endif
+                                                                @if ($fullMsg !== '' && $fullMsg !== $pv)
+                                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 10px; margin-bottom: 4px;">Texto completo no registo</div>
+                                                                    <div style="font-size: 13px; line-height: 1.45;">{{ \Illuminate\Support\Str::limit($fullMsg, 400) }}</div>
+                                                                @endif
+                                                                @if ($lastErr !== '')
+                                                                    <div style="margin-top: 10px; font-size: 12px; color: var(--gae-bad);"><strong>Último erro no registo:</strong> {{ \Illuminate\Support\Str::limit($lastErr, 280) }}</div>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endif
                                                 @endforeach
                                             </tbody>
                                         </table>
-                                    @else
-                                        <p class="bridge-muted" style="margin-top: 14px;">Sem linha de tempo detalhada: só passamos a gravar o histórico em <span class="mono">send_log</span> após esta versão, ou ainda não houve tentativa concluída (enviado ou erro final).</p>
                                     @endif
                                 @endif
                             </div>
