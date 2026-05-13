@@ -44,7 +44,7 @@
             <main class="bridge-main">
                 <div class="bridge-container">
                     <div class="bridge-auth">
-                        <div class="bridge-panel">
+                        <div class="bridge-panel tl-shell">
 
                             @if (session('status'))
                                 @php
@@ -75,8 +75,11 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 </div>
                                 <div class="tl-hero__text">
-                                    <h1 class="tl-hero__title">Timeline — Aluno #{{ $codAluno }}</h1>
-                                    <div class="tl-hero__meta">Eventos de acesso, SMS e reconhecimento facial rastreados pelo GIDE para este aluno.</div>
+                                    <h1 class="tl-hero__title">
+                                        <span class="tl-hero__title-text">Timeline do aluno</span>
+                                        <span class="tl-hero__pill">#{{ $codAluno }}</span>
+                                    </h1>
+                                    <div class="tl-hero__meta">Eventos de acesso, SMS e reconhecimento facial consolidados pelo GIDE.</div>
                                 </div>
                                 <div class="tl-hero__actions">
                                     <form method="POST" action="{{ route('admin.student-timeline.refresh', ['cod_aluno' => $codAluno]) }}" style="display: inline;">
@@ -134,8 +137,8 @@
                                 </div>
                             @endif
 
-                            <div class="tl-filters">
-                                <span class="tl-filters__label">
+                            <div class="tl-toolbar">
+                                <span class="tl-toolbar__label">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
                                     Filtrar
                                 </span>
@@ -165,6 +168,10 @@
                                     <p class="tl-empty__text">Nenhum evento encontrado para este aluno{{ $typeFilter !== 'all' ? ' com o filtro selecionado' : '' }}.</p>
                                 </div>
                             @else
+                                <div class="tl-section-head">
+                                    <h2 class="tl-section-head__title">Linha do tempo</h2>
+                                    <span class="tl-section-head__meta">{{ $timeline->count() }} {{ $timeline->count() === 1 ? 'evento' : 'eventos' }}</span>
+                                </div>
                                 <div class="tl-list">
                                     @foreach ($timeline as $item)
                                         @php
