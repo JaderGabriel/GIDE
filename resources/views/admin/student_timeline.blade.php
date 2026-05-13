@@ -21,40 +21,8 @@
             })();
         </script>
         <link rel="stylesheet" href="/home.css">
+        <link rel="stylesheet" href="/student-timeline.css">
         <script defer src="/home.js"></script>
-        <style>
-            .tl-header { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-            .tl-header__info { flex: 1; min-width: 200px; }
-            .tl-header__actions { display: flex; gap: 8px; flex-shrink: 0; }
-            .tl-student-card { margin-top: 14px; padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-2) 70%, transparent); display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-            .tl-student-card__item { font-size: 13px; }
-            .tl-student-card__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 2px; }
-            .tl-student-card__value { font-weight: 600; }
-
-            .tl-filters { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-            .tl-filter-btn { appearance: none; border: 1px solid var(--border); background: var(--surface-1); padding: 6px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); text-decoration: none; font-family: inherit; }
-            .tl-filter-btn:hover { border-color: color-mix(in srgb, var(--accent-a) 30%, var(--border)); color: var(--text); }
-            .tl-filter-btn--active { border-color: color-mix(in srgb, var(--accent-a) 45%, var(--border)); background: color-mix(in srgb, var(--accent-a) 10%, var(--surface-1)); color: var(--accent-a); }
-
-            .tl-list { margin-top: 18px; display: flex; flex-direction: column; gap: 0; position: relative; padding-left: 24px; }
-            .tl-list::before { content: ''; position: absolute; left: 8px; top: 12px; bottom: 12px; width: 2px; background: var(--border); border-radius: 2px; }
-            .tl-item { position: relative; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); margin-bottom: 8px; }
-            .tl-item::before { content: ''; position: absolute; left: -20px; top: 16px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface-2); }
-            .tl-item--access_event::before { border-color: #0284c7; background: color-mix(in srgb, #0284c7 20%, var(--surface-2)); }
-            .tl-item--sms::before { border-color: #059669; background: color-mix(in srgb, #059669 20%, var(--surface-2)); }
-            .tl-item--facial::before { border-color: #7c3aed; background: color-mix(in srgb, #7c3aed 20%, var(--surface-2)); }
-            .tl-item__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-            .tl-item__type { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 6px; }
-            .tl-item__type--access_event { background: color-mix(in srgb, #0284c7 12%, transparent); color: #0284c7; }
-            .tl-item__type--sms { background: color-mix(in srgb, #059669 12%, transparent); color: #059669; }
-            .tl-item__type--facial { background: color-mix(in srgb, #7c3aed 12%, transparent); color: #7c3aed; }
-            .tl-item__time { font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; }
-            .tl-item__summary { margin-top: 4px; font-size: 13px; line-height: 1.4; }
-            .tl-item__link { margin-top: 6px; }
-            .tl-item__link a { font-size: 12px; color: var(--accent-a); font-weight: 600; text-decoration: none; }
-            .tl-item__link a:hover { text-decoration: underline; }
-            .tl-empty { margin-top: 20px; padding: 24px; text-align: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: 14px; }
-        </style>
     </head>
     <body>
         <div class="bridge-shell">
@@ -88,23 +56,44 @@
                                         default => '#0284c7',
                                     };
                                 @endphp
-                                <div style="margin-bottom: 14px; padding: 10px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, {{ $stColor }} 35%, var(--border)); background: color-mix(in srgb, {{ $stColor }} 10%, transparent); color: {{ $stColor }};">
-                                    <strong>{{ session('status') }}</strong>
+                                <div class="tl-flash" style="border: 1px solid color-mix(in srgb, {{ $stColor }} 35%, var(--border)); background: color-mix(in srgb, {{ $stColor }} 10%, transparent); color: {{ $stColor }};">
+                                    @if ($lvl === 'success')
+                                        <svg class="tl-flash__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    @elseif ($lvl === 'error')
+                                        <svg class="tl-flash__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    @elseif ($lvl === 'warning')
+                                        <svg class="tl-flash__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    @else
+                                        <svg class="tl-flash__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    @endif
+                                    <div><strong>{{ session('status') }}</strong></div>
                                 </div>
                             @endif
 
-                            <div class="tl-header">
-                                <div class="tl-header__info">
-                                    <h1 class="bridge-panel__title">Timeline — Aluno #{{ $codAluno }}</h1>
-                                    <div class="bridge-panel__meta">todos os eventos rastreados pelo GIDE para este aluno</div>
+                            <div class="tl-hero">
+                                <div class="tl-hero__icon" aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 </div>
-                                <div class="tl-header__actions">
-                                    <form method="POST" action="{{ route('admin.student-timeline.refresh', ['cod_aluno' => $codAluno]) }}">
+                                <div class="tl-hero__text">
+                                    <h1 class="tl-hero__title">Timeline — Aluno #{{ $codAluno }}</h1>
+                                    <div class="tl-hero__meta">Eventos de acesso, SMS e reconhecimento facial rastreados pelo GIDE para este aluno.</div>
+                                </div>
+                                <div class="tl-hero__actions">
+                                    <form method="POST" action="{{ route('admin.student-timeline.refresh', ['cod_aluno' => $codAluno]) }}" style="display: inline;">
                                         @csrf
-                                        <button type="submit" class="bridge-btn">Atualizar dados do iEducar</button>
+                                        <button type="submit" class="tl-btn tl-btn--primary">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                            Atualizar dados do iEducar
+                                        </button>
                                     </form>
-                                    <a class="bridge-btn" href="{{ route('admin.gestor-access-events.index') }}">Access-events</a>
-                                    <a class="bridge-btn" href="{{ url('/dashboard') }}">Dashboard</a>
+                                    <a class="tl-btn" href="{{ route('admin.gestor-access-events.index') }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                        Access-events
+                                    </a>
+                                    <a class="tl-btn" href="{{ url('/dashboard') }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                        Dashboard
+                                    </a>
                                 </div>
                             </div>
 
@@ -113,50 +102,116 @@
                                     $hasVisibleData = collect($studentData)->except('cod_aluno')->filter()->isNotEmpty();
                                 @endphp
                                 @if ($hasVisibleData)
-                                    <div class="tl-student-card">
-                                        @foreach (['nome' => 'Nome', 'curso' => 'Curso', 'turma' => 'Turma', 'serie' => 'Série', 'etapa' => 'Etapa', 'situacao' => 'Situação', 'matricula_id' => 'Matrícula'] as $key => $label)
-                                            @if ($studentData[$key] ?? null)
-                                                <div class="tl-student-card__item">
-                                                    <div class="tl-student-card__label">{{ $label }}</div>
-                                                    <div class="tl-student-card__value">{{ $studentData[$key] }}</div>
-                                                </div>
-                                            @endif
-                                        @endforeach
+                                    <div class="tl-card tl-card--student">
+                                        <div class="tl-card__head">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                            <span class="tl-card__title">Dados do aluno (cache iEducar)</span>
+                                        </div>
+                                        <div class="tl-student-grid">
+                                            @foreach (['nome' => 'Nome', 'curso' => 'Curso', 'turma' => 'Turma', 'serie' => 'Série', 'etapa' => 'Etapa', 'situacao' => 'Situação', 'matricula_id' => 'Matrícula'] as $key => $label)
+                                                @if ($studentData[$key] ?? null)
+                                                    <div class="tl-student-field">
+                                                        <div class="tl-student-field__label">{{ $label }}</div>
+                                                        <div class="tl-student-field__value">{{ $studentData[$key] }}</div>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
                                     </div>
                                 @else
-                                    <div style="margin-top: 14px; padding: 10px 14px; border-radius: 12px; border: 1px dashed color-mix(in srgb, #f59e0b 30%, var(--border)); background: color-mix(in srgb, #f59e0b 5%, transparent); font-size: 13px; color: #b45309;">
-                                        Cache atualizado, mas o iEducar não retornou campos esperados (nome, turma, etc.) para <strong>cod_aluno={{ $codAluno }}</strong>.
-                                        Verifique se o aluno possui matrícula ativa no iEducar.
+                                    <div class="tl-callout tl-callout--warn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        <div>
+                                            Cache atualizado, mas o iEducar não retornou campos esperados (nome, turma, etc.) para <strong>cod_aluno={{ $codAluno }}</strong>.
+                                            Verifique se o aluno possui matrícula ativa no iEducar.
+                                        </div>
                                     </div>
                                 @endif
                             @else
-                                <div style="margin-top: 14px; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--border); font-size: 13px; color: var(--muted);">
-                                    Dados do aluno ainda não cacheados. Clique em "Atualizar dados do iEducar" para buscar.
+                                <div class="tl-callout tl-callout--muted">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    <div>Dados do aluno ainda não estão em cache. Use <strong>Atualizar dados do iEducar</strong> para buscar no ERP.</div>
                                 </div>
                             @endif
 
                             <div class="tl-filters">
-                                <span style="font-size: 13px; font-weight: 600; color: var(--muted);">Filtrar:</span>
-                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno]) }}" class="tl-filter-btn {{ $typeFilter === 'all' ? 'tl-filter-btn--active' : '' }}">Todos</a>
-                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno, 'type' => 'access_event']) }}" class="tl-filter-btn {{ $typeFilter === 'access_event' ? 'tl-filter-btn--active' : '' }}">Acesso</a>
-                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno, 'type' => 'sms']) }}" class="tl-filter-btn {{ $typeFilter === 'sms' ? 'tl-filter-btn--active' : '' }}">SMS</a>
-                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno, 'type' => 'facial']) }}" class="tl-filter-btn {{ $typeFilter === 'facial' ? 'tl-filter-btn--active' : '' }}">Facial</a>
+                                <span class="tl-filters__label">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                    Filtrar
+                                </span>
+                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno]) }}" class="tl-filter-btn {{ $typeFilter === 'all' ? 'tl-filter-btn--active' : '' }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                    Todos
+                                </a>
+                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno, 'type' => 'access_event']) }}" class="tl-filter-btn {{ $typeFilter === 'access_event' ? 'tl-filter-btn--active' : '' }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    Acesso
+                                </a>
+                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno, 'type' => 'sms']) }}" class="tl-filter-btn {{ $typeFilter === 'sms' ? 'tl-filter-btn--active' : '' }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    SMS
+                                </a>
+                                <a href="{{ route('admin.student-timeline', ['cod_aluno' => $codAluno, 'type' => 'facial']) }}" class="tl-filter-btn {{ $typeFilter === 'facial' ? 'tl-filter-btn--active' : '' }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                    Facial
+                                </a>
                             </div>
 
                             @if ($timeline->isEmpty())
-                                <div class="tl-empty">Nenhum evento encontrado para este aluno{{ $typeFilter !== 'all' ? ' com o filtro selecionado' : '' }}.</div>
+                                <div class="tl-empty">
+                                    <div class="tl-empty__icon" aria-hidden="true">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                    </div>
+                                    <p class="tl-empty__text">Nenhum evento encontrado para este aluno{{ $typeFilter !== 'all' ? ' com o filtro selecionado' : '' }}.</p>
+                                </div>
                             @else
                                 <div class="tl-list">
                                     @foreach ($timeline as $item)
+                                        @php
+                                            $typeLabel = match ($item['type']) {
+                                                'access_event' => 'Acesso',
+                                                'sms' => 'SMS',
+                                                'facial' => 'Facial',
+                                                default => $item['type'],
+                                            };
+                                        @endphp
                                         <div class="tl-item tl-item--{{ $item['type'] }}">
-                                            <div class="tl-item__head">
-                                                <span class="tl-item__type tl-item__type--{{ $item['type'] }}">{{ $item['type'] }}</span>
-                                                <span class="tl-item__time">{{ $item['at'] ? \Carbon\Carbon::parse($item['at'])->format('d/m/Y H:i:s') : '—' }}</span>
+                                            <div class="tl-item__marker" aria-hidden="true">
+                                                @if ($item['type'] === 'access_event')
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                                @elseif ($item['type'] === 'sms')
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                                @else
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                                @endif
                                             </div>
-                                            <div class="tl-item__summary">{{ $item['summary'] }}</div>
-                                            @if ($item['detail_url'])
-                                                <div class="tl-item__link"><a href="{{ $item['detail_url'] }}">Ver detalhes &rarr;</a></div>
-                                            @endif
+                                            <div class="tl-item__body">
+                                                <div class="tl-item__head">
+                                                    <span class="tl-item__badge tl-item__badge--{{ $item['type'] }}">
+                                                        @if ($item['type'] === 'access_event')
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="14" height="10" rx="2"/><path d="M7 11V7a4 4 0 0 1 7.9-1"/></svg>
+                                                        @elseif ($item['type'] === 'sms')
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                                        @else
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                                        @endif
+                                                        {{ $typeLabel }}
+                                                    </span>
+                                                    <span class="tl-item__time">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                                        {{ $item['at'] ? \Carbon\Carbon::parse($item['at'])->format('d/m/Y H:i:s') : '—' }}
+                                                    </span>
+                                                </div>
+                                                <div class="tl-item__summary">{{ $item['summary'] }}</div>
+                                                @if ($item['detail_url'])
+                                                    <div class="tl-item__link">
+                                                        <a href="{{ $item['detail_url'] }}">
+                                                            Ver detalhes
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                                        </a>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
