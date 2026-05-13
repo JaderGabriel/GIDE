@@ -60,11 +60,13 @@
             .gae-badge--info { border-color: color-mix(in srgb, var(--gae-info) 40%, var(--border)); background: var(--gae-info-bg); color: color-mix(in srgb, var(--text) 82%, var(--gae-info)); }
             .gae-badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
-            .gae-sms-flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-top: 10px; max-width: 280px; }
-            .gae-sms-flow__arr { align-self: center; color: var(--muted); font-size: 13px; font-weight: 800; }
-            .gae-sms-flow__box { border-radius: 10px; border: 1px solid var(--border); padding: 6px 8px; background: color-mix(in srgb, var(--bg0) 40%, transparent); display: flex; align-items: center; justify-content: center; min-height: 44px; }
-            .gae-sms-flow__icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--border); flex-shrink: 0; }
-            .gae-sms-flow__icon svg { width: 18px; height: 18px; }
+            .gae-sms-result-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 0; }
+            .gae-sms-result-row > .gae-badge { min-height: 28px; box-sizing: border-box; display: inline-flex; align-items: center; }
+            .gae-sms-result-row__http { font-size: 11px; margin-left: 2px; }
+            .gae-sms-flow--inline { display: inline-flex; align-items: center; gap: 4px; margin: 0; max-width: none; }
+            .gae-sms-flow--inline .gae-sms-flow__sep { color: var(--muted); font-size: 12px; font-weight: 800; line-height: 1; padding: 0 1px; user-select: none; }
+            .gae-sms-flow__icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); flex-shrink: 0; box-sizing: border-box; }
+            .gae-sms-flow__icon svg { width: 16px; height: 16px; }
             .gae-sms-flow__icon--success { background: var(--gae-ok-bg); color: color-mix(in srgb, var(--text) 78%, var(--gae-ok)); border-color: color-mix(in srgb, var(--gae-ok) 42%, var(--border)); }
             .gae-sms-flow__icon--danger { background: var(--gae-bad-bg); color: var(--gae-bad); border-color: color-mix(in srgb, var(--gae-bad) 45%, var(--border)); }
             .gae-sms-flow__icon--warn { background: var(--gae-warn-bg); color: color-mix(in srgb, var(--text) 80%, var(--gae-warn)); border-color: color-mix(in srgb, var(--gae-warn) 40%, var(--border)); }
@@ -74,10 +76,6 @@
             .gae-sms-legend strong { color: var(--text); font-weight: 750; }
             .gae-sms-legend .gae-sms-flow__icon { width: 24px; height: 24px; margin: 0 3px !important; vertical-align: middle; }
             .gae-sms-legend .gae-sms-flow__icon svg { width: 14px; height: 14px; }
-            @media (max-width: 720px) {
-                .gae-sms-flow { grid-template-columns: 1fr; max-width: none; }
-                .gae-sms-flow__arr { display: none; }
-            }
 
             .gae-callout { margin-top: 16px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); font-size: 14px; line-height: 1.55; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
             .gae-callout--info { border-color: color-mix(in srgb, var(--gae-info) 35%, var(--border)); background: color-mix(in srgb, var(--gae-info) 8%, var(--surface-1)); }
@@ -617,7 +615,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                     <div>
                                         <h2 class="gae-card__title">SMS enviados neste evento</h2>
-                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> do painel nesta página. Uma única tabela: histórico em <span class="mono">context.send_log</span> (até 50 entradas por destino) e, quando não há histórico gravado, uma linha de «registo atual». Na coluna <strong>Resultado</strong>, os dois ícones (API → entrega) usam só cor e forma; o texto longo aparece no <em>tooltip</em> e na <strong>legenda</strong> abaixo da tabela. A entrega SMS baseia-se na última resposta HTTP de criação ao provedor (ex. Twilio), não em webhooks de entrega ao telemóvel.</p>
+                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> do painel nesta página. Uma única tabela: histórico em <span class="mono">context.send_log</span> (até 50 entradas por destino) e, quando não há histórico gravado, uma linha de «registo atual». Na coluna <strong>Resultado</strong>, o estado (<span class="mono">sent</span>, etc.) e os dois ícones API → entrega ficam na mesma linha e altura (~28px); o texto longo dos ícones está no <em>tooltip</em> e na <strong>legenda</strong>. A entrega SMS baseia-se na última resposta HTTP de criação ao provedor (ex. Twilio), não em webhooks de entrega ao telemóvel.</p>
                                     </div>
                                 </div>
 
@@ -667,29 +665,30 @@
                                                         $pv = (string) ($log['message_preview'] ?? '');
                                                         $fullMsg = (string) ($meta['message'] ?? '');
                                                         $lastErr = (string) ($meta['last_error'] ?? '');
+                                                        $smsIeducarBoilerplate = static function (string $s): bool {
+                                                            $t = ltrim($s);
+
+                                                            return $t !== '' && str_starts_with($t, 'O iEducar confirmou a frequência') && str_contains($s, 'Aluno:');
+                                                        };
+                                                        $showPv = $pv !== '' && ! $smsIeducarBoilerplate($pv);
+                                                        $showFullExtra = $fullMsg !== '' && $fullMsg !== $pv && ! $smsIeducarBoilerplate($fullMsg);
                                                     @endphp
                                                     <tr>
                                                         <td class="mono" style="font-size: 12px;">{{ $log['at_display'] ?? '—' }}</td>
                                                         <td>{{ $trgLabel }}</td>
                                                         <td><span class="mono">{{ $ltk }}</span> · <span class="mono">{{ $log['to_masked'] ?? '—' }}</span><br /><span style="font-size: 12px; color: var(--muted);">{{ $ltpl }}</span></td>
                                                         <td>
-                                                            @if ($stt === 'sent')
-                                                                <span class="gae-badge gae-badge--success mono">sent</span>
-                                                            @elseif ($stt === 'error')
-                                                                <span class="gae-badge gae-badge--danger mono">error</span>
-                                                            @elseif ($stt === 'pending')
-                                                                <span class="gae-badge gae-badge--warn mono">pending</span>
-                                                            @else
-                                                                <span class="gae-badge gae-badge--neutral mono">{{ $stt !== '' ? $stt : '—' }}</span>
-                                                            @endif
-                                                            @if (! empty($log['http_status']))
-                                                                <span class="bridge-muted mono" style="font-size: 11px;"> HTTP {{ $log['http_status'] }}</span>
-                                                            @endif
-                                                            @if ($prov !== '' || $provId !== '')
-                                                                <div class="mono" style="font-size: 11px; color: var(--muted); margin-top: 4px;">@if ($prov !== ''){{ $prov }}@endif @if ($provId !== '')· {{ \Illuminate\Support\Str::limit($provId, 42) }}@endif</div>
-                                                            @endif
-                                                            <div class="gae-sms-flow" role="group" aria-label="Aceite na API e entrega SMS">
-                                                                <div class="gae-sms-flow__box">
+                                                            <div class="gae-sms-result-row">
+                                                                @if ($stt === 'sent')
+                                                                    <span class="gae-badge gae-badge--success mono">sent</span>
+                                                                @elseif ($stt === 'error')
+                                                                    <span class="gae-badge gae-badge--danger mono">error</span>
+                                                                @elseif ($stt === 'pending')
+                                                                    <span class="gae-badge gae-badge--warn mono">pending</span>
+                                                                @else
+                                                                    <span class="gae-badge gae-badge--neutral mono">{{ $stt !== '' ? $stt : '—' }}</span>
+                                                                @endif
+                                                                <div class="gae-sms-flow gae-sms-flow--inline" role="group" aria-label="Aceite na API e entrega SMS">
                                                                     <span class="gae-sms-flow__icon gae-sms-flow__icon--{{ $iconApi }}" title="{{ e($ui['api_label'] ?? '') }}" aria-label="{{ e($ui['api_label'] ?? 'Aceite na API') }}">
                                                                         @switch($iconApi)
                                                                             @case('success')
@@ -706,9 +705,7 @@
                                                                                 @break
                                                                         @endswitch
                                                                     </span>
-                                                                </div>
-                                                                <div class="gae-sms-flow__arr" aria-hidden="true">→</div>
-                                                                <div class="gae-sms-flow__box">
+                                                                    <span class="gae-sms-flow__sep" aria-hidden="true">→</span>
                                                                     <span class="gae-sms-flow__icon gae-sms-flow__icon--{{ $iconDel === 'na' ? 'na' : $iconDel }}" title="{{ e($ui['delivery_label'] ?? '') }}" aria-label="{{ e($ui['delivery_label'] ?? 'Entrega SMS') }}">
                                                                         @switch($iconDel)
                                                                             @case('success')
@@ -729,21 +726,26 @@
                                                                         @endswitch
                                                                     </span>
                                                                 </div>
+                                                                @if (! empty($log['http_status']))
+                                                                    <span class="gae-sms-result-row__http bridge-muted mono">HTTP {{ $log['http_status'] }}</span>
+                                                                @endif
                                                             </div>
+                                                            @if ($prov !== '' || $provId !== '')
+                                                                <div class="mono" style="font-size: 11px; color: var(--muted); margin-top: 4px;">@if ($prov !== ''){{ $prov }}@endif @if ($provId !== '')· {{ \Illuminate\Support\Str::limit($provId, 42) }}@endif</div>
+                                                            @endif
                                                             @if (! empty($log['error_snippet']))
                                                                 <div style="font-size: 12px; color: var(--gae-bad); margin-top: 8px;">{{ $log['error_snippet'] }}</div>
                                                             @endif
                                                         </td>
                                                     </tr>
-                                                    @if ($pv !== '' || ($fullMsg !== '' && $fullMsg !== $pv) || $lastErr !== '')
+                                                    @if ($showPv || $showFullExtra || $lastErr !== '')
                                                         <tr>
                                                             <td colspan="4" style="padding-top: 0;">
-                                                                @if ($pv !== '')
-                                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 4px;">Texto (pré-visualização)</div>
+                                                                @if ($showPv)
                                                                     <div style="font-size: 12px; line-height: 1.45; color: var(--muted);">{{ \Illuminate\Support\Str::limit($pv, 360) }}</div>
                                                                 @endif
-                                                                @if ($fullMsg !== '' && $fullMsg !== $pv)
-                                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 10px; margin-bottom: 4px;">Texto completo no registo</div>
+                                                                @if ($showFullExtra)
+                                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: {{ $showPv ? '10px' : '0' }}; margin-bottom: 4px;">Texto completo no registo</div>
                                                                     <div style="font-size: 13px; line-height: 1.45;">{{ \Illuminate\Support\Str::limit($fullMsg, 400) }}</div>
                                                                 @endif
                                                                 @if ($lastErr !== '')
@@ -756,7 +758,7 @@
                                             </tbody>
                                         </table>
                                         <div class="gae-sms-legend">
-                                            <p style="margin: 0 0 8px;"><strong>Legenda — API → entrega</strong> (dois ícones na coluna «Resultado»; detalhe completo no <em>tooltip</em> ao passar o rato).</p>
+                                            <p style="margin: 0 0 8px;"><strong>Legenda — API → entrega</strong> (na coluna «Resultado», o estado <span class="mono">sent</span>/<span class="mono">error</span>/… vem primeiro; a seguir os dois ícones na mesma altura; detalhe no <em>tooltip</em> de cada ícone).</p>
                                             <p style="margin: 0;"><strong>Aceite na API</strong> (antes da seta): <span class="gae-sms-flow__icon gae-sms-flow__icon--success" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> verde — HTTP aceite; <span class="gae-sms-flow__icon gae-sms-flow__icon--danger" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span> vermelho — falha; <span class="gae-sms-flow__icon gae-sms-flow__icon--warn" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span> âmbar — aviso/inconsistência; <span class="gae-sms-flow__icon gae-sms-flow__icon--neutral" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span> cinza — pendente ou intermédio.</p>
                                             <p style="margin: 10px 0 0;"><strong>Entrega SMS</strong> (depois da seta; estado na resposta de criação, não webhook): <span class="gae-sms-flow__icon gae-sms-flow__icon--success" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="m9 9.5 2.5 2.5L15 8.5"/></svg></span> entregue (provedor); <span class="gae-sms-flow__icon gae-sms-flow__icon--warn" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> em trânsito ou sem confirmação; <span class="gae-sms-flow__icon gae-sms-flow__icon--danger" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg></span> falha no provedor; <span class="gae-sms-flow__icon gae-sms-flow__icon--neutral" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> estado pouco claro; <span class="gae-sms-flow__icon gae-sms-flow__icon--na" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></span> não aplicável.</p>
                                         </div>
