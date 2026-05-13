@@ -85,6 +85,41 @@
             .gae-reproc-action--retry { background: var(--gae-bad-bg); border: 1px solid color-mix(in srgb, var(--gae-bad) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-bad)); }
             .gae-reproc-action--requeue { background: var(--gae-info-bg); border: 1px solid color-mix(in srgb, var(--gae-info) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-info)); }
             .gae-reproc-action--force { background: var(--gae-ok-bg); border: 1px solid color-mix(in srgb, var(--gae-ok) 35%, var(--border)); color: color-mix(in srgb, var(--text) 80%, var(--gae-ok)); }
+
+            .gae-sms-flash-success {
+                margin-top: 14px;
+                padding: 18px 20px;
+                border-radius: 16px;
+                border: 1px solid color-mix(in srgb, var(--gae-ok) 45%, var(--border));
+                background: linear-gradient(135deg, color-mix(in srgb, var(--gae-ok) 16%, var(--surface-1)), color-mix(in srgb, var(--gae-ok) 6%, var(--card-strong)));
+                box-shadow: 0 8px 28px color-mix(in srgb, var(--gae-ok) 12%, transparent);
+                display: flex;
+                align-items: flex-start;
+                gap: 14px;
+                font-size: 15px;
+                line-height: 1.55;
+                font-weight: 650;
+                color: color-mix(in srgb, var(--text) 88%, var(--gae-ok));
+            }
+            .gae-sms-flash-success svg { width: 28px; height: 28px; flex-shrink: 0; color: var(--gae-ok); margin-top: 2px; }
+            .gae-sms-flash-success__meta { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 8px; }
+
+            .gae-sms-panel { margin-top: 14px; border: 1px solid var(--border); border-radius: 18px; padding: 4px 0 4px; background: var(--card-strong); box-shadow: var(--shadow-soft); overflow: hidden; }
+            .gae-sms-panel__head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px 12px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+            .gae-sms-panel__head svg { width: 22px; height: 22px; color: var(--gae-info); flex-shrink: 0; margin-top: 2px; }
+            .gae-sms-panel__title { font-weight: 800; font-size: 15px; margin: 0; }
+            .gae-sms-panel__hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; line-height: 1.45; }
+
+            .gae-sms-action { margin: 12px 14px 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg0) 35%, var(--surface-1)); }
+            .gae-sms-action__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+            .gae-sms-action--config { border-left: 4px solid var(--gae-info); }
+            .gae-sms-action--guardians { border-left: 4px solid var(--gae-ok); }
+            .gae-sms-action__label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 750; color: var(--text); margin-bottom: 8px; }
+            .gae-sms-action__label svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.9; }
+            .gae-sms-action--config .gae-sms-action__label svg { color: var(--gae-info); }
+            .gae-sms-action--guardians .gae-sms-action__label svg { color: var(--gae-ok); }
+            .gae-sms-action__phones { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.45; }
+            .gae-sms-action__phones .mono { font-weight: 600; color: color-mix(in srgb, var(--text) 75%, var(--muted)); }
         </style>
     </head>
     <body>
@@ -198,6 +233,15 @@
                                 </x-slot:left>
                             </x-audit-toolbar>
 
+                            @if (session('sms_success'))
+                                <div class="gae-sms-flash-success" role="status" aria-live="polite">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    <div>
+                                        <div>{{ session('sms_success') }}</div>
+                                        <div class="gae-sms-flash-success__meta">Se precisar de outro envio, pode voltar a usar as ações abaixo.</div>
+                                    </div>
+                                </div>
+                            @endif
                             @if (session('status'))
                                 <div class="gae-callout gae-callout--info" style="margin-top: 12px;" role="status">{{ session('status') }}</div>
                             @endif
@@ -217,28 +261,24 @@
                                     <strong>SMS:</strong> integração ligada, mas nenhum template de presença está ativo. Ative o template desejado em <a href="{{ route('integrations.sms') }}">Integrações → SMS</a>.
                                 </div>
                             @else
-                                <div class="gae-card" style="margin-top: 14px;">
-                                    <div class="gae-card__head">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <div class="gae-sms-panel">
+                                    <div class="gae-sms-panel__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                         <div>
-                                            <h2 class="gae-card__title">Reenviar SMS</h2>
-                                            <p class="gae-card__hint">Usa o <strong>payload</strong> e a <strong>análise</strong> guardados nesta entrega. O envio é imediato (não usa a fila).</p>
+                                            <h2 class="gae-sms-panel__title">SMS — reenvio manual</h2>
+                                            <p class="gae-sms-panel__hint">Usa o <strong>payload</strong> e a <strong>análise</strong> desta entrega. O envio é <strong>imediato</strong> (não passa pela fila).</p>
                                         </div>
                                     </div>
-                                    <p class="bridge-muted" style="margin: 0 0 12px; line-height: 1.55;">
-                                        <strong>Conforme configuração</strong> respeita modo alunos vs números de teste e a chave de telefone em <span class="mono">/integracoes/sms</span>.
-                                        <strong>Para responsáveis</strong> ignora esse modo e envia para todos os números encontrados no JSON (ex.: <span class="mono">phone</span>, <span class="mono">responsavel.phone</span>, listas <span class="mono">responsaveis[]</span>).
-                                        Template <span class="mono">presence_ieducar_sync</span> usa o HTTP registado nesta entrega (ou <span class="mono">—</span> se ausente).
-                                    </p>
-                                    @if (count($smsGuardianMasked ?? []) > 0)
-                                        <p class="bridge-muted" style="margin: 0 0 12px; font-size: 13px;">Telefones detectados no payload (mascarados): <span class="mono">{{ implode(', ', $smsGuardianMasked) }}</span></p>
-                                    @else
-                                        <p class="bridge-muted" style="margin: 0 0 12px; font-size: 13px;">Nenhum telefone de responsável detectado automaticamente neste payload — o botão “responsáveis” ficará indisponível.</p>
-                                    @endif
-                                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-                                        <form method="post" action="{{ route('admin.gestor-access-events.sms-resend-config', ['id' => $delivery->id]) }}" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" onsubmit="return confirm('Reenviar SMS conforme a integração atual?');">
+
+                                    <div class="gae-sms-action gae-sms-action--config">
+                                        <div class="gae-sms-action__label">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/></svg>
+                                            <span>Conforme a integração</span>
+                                        </div>
+                                        <p class="bridge-muted" style="margin: 0 0 12px; font-size: 13px; line-height: 1.5;">Respeita modo alunos vs testes e a chave de telefone em <span class="mono">/integracoes/sms</span>. Template <span class="mono">presence_ieducar_sync</span> usa o HTTP registado nesta entrega (ou <span class="mono">—</span> se ausente).</p>
+                                        <form method="post" action="{{ route('admin.gestor-access-events.sms-resend-config', ['id' => $delivery->id]) }}" class="gae-sms-action__row" onsubmit="return confirm('Reenviar SMS conforme a integração atual?');">
                                             @csrf
-                                            <label class="bridge-muted" style="font-size: 12px; font-weight: 700;">Template</label>
+                                            <label class="bridge-muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;">Template</label>
                                             <select name="template" class="bridge-input" style="height: 40px; min-width: 220px;">
                                                 @if ($smsTemplateCatracaEnabled)
                                                     <option value="presence_catraca">Presença na catraca</option>
@@ -247,24 +287,161 @@
                                                     <option value="presence_ieducar_sync">Confirmação no iEducar</option>
                                                 @endif
                                             </select>
-                                            <button type="submit" class="gae-btn gae-btn--primary">SMS (configuração)</button>
-                                        </form>
-                                        <form method="post" action="{{ route('admin.gestor-access-events.sms-resend-guardians', ['id' => $delivery->id]) }}" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" onsubmit="return confirm('Enviar SMS para todos os telefones de responsável encontrados no payload?');">
-                                            @csrf
-                                            <label class="bridge-muted" style="font-size: 12px; font-weight: 700;">Template</label>
-                                            <select name="template" class="bridge-input" style="height: 40px; min-width: 220px;">
-                                                @if ($smsTemplateCatracaEnabled)
-                                                    <option value="presence_catraca">Presença na catraca</option>
-                                                @endif
-                                                @if ($smsTemplateIeducarEnabled)
-                                                    <option value="presence_ieducar_sync">Confirmação no iEducar</option>
-                                                @endif
-                                            </select>
-                                            <button type="submit" class="gae-btn gae-btn--info" @if (count($smsGuardianMasked ?? []) === 0) disabled title="Sem telefones de responsável no payload" @endif>SMS (responsáveis)</button>
+                                            <button type="submit" class="gae-btn gae-btn--primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg>
+                                                Enviar (configuração)
+                                            </button>
                                         </form>
                                     </div>
+
+                                    @if (count($smsGuardianMasked ?? []) > 0)
+                                        <div class="gae-sms-action gae-sms-action--guardians">
+                                            <div class="gae-sms-action__label">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                                <span>Para responsáveis (telefone no payload)</span>
+                                            </div>
+                                            <p class="gae-sms-action__phones">Números detectados (mascarados): <span class="mono">{{ implode(', ', $smsGuardianMasked) }}</span></p>
+                                            <p class="bridge-muted" style="margin: 0 0 12px; font-size: 12px; line-height: 1.45;">Ignora o modo testes/alunos da integração e envia para <strong>todos</strong> os números listados acima.</p>
+                                            <form method="post" action="{{ route('admin.gestor-access-events.sms-resend-guardians', ['id' => $delivery->id]) }}" class="gae-sms-action__row" onsubmit="return confirm('Enviar SMS para todos os telefones de responsável listados?');">
+                                                @csrf
+                                                <label class="bridge-muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;">Template</label>
+                                                <select name="template" class="bridge-input" style="height: 40px; min-width: 220px;">
+                                                    @if ($smsTemplateCatracaEnabled)
+                                                        <option value="presence_catraca">Presença na catraca</option>
+                                                    @endif
+                                                    @if ($smsTemplateIeducarEnabled)
+                                                        <option value="presence_ieducar_sync">Confirmação no iEducar</option>
+                                                    @endif
+                                                </select>
+                                                <button type="submit" class="gae-btn gae-btn--ok">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg>
+                                                    Enviar (responsáveis)
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
+
+                            @php
+                                $smsTriggerLabels = [
+                                    'automated' => 'Disparo automático (fila)',
+                                    'admin_resend_config' => 'Reenvio manual — conforme integração',
+                                    'admin_resend_guardians' => 'Reenvio manual — responsáveis',
+                                ];
+                                $smsTemplateLabels = [
+                                    'presence_catraca' => 'Presença na catraca',
+                                    'presence_ieducar_sync' => 'Confirmação no iEducar',
+                                    'presence_notification' => 'Presença (legado)',
+                                ];
+                            @endphp
+                            <div class="gae-card" style="margin-top: 14px;">
+                                <div class="gae-card__head">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    <div>
+                                        <h2 class="gae-card__title">SMS enviados neste evento</h2>
+                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> feitos pelos botões acima. O histórico cronológico usa <span class="mono">context.send_log</span> (até 50 entradas por destinatário/template).</p>
+                                    </div>
+                                </div>
+
+                                @if ($smsDeliveries->isEmpty())
+                                    <p class="bridge-muted" style="margin: 0;">Nenhum SMS registado para este <span class="mono">event_id</span>.</p>
+                                @else
+                                    <p style="margin: 0 0 10px; font-size: 13px; font-weight: 700;">Estado atual por destino</p>
+                                    <table class="gae-reproc-table" aria-label="Estado atual dos SMS">
+                                        <thead>
+                                            <tr>
+                                                <th>Template</th>
+                                                <th>Para</th>
+                                                <th>Estado</th>
+                                                <th>Enviado em</th>
+                                                <th>Provedor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($smsDeliveries as $sd)
+                                                @php
+                                                    $tk = (string) $sd->template_key;
+                                                    $tplLabel = $smsTemplateLabels[$tk] ?? $tk;
+                                                    $toDigits = (string) $sd->to;
+                                                    $toMask = strlen($toDigits) <= 4 ? str_repeat('•', strlen($toDigits)) : str_repeat('•', strlen($toDigits) - 4).substr($toDigits, -4);
+                                                @endphp
+                                                <tr>
+                                                    <td><span class="mono">{{ $tk }}</span><br /><span style="font-size: 12px; color: var(--muted);">{{ $tplLabel }}</span></td>
+                                                    <td class="mono">{{ $toMask }}</td>
+                                                    <td><span class="gae-badge gae-badge--neutral">{{ $sd->status }}</span></td>
+                                                    <td class="mono" style="font-size: 12px;">{{ $sd->sent_at?->timezone(config('app.timezone'))->format('d/m/Y H:i:s') ?? '—' }}</td>
+                                                    <td class="mono" style="font-size: 12px;">{{ $sd->provider }}@if ($sd->provider_message_id)<br /><span style="color: var(--muted);">{{ \Illuminate\Support\Str::limit($sd->provider_message_id, 28) }}</span>@endif</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="5" style="padding-top: 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);">
+                                                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 4px;">Texto atual</div>
+                                                        <div style="font-size: 13px; line-height: 1.45;">{{ \Illuminate\Support\Str::limit($sd->message, 400) }}</div>
+                                                        @if ($sd->last_error)
+                                                            <div style="margin-top: 8px; font-size: 12px; color: var(--gae-bad);"><strong>Último erro:</strong> {{ \Illuminate\Support\Str::limit($sd->last_error, 280) }}</div>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+
+                                    @if (count($smsSendTimeline) > 0)
+                                        <p style="margin: 18px 0 10px; font-size: 13px; font-weight: 700;">Histórico de envios (mais recente primeiro)</p>
+                                        <table class="gae-reproc-table" aria-label="Histórico de envios SMS">
+                                            <thead>
+                                                <tr>
+                                                    <th>Quando</th>
+                                                    <th>Origem</th>
+                                                    <th>Template / destino</th>
+                                                    <th>Resultado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($smsSendTimeline as $log)
+                                                    @php
+                                                        $trg = (string) ($log['trigger'] ?? '');
+                                                        $trgLabel = $smsTriggerLabels[$trg] ?? ($trg !== '' ? $trg : '—');
+                                                        $ltk = (string) ($log['template_key'] ?? '');
+                                                        $ltpl = $smsTemplateLabels[$ltk] ?? $ltk;
+                                                        $stt = (string) ($log['status'] ?? '');
+                                                    @endphp
+                                                    <tr>
+                                                        <td class="mono" style="font-size: 12px;">{{ $log['at_display'] ?? '—' }}</td>
+                                                        <td>{{ $trgLabel }}</td>
+                                                        <td><span class="mono">{{ $ltk }}</span> · <span class="mono">{{ $log['to_masked'] ?? '—' }}</span><br /><span style="font-size: 12px; color: var(--muted);">{{ $ltpl }}</span></td>
+                                                        <td>
+                                                            @if ($stt === 'sent')
+                                                                <span class="gae-badge gae-badge--success">enviado</span>
+                                                            @elseif ($stt === 'error')
+                                                                <span class="gae-badge gae-badge--danger">erro</span>
+                                                            @else
+                                                                <span class="gae-badge gae-badge--neutral">{{ $stt !== '' ? $stt : '—' }}</span>
+                                                            @endif
+                                                            @if (!empty($log['http_status']))
+                                                                <span class="bridge-muted mono" style="font-size: 11px;"> HTTP {{ $log['http_status'] }}</span>
+                                                            @endif
+                                                            @if (!empty($log['provider_message_id']))
+                                                                <div class="mono" style="font-size: 11px; color: var(--muted); margin-top: 4px;">{{ \Illuminate\Support\Str::limit($log['provider_message_id'], 36) }}</div>
+                                                            @endif
+                                                            @if (!empty($log['error_snippet']))
+                                                                <div style="font-size: 12px; color: var(--gae-bad); margin-top: 6px;">{{ $log['error_snippet'] }}</div>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="4" style="padding-top: 0;">
+                                                            <div style="font-size: 12px; line-height: 1.45; color: var(--muted);">{{ \Illuminate\Support\Str::limit($log['message_preview'] ?? '', 360) }}</div>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @else
+                                        <p class="bridge-muted" style="margin-top: 14px;">Sem linha de tempo detalhada: só passamos a gravar o histórico em <span class="mono">send_log</span> após esta versão, ou ainda não houve tentativa concluída (enviado ou erro final).</p>
+                                    @endif
+                                @endif
+                            </div>
 
                             <div class="gae-callout gae-callout--info">
                                 <strong>Porque pode diferir de “Frequência iEducar” no admin:</strong>

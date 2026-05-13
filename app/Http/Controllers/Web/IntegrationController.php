@@ -491,6 +491,7 @@ class IntegrationController extends Controller
             $request->merge([
                 'account_sid' => trim((string) $request->input('account_sid', '')),
                 'provider' => trim((string) $request->input('provider', 'twilio')) ?: 'twilio',
+                'api_token' => trim((string) $request->input('api_token', '')),
             ]);
 
             $data = $request->validate([
@@ -508,6 +509,8 @@ class IntegrationController extends Controller
                 'template_ieducar_enabled' => ['nullable'],
                 'template_ieducar_body' => ['required', 'string', 'min:1'],
             ]);
+
+            $incomingApiToken = trim((string) ($data['api_token'] ?? ''));
 
             $enabled = (bool) $request->boolean('enabled');
             $provider = (string) $data['provider'];
@@ -528,7 +531,7 @@ class IntegrationController extends Controller
                 if (trim((string) ($data['from'] ?? '')) === '') {
                     return back()->withErrors(['from' => 'Com Twilio ativo, informe o número remetente (From) em E.164, ex. +14155552671.'])->withInput();
                 }
-                if (trim((string) ($data['api_token'] ?? '')) === '' && trim((string) ($integration->auth_token ?? '')) === '') {
+                if ($incomingApiToken === '' && trim((string) ($integration->auth_token ?? '')) === '') {
                     return back()->withErrors(['api_token' => 'Com Twilio ativo, informe o Auth Token (ou já deixe um gravado).'])->withInput();
                 }
             }
@@ -537,7 +540,7 @@ class IntegrationController extends Controller
                 if (trim((string) ($data['from'] ?? '')) === '') {
                     return back()->withErrors(['from' => 'Com Zenvia ativa, informe o remetente (from).'])->withInput();
                 }
-                if (trim((string) ($data['api_token'] ?? '')) === '' && trim((string) ($integration->auth_token ?? '')) === '') {
+                if ($incomingApiToken === '' && trim((string) ($integration->auth_token ?? '')) === '') {
                     return back()->withErrors(['api_token' => 'Com Zenvia ativa, informe o token da API (X-API-TOKEN).'])->withInput();
                 }
             }
@@ -554,8 +557,10 @@ class IntegrationController extends Controller
             }
             $integration->auth_type = 'api_token';
 
-            if ($data['api_token'] !== '') {
-                $integration->auth_token = $data['api_token'];
+            // Credencial secreta: só grava na coluna integrations.auth_token quando o utilizador
+            // envia um valor novo (não vazio). Campo em branco mantém o token já persistido na BD — sem .env.
+            if ($incomingApiToken !== '') {
+                $integration->auth_token = $incomingApiToken;
             }
 
             $extra = (array) ($integration->extra ?? []);

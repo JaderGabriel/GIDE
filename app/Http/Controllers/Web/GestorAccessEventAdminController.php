@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessGestorAccessEventDeliveryJob;
 use App\Models\GestorAccessEventDelivery;
 use App\Models\Integration;
+use App\Models\SmsDelivery;
 use App\Models\SmsTemplate;
 use App\Services\Presence\PresenceRuleEngine;
 use App\Services\Sms\SmsService;
@@ -15,6 +16,7 @@ use App\Support\SmsTemplateKey;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
@@ -60,6 +62,13 @@ class GestorAccessEventAdminController extends Controller
         $guardianDigits = SmsService::extractGuardianRecipientDigitsFromPayload($payload);
         $guardianMasked = array_map(fn (string $d) => $this->maskE164DigitsForDisplay($d), $guardianDigits);
 
+        $smsDeliveries = SmsDelivery::query()
+            ->where('event_id', (string) $delivery->event_id)
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $smsSendTimeline = $this->flattenSmsSendLogsForAdmin($smsDeliveries);
+
         return view('admin.gestor_access_event_show', [
             'delivery' => $delivery,
             'ieducar' => $ieducar,
@@ -68,6 +77,8 @@ class GestorAccessEventAdminController extends Controller
             'smsTemplateCatracaEnabled' => SmsTemplate::query()->where('key', SmsTemplateKey::PRESENCE_CATRACA)->where('enabled', true)->exists(),
             'smsTemplateIeducarEnabled' => SmsTemplate::query()->where('key', SmsTemplateKey::PRESENCE_IEDUCAR_SYNC)->where('enabled', true)->exists(),
             'smsGuardianMasked' => $guardianMasked,
+            'smsDeliveries' => $smsDeliveries,
+            'smsSendTimeline' => $smsSendTimeline,
         ]);
     }
 
@@ -101,6 +112,7 @@ class GestorAccessEventAdminController extends Controller
                 $extra,
                 true,
                 null,
+                'admin_resend_config',
             );
         } catch (\Throwable $e) {
             return redirect()
@@ -112,9 +124,13 @@ class GestorAccessEventAdminController extends Controller
             'template' => $templateKey,
         ]);
 
+        $templateLabel = $templateKey === SmsTemplateKey::PRESENCE_IEDUCAR_SYNC
+            ? 'Confirmação no iEducar'
+            : 'Presença na catraca';
+
         return redirect()
             ->back()
-            ->with('status', 'SMS reenviado conforme a configuração atual da integração (template '.$templateKey.').');
+            ->with('sms_success', 'SMS enviado com sucesso. Modo: conforme a integração em /integracoes/sms. Template: '.$templateLabel.'. Envio imediato (sem fila).');
     }
 
     public function resendPresenceSmsGuardians(Request $request, int $id): RedirectResponse
@@ -154,6 +170,7 @@ class GestorAccessEventAdminController extends Controller
                 $extra,
                 true,
                 $phones,
+                'admin_resend_guardians',
             );
         } catch (\Throwable $e) {
             return redirect()
@@ -166,9 +183,13 @@ class GestorAccessEventAdminController extends Controller
             'recipients_count' => count($phones),
         ]);
 
+        $templateLabel = $templateKey === SmsTemplateKey::PRESENCE_IEDUCAR_SYNC
+            ? 'Confirmação no iEducar'
+            : 'Presença na catraca';
+
         return redirect()
             ->back()
-            ->with('status', 'SMS enviado para '.count($phones).' número(es) de responsável(is) encontrado(s) no payload.');
+            ->with('sms_success', 'SMS enviado com sucesso para '.count($phones).' número(es) de responsável(is). Template: '.$templateLabel.'. Envio imediato (sem fila).');
     }
 
     public function retry(int $id): RedirectResponse
@@ -358,6 +379,35 @@ class GestorAccessEventAdminController extends Controller
         $ieducarHttpLabel = $http !== null ? (string) $http : '—';
 
         return [$payload, $analysis, $occurredAt, $ieducarHttpLabel];
+    }
+
+    /**
+     * @param  Collection<int, SmsDelivery>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function flattenSmsSendLogsForAdmin(Collection $rows): array
+    {
+        $flat = [];
+        foreach ($rows as $row) {
+            $ctx = is_array($row->context) ? $row->context : [];
+            foreach (is_array($ctx['send_log'] ?? null) ? $ctx['send_log'] : [] as $e) {
+                if (! is_array($e)) {
+                    continue;
+                }
+                $e['_sms_delivery_id'] = $row->id;
+                $atRaw = (string) ($e['at'] ?? '');
+                try {
+                    $e['at_display'] = Carbon::parse($atRaw)->timezone(config('app.timezone'))->format('d/m/Y H:i:s');
+                } catch (\Throwable) {
+                    $e['at_display'] = $atRaw !== '' ? $atRaw : '—';
+                }
+                $flat[] = $e;
+            }
+        }
+
+        usort($flat, fn (array $a, array $b): int => strcmp((string) ($b['at'] ?? ''), (string) ($a['at'] ?? '')));
+
+        return $flat;
     }
 
     private function maskE164DigitsForDisplay(string $digits): string

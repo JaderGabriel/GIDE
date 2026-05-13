@@ -132,6 +132,9 @@
                                     <div class="bridge-muted sms-hint-zenvia" style="margin-top: 6px;">
                                         Crie ou copie o token em <a href="https://app.zenvia.com/" target="_blank" rel="noreferrer">Zenvia</a> (API / integrações). Cabeçalho enviado: <code>X-API-TOKEN</code>. Se deixar em branco, o valor atual não é alterado.
                                     </div>
+                                    <div class="bridge-muted" style="margin-top: 6px;">
+                                        O valor é guardado na base de dados (coluna criptografada da integração SMS). Em branco ao gravar, mantém-se o token já salvo; este formulário não usa <code>.env</code> para esta credencial.
+                                    </div>
                                 </div>
 
                                 <div class="bridge-field">

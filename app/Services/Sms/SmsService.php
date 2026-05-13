@@ -19,6 +19,7 @@ class SmsService
     /**
      * @param  array<string, mixed>  $extraContext  Mesclado no contexto de tags (ex.: ieducar_http_status).
      * @param  list<string>|null  $overrideRecipientDigits  E.164 só dígitos; se definido, ignora modo alunos/testes da integração.
+     * @param  string  $triggerSource  Origem do envio (gravada em context.send_log em sms_deliveries).
      */
     public function sendPresenceSms(
         string $eventId,
@@ -29,6 +30,7 @@ class SmsService
         array $extraContext = [],
         bool $allowResendWhenAlreadySent = false,
         ?array $overrideRecipientDigits = null,
+        string $triggerSource = 'automated',
     ): SmsDelivery {
         $smsIntegration = Integration::query()->where('key', 'sms')->where('enabled', true)->first();
         if (! $smsIntegration) {
@@ -65,6 +67,7 @@ class SmsService
                 $to,
                 $extraContext,
                 $allowResendWhenAlreadySent,
+                $triggerSource,
             );
         }
 
@@ -202,6 +205,7 @@ class SmsService
         string $to,
         array $extraContext = [],
         bool $allowResendWhenAlreadySent = false,
+        string $triggerSource = 'automated',
     ): SmsDelivery {
         $from = (string) data_get($smsIntegration->extra, 'from', '');
         if ($from === '') {
@@ -238,8 +242,9 @@ class SmsService
         );
 
         if ($allowResendWhenAlreadySent) {
+            $oldContext = is_array($delivery->context) ? $delivery->context : [];
             $delivery->message = $message;
-            $delivery->context = $context;
+            $delivery->context = array_merge($oldContext, $context);
             $delivery->from = $from;
             $delivery->occurred_at = $occurredAt;
             $delivery->sent_at = null;
@@ -262,6 +267,14 @@ class SmsService
             $delivery->last_error = $delivery->last_error ?: 'Máximo de tentativas atingido.';
             $delivery->next_retry_at = null;
             $delivery->save();
+            $this->appendPresenceSmsSendLog(
+                $delivery,
+                $triggerSource,
+                'error',
+                null,
+                $delivery->last_http_status,
+                (string) $delivery->last_error,
+            );
 
             return $delivery;
         }
@@ -289,6 +302,7 @@ class SmsService
             }
 
             $delivery->save();
+            $this->finalizePresenceSmsSendLog($delivery, $triggerSource);
 
             return $delivery;
         }
@@ -310,6 +324,7 @@ class SmsService
             }
 
             $delivery->save();
+            $this->finalizePresenceSmsSendLog($delivery, $triggerSource);
 
             return $delivery;
         }
@@ -318,8 +333,88 @@ class SmsService
         $delivery->status = 'error';
         $delivery->next_retry_at = null;
         $delivery->save();
+        $this->appendPresenceSmsSendLog(
+            $delivery,
+            $triggerSource,
+            'error',
+            null,
+            $delivery->last_http_status,
+            (string) $delivery->last_error,
+        );
 
         return $delivery;
+    }
+
+    /**
+     * Regista tentativa concluída em context.send_log (máx. 50 entradas) para auditoria no admin.
+     */
+    private function finalizePresenceSmsSendLog(SmsDelivery $delivery, string $triggerSource): void
+    {
+        if ($delivery->status === 'sent') {
+            $this->appendPresenceSmsSendLog(
+                $delivery,
+                $triggerSource,
+                'sent',
+                $delivery->provider_message_id !== '' ? (string) $delivery->provider_message_id : null,
+                $delivery->last_http_status,
+                null,
+            );
+
+            return;
+        }
+
+        if ($delivery->status === 'error' && $delivery->next_retry_at === null) {
+            $this->appendPresenceSmsSendLog(
+                $delivery,
+                $triggerSource,
+                'error',
+                null,
+                $delivery->last_http_status,
+                (string) ($delivery->last_error ?? ''),
+            );
+        }
+    }
+
+    private function appendPresenceSmsSendLog(
+        SmsDelivery $delivery,
+        string $triggerSource,
+        string $resultStatus,
+        ?string $providerMessageId,
+        ?int $httpStatus,
+        ?string $errorSnippet,
+    ): void {
+        $ctx = is_array($delivery->context) ? $delivery->context : [];
+        $log = is_array($ctx['send_log'] ?? null) ? array_values($ctx['send_log']) : [];
+        $to = (string) $delivery->to;
+        $toMask = strlen($to) <= 4
+            ? str_repeat('•', strlen($to))
+            : str_repeat('•', max(0, strlen($to) - 4)).substr($to, -4);
+
+        $entry = [
+            'at' => now()->toIso8601String(),
+            'trigger' => $triggerSource,
+            'template_key' => (string) $delivery->template_key,
+            'to_masked' => $toMask,
+            'status' => $resultStatus,
+            'message_preview' => mb_substr((string) $delivery->message, 0, 220),
+        ];
+        if ($providerMessageId !== null && $providerMessageId !== '') {
+            $entry['provider_message_id'] = $providerMessageId;
+        }
+        if ($httpStatus !== null) {
+            $entry['http_status'] = $httpStatus;
+        }
+        if ($errorSnippet !== null && $errorSnippet !== '') {
+            $entry['error_snippet'] = mb_substr($errorSnippet, 0, 200);
+        }
+        $log[] = $entry;
+        if (count($log) > 50) {
+            $log = array_slice($log, -50);
+        }
+
+        $ctx['send_log'] = $log;
+        $delivery->context = $ctx;
+        $delivery->save();
     }
 
     private function backoffSeconds(int $attempts): int
