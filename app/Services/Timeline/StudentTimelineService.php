@@ -46,7 +46,7 @@ class StudentTimelineService
     /**
      * Retorna os últimos N alunos distintos com access-events recentes.
      *
-     * @return Collection<int, array{cod_aluno: int, nome: string|null, last_event_at: string, delivery_id: int}>
+     * @return Collection<int, array{cod_aluno: int, access_count: int, last_event_at: string, delivery_id: int}>
      */
     public function getRecentActiveStudents(int $limit = 10): Collection
     {
@@ -66,13 +66,9 @@ class StudentTimelineService
             }
             $seen[$codAluno] = true;
 
-            $cache = StudentEnrichmentCache::query()
-                ->where('cod_aluno', $codAluno)
-                ->first();
-
             $results[] = [
                 'cod_aluno' => $codAluno,
-                'nome' => $cache?->data['nome'] ?? null,
+                'access_count' => $this->countAccessDeliveriesForAluno($codAluno),
                 'last_event_at' => $delivery->created_at?->toIso8601String() ?? '',
                 'delivery_id' => $delivery->id,
             ];
@@ -83,6 +79,16 @@ class StudentTimelineService
         }
 
         return collect($results);
+    }
+
+    private function countAccessDeliveriesForAluno(int $codAluno): int
+    {
+        return GestorAccessEventDelivery::query()
+            ->where(function ($q) use ($codAluno) {
+                $q->where('analysis_json->aluno_id', $codAluno)
+                    ->orWhere('inbound_payload->aluno_id', $codAluno);
+            })
+            ->count();
     }
 
     private function appendAccessEvents(Collection &$events, int $codAluno, int $limit): void

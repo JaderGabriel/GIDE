@@ -807,8 +807,8 @@
                                                     @foreach ($recentStudents as $student)
                                                         <a href="{{ route('admin.student-timeline', ['cod_aluno' => $student['cod_aluno']]) }}" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-1); text-decoration: none; color: var(--text); font-size: 13px; transition: border-color .12s;">
                                                             <span style="font-weight: 700; min-width: 54px;" class="mono">#{{ $student['cod_aluno'] }}</span>
-                                                            <span style="flex: 1; color: var(--text);">{{ $student['nome'] ?? '(sem nome no cache)' }}</span>
-                                                            <span style="font-size: 11px; color: var(--muted);">{{ $student['last_event_at'] ? \Carbon\Carbon::parse($student['last_event_at'])->diffForHumans() : '' }}</span>
+                                                            <span style="flex: 1; color: var(--muted); font-size: 12px;">{{ $student['access_count'] }} {{ $student['access_count'] === 1 ? 'acesso' : 'acessos' }}</span>
+                                                            <span style="font-size: 11px; color: var(--muted); white-space: nowrap;">{{ $student['last_event_at'] ? \Carbon\Carbon::parse($student['last_event_at'])->locale('pt_BR')->diffForHumans() : '' }}</span>
                                                         </a>
                                                     @endforeach
                                                 </div>
