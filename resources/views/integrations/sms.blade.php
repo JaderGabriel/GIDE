@@ -71,31 +71,81 @@
                                     <span>Habilitar envio de SMS após apontamento de presença</span>
                                 </label>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="base_url">Base URL</label>
-                                    <input class="bridge-input" id="base_url" name="base_url" type="text" value="{{ old('base_url', $integration->base_url ?? config('integrations.sms.default_base_url')) }}" placeholder="{{ filled(config('integrations.sms.default_base_url')) ? (string) config('integrations.sms.default_base_url') : 'URL base HTTPS da API SMS (ex.: SMS_DEFAULT_BASE_URL no .env)' }}" />
-                                    @error('base_url')
+                                <div class="bridge-field" style="margin-top: 14px;">
+                                    <label class="bridge-label" for="provider">Provedor SMS</label>
+                                    <select class="bridge-input" id="provider" name="provider" style="height: 44px;">
+                                        @php $pv = old('provider', data_get($integration->extra, 'provider') ?? 'twilio'); @endphp
+                                        <option value="twilio" {{ $pv === 'twilio' ? 'selected' : '' }}>Twilio (REST 2010-04-01, Basic Auth)</option>
+                                        <option value="zenvia" {{ $pv === 'zenvia' ? 'selected' : '' }}>Zenvia (API v2, X-API-TOKEN)</option>
+                                    </select>
+                                    @error('provider')
                                         <div class="bridge-error">{{ $message }}</div>
                                     @enderror
+                                    <div class="bridge-muted sms-hint-twilio" style="margin-top: 8px; line-height: 1.55;">
+                                        <strong>Twilio:</strong> envio via <code>POST …/2010-04-01/Accounts/&lt;AC…&gt;/Messages.json</code> com <code>To</code>, <code>From</code>, <code>Body</code>.
+                                        <a href="https://www.twilio.com/docs/sms/api/message-resource#create-a-message-resource" target="_blank" rel="noreferrer">Criar mensagem (doc oficial)</a>
+                                        · <a href="https://console.twilio.com/" target="_blank" rel="noreferrer">Console Twilio</a> (Account SID e Auth Token em “Account Info”).
+                                        Contas trial só enviam para números verificados — ver <a href="https://www.twilio.com/docs/messaging/guides/how-to-use-your-free-trial-account" target="_blank" rel="noreferrer">trial</a>.
+                                    </div>
+                                    <div class="bridge-muted sms-hint-zenvia" style="margin-top: 8px; line-height: 1.55;">
+                                        <strong>Zenvia:</strong> token no header <code>X-API-TOKEN</code>; remetente conforme canal SMS contratado.
+                                        <a href="https://developers.zenvia.com/" target="_blank" rel="noreferrer">Portal de desenvolvedores Zenvia</a>
+                                        · <a href="https://developers.zenvia.com/docs/channels/sms-channel" target="_blank" rel="noreferrer">Canal SMS</a>.
+                                        O campo “Account SID” da Twilio <strong>não é usado</strong> com Zenvia.
+                                    </div>
                                 </div>
 
-                                <div class="bridge-field">
-                                    <label class="bridge-label" for="api_token">Token da API SMS — header <code>X-API-TOKEN</code></label>
-                                    <input class="bridge-input" id="api_token" name="api_token" type="password" value="{{ old('api_token', '') }}" placeholder="{{ $integration->auth_token ? '•••••••••• (já configurado)' : 'cole aqui o token' }}" />
-                                    @error('api_token')
+                                <div class="bridge-field sms-field-twilio">
+                                    <label class="bridge-label" for="account_sid">Twilio Account SID</label>
+                                    <input class="bridge-input" id="account_sid" name="account_sid" type="text" value="{{ old('account_sid', data_get($integration->extra, 'account_sid') ?? '') }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                                    @error('account_sid')
                                         <div class="bridge-error">{{ $message }}</div>
                                     @enderror
                                     <div class="bridge-muted" style="margin-top: 6px;">
-                                        Se você deixar em branco, o token atual não é alterado.
+                                        No <a href="https://console.twilio.com/" target="_blank" rel="noreferrer">console</a>: copie o <strong>Account SID</strong> (começa por <code>AC</code>). Não use o SID como remetente (<code>From</code>).
                                     </div>
                                 </div>
 
                                 <div class="bridge-field">
-                                    <label class="bridge-label" for="from">From (conta/identificador do SMS)</label>
-                                    <input class="bridge-input" id="from" name="from" type="text" value="{{ old('from', data_get($integration->extra, 'from') ?? '') }}" placeholder="sms-account" />
+                                    <label class="bridge-label" for="base_url">Base URL (opcional)</label>
+                                    <input class="bridge-input" id="base_url" name="base_url" type="text" value="{{ old('base_url', $integration->base_url ?? '') }}" placeholder="{{ (string) config('integrations.sms.twilio_api_root') }} (Twilio) ou {{ (string) config('integrations.sms.default_base_url') }} (Zenvia)" />
+                                    @error('base_url')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="bridge-muted sms-hint-twilio" style="margin-top: 6px;">
+                                        Em geral deixe vazio: o sistema usa a raiz pública padrão da API Twilio em <code>config/integrations.php</code>. Preencha aqui se usar subconta ou endpoint personalizado (valor gravado no banco).
+                                    </div>
+                                    <div class="bridge-muted sms-hint-zenvia" style="margin-top: 6px;">
+                                        Padrão: URL v2 da Zenvia em config. Altere apenas se a Zenvia indicar outro host para a sua conta.
+                                    </div>
+                                </div>
+
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="api_token">Credencial secreta</label>
+                                    <input class="bridge-input" id="api_token" name="api_token" type="password" value="{{ old('api_token', '') }}" placeholder="{{ $integration->auth_token ? '•••••••••• (já configurado)' : 'Twilio: Auth Token · Zenvia: X-API-TOKEN' }}" autocomplete="new-password" />
+                                    @error('api_token')
+                                        <div class="bridge-error">{{ $message }}</div>
+                                    @enderror
+                                    <div class="bridge-muted sms-hint-twilio" style="margin-top: 6px;">
+                                        No console Twilio, em Account Info: <strong>Auth Token</strong> (o mesmo usado em <code>curl -u AC…:TOKEN</code>). Se deixar em branco, o valor já gravado não é alterado.
+                                    </div>
+                                    <div class="bridge-muted sms-hint-zenvia" style="margin-top: 6px;">
+                                        Crie ou copie o token em <a href="https://app.zenvia.com/" target="_blank" rel="noreferrer">Zenvia</a> (API / integrações). Cabeçalho enviado: <code>X-API-TOKEN</code>. Se deixar em branco, o valor atual não é alterado.
+                                    </div>
+                                </div>
+
+                                <div class="bridge-field">
+                                    <label class="bridge-label" for="from">From (remetente)</label>
+                                    <input class="bridge-input" id="from" name="from" type="text" value="{{ old('from', data_get($integration->extra, 'from') ?? '') }}" placeholder="+14155552671 ou identificador Zenvia" />
                                     @error('from')
                                         <div class="bridge-error">{{ $message }}</div>
                                     @enderror
+                                    <div class="bridge-muted sms-hint-twilio" style="margin-top: 6px;">
+                                        Número ou sender ID comprado na conta Twilio, em <strong>E.164</strong> (ex. <code>+5511999998888</code>). Ver números em <a href="https://console.twilio.com/us1/develop/phone-numbers/manage/incoming" target="_blank" rel="noreferrer">Phone Numbers</a>.
+                                    </div>
+                                    <div class="bridge-muted sms-hint-zenvia" style="margin-top: 6px;">
+                                        Identificador do remetente autorizado no contrato Zenvia (SMS). Confirme no painel o valor exato exigido pela API do canal.
+                                    </div>
                                 </div>
 
                                 <div class="bridge-field">
@@ -198,6 +248,26 @@
                 </div>
             </footer>
         </div>
+        <script>
+            (function () {
+                var sel = document.getElementById('provider');
+                if (!sel) return;
+                function sync() {
+                    var v = sel.value;
+                    document.querySelectorAll('.sms-hint-twilio').forEach(function (el) {
+                        el.style.display = v === 'twilio' ? '' : 'none';
+                    });
+                    document.querySelectorAll('.sms-hint-zenvia').forEach(function (el) {
+                        el.style.display = v === 'zenvia' ? '' : 'none';
+                    });
+                    document.querySelectorAll('.sms-field-twilio').forEach(function (el) {
+                        el.style.display = v === 'twilio' ? '' : 'none';
+                    });
+                }
+                sel.addEventListener('change', sync);
+                sync();
+            })();
+        </script>
     </body>
 </html>
 

@@ -10,6 +10,7 @@ use App\Models\SmsDelivery;
 use App\Models\UserIntegrationOverviewState;
 use App\Services\Gestor\GestorClient;
 use App\Services\Ieducar\IeducarClient;
+use App\Services\Sms\TwilioSmsClient;
 use App\Services\UserAuditLogger;
 use App\Support\DateDisplay;
 use App\Support\GestorSigninProbeCache;
@@ -520,39 +521,71 @@ class IntegrationOverviewController extends Controller
         $okAll = true;
 
         try {
-            $base = rtrim((string) ($integration->base_url ?? ''), '/');
-            $apiToken = (string) ($integration->auth_token ?? '');
-            if ($base === '') {
-                throw new \RuntimeException('base_url vazia.');
-            }
-            if ($apiToken === '') {
-                throw new \RuntimeException('Token API vazio.');
-            }
+            $provider = strtolower(trim((string) data_get($integration->extra, 'provider', config('integrations.sms.default_provider', 'twilio'))));
 
-            $path = '/channels/sms/messages?limit=1';
-            $resp = Http::timeout($timeout)
-                ->withHeaders([
-                    'X-API-TOKEN' => $apiToken,
-                    'Accept' => 'application/json',
-                ])
-                ->get($base.$path);
+            if ($provider === 'zenvia') {
+                $base = rtrim((string) ($integration->base_url ?? ''), '/');
+                if ($base === '') {
+                    $base = rtrim((string) config('integrations.sms.default_base_url'), '/');
+                }
+                $apiToken = (string) ($integration->auth_token ?? '');
+                if ($apiToken === '') {
+                    throw new \RuntimeException('Token API vazio (integrations.auth_token).');
+                }
 
-            $snippet = $this->shortenJsonBodyPretty((string) $resp->body(), 900);
-            $steps[] = [
-                'name' => '1. SMS — GET listagem de mensagens (GIDE → provedor → JSON na resposta)',
-                'direction' => 'gide_saida_get_x_api_token_provedor_sms_resposta',
-                'detail' => 'Usa integrations(key=sms).base_url e header X-API-TOKEN. Caminho de teste: '.$path.'.',
-                'ok' => $resp->status() < 500,
-                'message' => 'HTTP '.$resp->status().($snippet !== '' ? ' · corpo: '.preg_replace('/\s+/', ' ', $snippet) : ''),
-            ];
-            if ($resp->status() >= 500) {
-                $okAll = false;
+                $path = '/channels/sms/messages?limit=1';
+                $resp = Http::timeout($timeout)
+                    ->withHeaders([
+                        'X-API-TOKEN' => $apiToken,
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($base.$path);
+
+                $snippet = $this->shortenJsonBodyPretty((string) $resp->body(), 900);
+                $steps[] = [
+                    'name' => '1. SMS (Zenvia) — GET listagem de mensagens',
+                    'direction' => 'gide_saida_get_x_api_token_provedor_sms_resposta',
+                    'detail' => 'Usa integrations.base_url (ou padrão v2) e header X-API-TOKEN. Caminho: '.$path.'.',
+                    'ok' => $resp->status() < 500,
+                    'message' => 'HTTP '.$resp->status().($snippet !== '' ? ' · corpo: '.preg_replace('/\s+/', ' ', $snippet) : ''),
+                ];
+                if ($resp->status() >= 500) {
+                    $okAll = false;
+                }
+            } else {
+                $authToken = (string) ($integration->auth_token ?? '');
+                if ($authToken === '') {
+                    throw new \RuntimeException('Auth Token Twilio vazio (integrations.auth_token).');
+                }
+
+                $accountSid = trim((string) data_get($integration->extra, 'account_sid', ''));
+                if ($accountSid === '') {
+                    throw new \RuntimeException('Account SID Twilio não configurado (integrations.extra.account_sid).');
+                }
+
+                $url = TwilioSmsClient::accountJsonProbeUrl($integration);
+                $resp = Http::timeout($timeout)
+                    ->withBasicAuth($accountSid, $authToken)
+                    ->acceptJson()
+                    ->get($url);
+
+                $snippet = $this->shortenJsonBodyPretty((string) $resp->body(), 900);
+                $steps[] = [
+                    'name' => '1. SMS (Twilio) — GET Account (validação Basic Auth)',
+                    'direction' => 'gide_saida_get_twilio_account_json',
+                    'detail' => 'GET '.$url.' (mesma raiz API que o envio de mensagens).',
+                    'ok' => $resp->status() < 500,
+                    'message' => 'HTTP '.$resp->status().($snippet !== '' ? ' · corpo: '.preg_replace('/\s+/', ' ', $snippet) : ''),
+                ];
+                if ($resp->status() >= 500) {
+                    $okAll = false;
+                }
             }
         } catch (\Throwable $e) {
             $steps[] = [
                 'name' => 'Falha no teste da ponte SMS',
                 'direction' => 'erro_http_ou_config_sms',
-                'detail' => 'Revise base_url e token em /integracoes/sms.',
+                'detail' => 'Revise credenciais e provedor em /integracoes/sms.',
                 'ok' => false,
                 'message' => $e->getMessage(),
             ];
@@ -872,21 +905,53 @@ class IntegrationOverviewController extends Controller
                         'message' => 'Fluxo típico só de saída (GIDE → provedor). Não há webhook inbound nesta integração.',
                     ];
                 } else {
-                    $base = rtrim((string) ($integration->base_url ?? ''), '/');
+                    $provider = strtolower(trim((string) data_get($integration->extra, 'provider', config('integrations.sms.default_provider', 'twilio'))));
                     $token = (string) ($integration->auth_token ?? '');
-                    if ($base === '') {
-                        throw new \RuntimeException('base_url vazia.');
-                    }
-                    if ($token === '') {
-                        throw new \RuntimeException('api_token vazio.');
-                    }
-                    $resp = Http::timeout($timeout)
-                        ->withToken($token)
-                        ->withHeaders(['Accept' => 'application/json'])
-                        ->get($base);
-                    $steps[] = ['name' => 'Saída: reachability (auth)', 'ok' => $resp->status() < 500, 'message' => 'HTTP '.$resp->status()];
-                    if ($resp->status() >= 500) {
-                        $okAll = false;
+
+                    if ($provider === 'zenvia') {
+                        if ($token === '') {
+                            throw new \RuntimeException('Token API vazio (integrations.auth_token).');
+                        }
+                        $base = rtrim((string) ($integration->base_url ?? ''), '/');
+                        if ($base === '') {
+                            $base = rtrim((string) config('integrations.sms.default_base_url'), '/');
+                        }
+                        $path = '/channels/sms/messages?limit=1';
+                        $resp = Http::timeout($timeout)
+                            ->withHeaders([
+                                'X-API-TOKEN' => $token,
+                                'Accept' => 'application/json',
+                            ])
+                            ->get($base.$path);
+                        $steps[] = [
+                            'name' => 'Saída: Zenvia GET mensagens (X-API-TOKEN)',
+                            'ok' => $resp->status() < 500,
+                            'message' => 'HTTP '.$resp->status().' · '.$base.$path,
+                        ];
+                        if ($resp->status() >= 500) {
+                            $okAll = false;
+                        }
+                    } else {
+                        if ($token === '') {
+                            throw new \RuntimeException('Auth Token Twilio vazio (integrations.auth_token).');
+                        }
+                        $sid = trim((string) data_get($integration->extra, 'account_sid', ''));
+                        if ($sid === '') {
+                            throw new \RuntimeException('Account SID Twilio não configurado (integrations.extra.account_sid).');
+                        }
+                        $url = TwilioSmsClient::accountJsonProbeUrl($integration);
+                        $resp = Http::timeout($timeout)
+                            ->withBasicAuth($sid, $token)
+                            ->acceptJson()
+                            ->get($url);
+                        $steps[] = [
+                            'name' => 'Saída: Twilio GET Account (Basic Auth)',
+                            'ok' => $resp->status() < 500,
+                            'message' => 'HTTP '.$resp->status().' · '.$url,
+                        ];
+                        if ($resp->status() >= 500) {
+                            $okAll = false;
+                        }
                     }
                 }
             } elseif ($key === 'catraca_frequencia') {

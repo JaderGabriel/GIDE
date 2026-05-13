@@ -172,7 +172,7 @@ Observação:
 
 Implementado:
 
-- `POST {base_url}/channels/sms/messages` — `base_url` vem de `integrations(key=sms).base_url` ou de `SMS_DEFAULT_BASE_URL` / `config/integrations.php`
+- `POST {base_url}/channels/sms/messages` — `base_url` vem de `integrations(key=sms).base_url` ou, se vazio, do valor padrão em `config/integrations.php` (URL pública v2; credenciais só no banco)
 - **Auth**: `X-API-TOKEN` (`integrations(key=sms).auth_token`)
 - Template com tags (`sms_templates`) e auditoria (`sms_deliveries`)
 

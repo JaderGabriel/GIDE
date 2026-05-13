@@ -22,6 +22,9 @@ use Illuminate\Database\Eloquent\Model;
  * - `endpoints.face_enroll_path` (opcional), outros endpoints conforme evolução
  *
  * Contrato parcial quando `key` = {@see Integration::KEY_IEDUCAR}: `access_key`, `presence.*`, `catraca_frequencia.*`, etc.
+ *
+ * Contrato parcial quando `key` = {@see Integration::KEY_SMS}: `provider` (`twilio`|`zenvia`),
+ * `account_sid` (Twilio), `from`, `sms_recipient_mode`, `test_phone_numbers`, `payload_map.phone`, etc.
  */
 class Integration extends Model
 {

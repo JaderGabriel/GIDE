@@ -224,7 +224,7 @@ Client: `app/Services/Gestor/GestorClient.php`
 Autenticação:
 
 - Header: `X-API-TOKEN: <token>` (armazenado em `integrations.auth_token`)
-- Base URL: integração `sms` no banco ou `SMS_DEFAULT_BASE_URL` no `.env` (`config/integrations.php`; padrão de desenvolvimento documentado lá, não no código da aplicação)
+- Base URL: `integrations(key=sms).base_url` quando preenchida; caso contrário usa os endpoints públicos padrão em `config/integrations.php` (sem credenciais no `.env`)
 
 Envio:
 

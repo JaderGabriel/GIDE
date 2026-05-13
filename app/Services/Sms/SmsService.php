@@ -18,6 +18,7 @@ class SmsService
 
     /**
      * @param  array<string, mixed>  $extraContext  Mesclado no contexto de tags (ex.: ieducar_http_status).
+     * @param  list<string>|null  $overrideRecipientDigits  E.164 só dígitos; se definido, ignora modo alunos/testes da integração.
      */
     public function sendPresenceSms(
         string $eventId,
@@ -26,6 +27,8 @@ class SmsService
         ?CarbonInterface $occurredAt = null,
         string $templateKey = SmsTemplateKey::PRESENCE_CATRACA,
         array $extraContext = [],
+        bool $allowResendWhenAlreadySent = false,
+        ?array $overrideRecipientDigits = null,
     ): SmsDelivery {
         $smsIntegration = Integration::query()->where('key', 'sms')->where('enabled', true)->first();
         if (! $smsIntegration) {
@@ -38,17 +41,108 @@ class SmsService
             throw new \RuntimeException('Template de SMS ('.$resolvedKey.') não configurado/ativo.');
         }
 
-        $recipients = $this->resolvePresenceSmsRecipients($smsIntegration, $payload);
-        if ($recipients === []) {
-            throw new \RuntimeException('Nenhum destinatário válido para SMS (verifique telefone no payload ou números de teste na configuração).');
+        if ($overrideRecipientDigits !== null) {
+            $recipients = $this->normalizeRecipientDigitList($overrideRecipientDigits);
+            if ($recipients === []) {
+                throw new \RuntimeException('Nenhum destinatário válido na lista de telefones fornecida.');
+            }
+        } else {
+            $recipients = $this->resolvePresenceSmsRecipients($smsIntegration, $payload);
+            if ($recipients === []) {
+                throw new \RuntimeException('Nenhum destinatário válido para SMS (verifique telefone no payload ou números de teste na configuração).');
+            }
         }
 
         $last = null;
         foreach ($recipients as $to) {
-            $last = $this->sendPresenceSmsToRecipient($smsIntegration, $template, $eventId, $payload, $analysis, $occurredAt, $to, $extraContext);
+            $last = $this->sendPresenceSmsToRecipient(
+                $smsIntegration,
+                $template,
+                $eventId,
+                $payload,
+                $analysis,
+                $occurredAt,
+                $to,
+                $extraContext,
+                $allowResendWhenAlreadySent,
+            );
         }
 
         return $last ?? throw new \RuntimeException('Falha interna ao enviar SMS.');
+    }
+
+    /**
+     * Telefones de responsáveis encontrados no payload (várias chaves comuns). E.164 só dígitos, únicos.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return list<string>
+     */
+    public static function extractGuardianRecipientDigitsFromPayload(array $payload): array
+    {
+        $rawCandidates = [];
+
+        $scalarKeys = [
+            'phone', 'telefone', 'celular', 'mobile', 'parent_phone', 'parentPhone',
+            'responsible_phone', 'responsiblePhone', 'responsavel_phone',
+        ];
+        foreach ($scalarKeys as $k) {
+            $v = data_get($payload, $k);
+            if (is_string($v) || is_numeric($v)) {
+                $rawCandidates[] = (string) $v;
+            }
+        }
+
+        foreach (['responsavel.phone', 'responsavel.telefone', 'responsavel.celular', 'responsavel.mobile'] as $path) {
+            $v = data_get($payload, $path);
+            if (is_string($v) || is_numeric($v)) {
+                $rawCandidates[] = (string) $v;
+            }
+        }
+
+        foreach (['responsaveis', 'responsibles', 'parents', 'guardians'] as $listKey) {
+            $list = data_get($payload, $listKey);
+            if (! is_array($list)) {
+                continue;
+            }
+            foreach ($list as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                foreach (['phone', 'telefone', 'celular', 'mobile'] as $rk) {
+                    $v = $row[$rk] ?? null;
+                    if (is_string($v) || is_numeric($v)) {
+                        $rawCandidates[] = (string) $v;
+                    }
+                }
+            }
+        }
+
+        $out = [];
+        foreach ($rawCandidates as $raw) {
+            $n = BrPhoneNormalizer::toE164Digits($raw);
+            if ($n !== '') {
+                $out[] = $n;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * @param  list<string>  $digits
+     * @return list<string>
+     */
+    private function normalizeRecipientDigitList(array $digits): array
+    {
+        $out = [];
+        foreach ($digits as $item) {
+            $n = BrPhoneNormalizer::toE164Digits((string) $item);
+            if ($n !== '') {
+                $out[] = $n;
+            }
+        }
+
+        return array_values(array_unique($out));
     }
 
     private function resolvePresenceTemplateKey(string $requested): string
@@ -107,6 +201,7 @@ class SmsService
         ?CarbonInterface $occurredAt,
         string $to,
         array $extraContext = [],
+        bool $allowResendWhenAlreadySent = false,
     ): SmsDelivery {
         $from = (string) data_get($smsIntegration->extra, 'from', '');
         if ($from === '') {
@@ -131,7 +226,7 @@ class SmsService
             [
                 'from' => $from,
                 'message' => $message,
-                'provider' => (string) data_get($smsIntegration->extra, 'provider', 'zenvia'),
+                'provider' => (string) data_get($smsIntegration->extra, 'provider', config('integrations.sms.default_provider', 'twilio')),
                 'status' => 'pending',
                 'aluno_id' => is_scalar($context['aluno_id'] ?? null) ? (string) $context['aluno_id'] : null,
                 'matricula_id' => is_scalar($context['matricula_id'] ?? null) ? (string) $context['matricula_id'] : null,
@@ -141,6 +236,22 @@ class SmsService
                 'context' => $context,
             ],
         );
+
+        if ($allowResendWhenAlreadySent) {
+            $delivery->message = $message;
+            $delivery->context = $context;
+            $delivery->from = $from;
+            $delivery->occurred_at = $occurredAt;
+            $delivery->sent_at = null;
+            $delivery->provider_message_id = null;
+            $delivery->provider_response = null;
+            $delivery->last_http_status = null;
+            $delivery->last_error = null;
+            $delivery->next_retry_at = null;
+            $delivery->status = 'pending';
+            $delivery->attempts = 0;
+            $delivery->save();
+        }
 
         if ($delivery->sent_at) {
             return $delivery;
@@ -160,31 +271,52 @@ class SmsService
         $delivery->last_http_status = null;
         $delivery->save();
 
-        $provider = (string) data_get($smsIntegration->extra, 'provider', 'zenvia');
-        if ($provider !== 'zenvia') {
-            $delivery->last_error = 'Provedor de SMS não suportado: '.$provider;
-            $delivery->status = 'error';
-            $delivery->next_retry_at = null;
+        $provider = (string) data_get($smsIntegration->extra, 'provider', config('integrations.sms.default_provider', 'twilio'));
+        if ($provider === 'zenvia') {
+            $resp = (new ZenviaSmsClient($smsIntegration))->sendText($to, $from, $message, $eventId);
+            $delivery->last_http_status = $resp->status();
+            $delivery->provider_response = $resp->json();
+
+            if ($resp->successful()) {
+                $delivery->provider_message_id = (string) ($resp->json('id') ?? '');
+                $delivery->sent_at = now();
+                $delivery->status = 'sent';
+                $delivery->next_retry_at = null;
+            } else {
+                $delivery->last_error = 'HTTP '.$resp->status().' body='.(string) $resp->body();
+                $delivery->status = 'error';
+                $delivery->next_retry_at = $delivery->attempts >= $this->maxAttempts() ? null : now()->addSeconds($this->backoffSeconds($delivery->attempts));
+            }
+
             $delivery->save();
 
             return $delivery;
         }
 
-        $resp = (new ZenviaSmsClient($smsIntegration))->sendText($to, $from, $message, $eventId);
-        $delivery->last_http_status = $resp->status();
-        $delivery->provider_response = $resp->json();
+        if ($provider === 'twilio') {
+            $resp = (new TwilioSmsClient($smsIntegration))->sendText($to, $from, $message, $eventId);
+            $delivery->last_http_status = $resp->status();
+            $delivery->provider_response = $resp->json();
 
-        if ($resp->successful()) {
-            $delivery->provider_message_id = (string) ($resp->json('id') ?? '');
-            $delivery->sent_at = now();
-            $delivery->status = 'sent';
-            $delivery->next_retry_at = null;
-        } else {
-            $delivery->last_error = 'HTTP '.$resp->status().' body='.(string) $resp->body();
-            $delivery->status = 'error';
-            $delivery->next_retry_at = $delivery->attempts >= $this->maxAttempts() ? null : now()->addSeconds($this->backoffSeconds($delivery->attempts));
+            if ($resp->successful()) {
+                $delivery->provider_message_id = (string) ($resp->json('sid') ?? '');
+                $delivery->sent_at = now();
+                $delivery->status = 'sent';
+                $delivery->next_retry_at = null;
+            } else {
+                $delivery->last_error = 'HTTP '.$resp->status().' body='.(string) $resp->body();
+                $delivery->status = 'error';
+                $delivery->next_retry_at = $delivery->attempts >= $this->maxAttempts() ? null : now()->addSeconds($this->backoffSeconds($delivery->attempts));
+            }
+
+            $delivery->save();
+
+            return $delivery;
         }
 
+        $delivery->last_error = 'Provedor de SMS não suportado: '.$provider;
+        $delivery->status = 'error';
+        $delivery->next_retry_at = null;
         $delivery->save();
 
         return $delivery;

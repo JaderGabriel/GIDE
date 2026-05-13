@@ -28,6 +28,26 @@ final class BrPhoneNormalizer
     }
 
     /**
+     * E.164 com prefixo "+" (ex.: +5538991758416), para APIs como Twilio.
+     */
+    public static function toE164Plus(string $input): string
+    {
+        $t = trim($input);
+        if ($t === '') {
+            return '';
+        }
+        if (str_starts_with($t, '+')) {
+            $digits = preg_replace('/\D+/', '', substr($t, 1)) ?? '';
+
+            return $digits !== '' ? '+'.$digits : '';
+        }
+
+        $digits = self::toE164Digits($t);
+
+        return $digits !== '' ? '+'.$digits : '';
+    }
+
+    /**
      * @return list<string>
      */
     public static function parseLinesToE164(string $multiline): array

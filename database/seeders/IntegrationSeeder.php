@@ -69,14 +69,14 @@ class IntegrationSeeder extends Seeder
             [
                 'name' => 'SMS',
                 'enabled' => false,
-                'base_url' => config('integrations.sms.default_base_url'),
+                'base_url' => '',
                 'auth_type' => 'api_token',
-                'auth_token' => null, // X-API-TOKEN
+                'auth_token' => null,
                 'extra' => [
-                    'provider' => 'zenvia',
-                    'from' => null, // identificador "from" exigido pelo provedor
+                    'provider' => 'twilio',
+                    'account_sid' => null,
+                    'from' => null,
                     'payload_map' => [
-                        // campo no payload do Gestor com telefone do responsável
                         'phone' => 'phone',
                     ],
                 ],

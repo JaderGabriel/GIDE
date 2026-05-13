@@ -185,6 +185,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/gestor-access-events/{id}/requeue', [GestorAccessEventAdminController::class, 'requeue'])->name('admin.gestor-access-events.requeue');
         Route::post('/admin/gestor-access-events/{id}/force-process', [GestorAccessEventAdminController::class, 'forceProcess'])->name('admin.gestor-access-events.force-process');
         Route::post('/admin/gestor-access-events/{id}/force-mark-presence', [GestorAccessEventAdminController::class, 'forceMarkPresence'])->name('admin.gestor-access-events.force-mark-presence');
+        Route::post('/admin/gestor-access-events/{id}/sms-resend-config', [GestorAccessEventAdminController::class, 'resendPresenceSmsConfig'])->name('admin.gestor-access-events.sms-resend-config');
+        Route::post('/admin/gestor-access-events/{id}/sms-resend-guardians', [GestorAccessEventAdminController::class, 'resendPresenceSmsGuardians'])->name('admin.gestor-access-events.sms-resend-guardians');
         Route::get('/admin/gestor-access-events/{id}', [GestorAccessEventAdminController::class, 'show'])->name('admin.gestor-access-events.show');
 
         Route::get('/admin/faciais', [FacialAdminController::class, 'index'])->name('admin.facial-requests.index');

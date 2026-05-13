@@ -450,7 +450,7 @@ class IntegrationController extends Controller
     {
         $integration = Integration::query()->firstOrCreate(
             ['key' => 'sms'],
-            ['name' => 'SMS', 'enabled' => false, 'auth_type' => 'api_token', 'base_url' => (string) config('integrations.sms.default_base_url')],
+            ['name' => 'SMS', 'enabled' => false, 'auth_type' => 'api_token', 'base_url' => ''],
         );
 
         $templateCatraca = SmsTemplate::query()->firstOrCreate(
@@ -487,8 +487,15 @@ class IntegrationController extends Controller
         );
 
         try {
+            $request->merge([
+                'account_sid' => trim((string) $request->input('account_sid', '')),
+                'provider' => trim((string) $request->input('provider', 'twilio')) ?: 'twilio',
+            ]);
+
             $data = $request->validate([
                 'enabled' => ['nullable'],
+                'provider' => ['required', Rule::in(['twilio', 'zenvia'])],
+                'account_sid' => ['nullable', 'string', 'regex:/^(|AC[0-9a-f]{32})$/i'],
                 'base_url' => ['nullable', 'string'],
                 'api_token' => ['nullable', 'string'],
                 'from' => ['nullable', 'string'],
@@ -501,8 +508,36 @@ class IntegrationController extends Controller
                 'template_ieducar_body' => ['required', 'string', 'min:1'],
             ]);
 
-            $integration->enabled = (bool) $request->boolean('enabled');
-            $integration->base_url = $data['base_url'] !== '' ? $data['base_url'] : (string) config('integrations.sms.default_base_url');
+            $enabled = (bool) $request->boolean('enabled');
+            $provider = (string) $data['provider'];
+
+            if ($enabled && $provider === 'twilio') {
+                if (trim((string) ($data['account_sid'] ?? '')) === '') {
+                    return back()->withErrors(['account_sid' => 'Com Twilio ativo, informe o Account SID (AC…).'])->withInput();
+                }
+                if (trim((string) ($data['from'] ?? '')) === '') {
+                    return back()->withErrors(['from' => 'Com Twilio ativo, informe o número remetente (From) em E.164, ex. +14155552671.'])->withInput();
+                }
+                if (trim((string) ($data['api_token'] ?? '')) === '' && trim((string) ($integration->auth_token ?? '')) === '') {
+                    return back()->withErrors(['api_token' => 'Com Twilio ativo, informe o Auth Token (ou já deixe um gravado).'])->withInput();
+                }
+            }
+
+            if ($enabled && $provider === 'zenvia') {
+                if (trim((string) ($data['from'] ?? '')) === '') {
+                    return back()->withErrors(['from' => 'Com Zenvia ativa, informe o remetente (from).'])->withInput();
+                }
+                if (trim((string) ($data['api_token'] ?? '')) === '' && trim((string) ($integration->auth_token ?? '')) === '') {
+                    return back()->withErrors(['api_token' => 'Com Zenvia ativa, informe o token da API (X-API-TOKEN).'])->withInput();
+                }
+            }
+
+            $integration->enabled = $enabled;
+            if ($provider === 'zenvia') {
+                $integration->base_url = $data['base_url'] !== '' ? $data['base_url'] : (string) config('integrations.sms.default_base_url');
+            } else {
+                $integration->base_url = $data['base_url'] !== '' ? $data['base_url'] : '';
+            }
             $integration->auth_type = 'api_token';
 
             if ($data['api_token'] !== '') {
@@ -510,7 +545,8 @@ class IntegrationController extends Controller
             }
 
             $extra = (array) ($integration->extra ?? []);
-            $extra['provider'] = 'zenvia';
+            $extra['provider'] = $provider;
+            $extra['account_sid'] = $data['account_sid'] !== '' ? $data['account_sid'] : null;
             $extra['from'] = $data['from'] !== '' ? $data['from'] : null;
             $extra['sms_recipient_mode'] = $data['sms_recipient_mode'];
             $testPhones = BrPhoneNormalizer::parseLinesToE164((string) ($data['test_phone_numbers'] ?? ''));
@@ -537,6 +573,7 @@ class IntegrationController extends Controller
 
         UserAuditLogger::recordAuthenticated('integration.sms.updated', [
             'enabled' => (bool) $integration->enabled,
+            'provider' => (string) data_get($integration->extra, 'provider', ''),
             'recipient_mode' => (string) data_get($integration->extra, 'sms_recipient_mode', ''),
         ], 'integration', $integration->id);
 

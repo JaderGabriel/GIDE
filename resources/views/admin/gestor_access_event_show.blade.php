@@ -204,6 +204,67 @@
                             @if ($errors->has('retry'))
                                 <div class="gae-callout gae-callout--danger" style="margin-top: 12px;" role="alert">{{ $errors->first('retry') }}</div>
                             @endif
+                            @if ($errors->has('sms'))
+                                <div class="gae-callout gae-callout--danger" style="margin-top: 12px;" role="alert">{{ $errors->first('sms') }}</div>
+                            @endif
+
+                            @if (! $smsIntegrationEnabled)
+                                <div class="gae-callout" style="margin-top: 12px;">
+                                    <strong>SMS:</strong> integração desligada — ative em <a href="{{ route('integrations.sms') }}">Integrações → SMS</a> para ver opções de reenvio aqui.
+                                </div>
+                            @elseif (! $smsTemplateCatracaEnabled && ! $smsTemplateIeducarEnabled)
+                                <div class="gae-callout gae-callout--warn" style="margin-top: 12px;">
+                                    <strong>SMS:</strong> integração ligada, mas nenhum template de presença está ativo. Ative o template desejado em <a href="{{ route('integrations.sms') }}">Integrações → SMS</a>.
+                                </div>
+                            @else
+                                <div class="gae-card" style="margin-top: 14px;">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Reenviar SMS</h2>
+                                            <p class="gae-card__hint">Usa o <strong>payload</strong> e a <strong>análise</strong> guardados nesta entrega. O envio é imediato (não usa a fila).</p>
+                                        </div>
+                                    </div>
+                                    <p class="bridge-muted" style="margin: 0 0 12px; line-height: 1.55;">
+                                        <strong>Conforme configuração</strong> respeita modo alunos vs números de teste e a chave de telefone em <span class="mono">/integracoes/sms</span>.
+                                        <strong>Para responsáveis</strong> ignora esse modo e envia para todos os números encontrados no JSON (ex.: <span class="mono">phone</span>, <span class="mono">responsavel.phone</span>, listas <span class="mono">responsaveis[]</span>).
+                                        Template <span class="mono">presence_ieducar_sync</span> usa o HTTP registado nesta entrega (ou <span class="mono">—</span> se ausente).
+                                    </p>
+                                    @if (count($smsGuardianMasked ?? []) > 0)
+                                        <p class="bridge-muted" style="margin: 0 0 12px; font-size: 13px;">Telefones detectados no payload (mascarados): <span class="mono">{{ implode(', ', $smsGuardianMasked) }}</span></p>
+                                    @else
+                                        <p class="bridge-muted" style="margin: 0 0 12px; font-size: 13px;">Nenhum telefone de responsável detectado automaticamente neste payload — o botão “responsáveis” ficará indisponível.</p>
+                                    @endif
+                                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+                                        <form method="post" action="{{ route('admin.gestor-access-events.sms-resend-config', ['id' => $delivery->id]) }}" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" onsubmit="return confirm('Reenviar SMS conforme a integração atual?');">
+                                            @csrf
+                                            <label class="bridge-muted" style="font-size: 12px; font-weight: 700;">Template</label>
+                                            <select name="template" class="bridge-input" style="height: 40px; min-width: 220px;">
+                                                @if ($smsTemplateCatracaEnabled)
+                                                    <option value="presence_catraca">Presença na catraca</option>
+                                                @endif
+                                                @if ($smsTemplateIeducarEnabled)
+                                                    <option value="presence_ieducar_sync">Confirmação no iEducar</option>
+                                                @endif
+                                            </select>
+                                            <button type="submit" class="gae-btn gae-btn--primary">SMS (configuração)</button>
+                                        </form>
+                                        <form method="post" action="{{ route('admin.gestor-access-events.sms-resend-guardians', ['id' => $delivery->id]) }}" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;" onsubmit="return confirm('Enviar SMS para todos os telefones de responsável encontrados no payload?');">
+                                            @csrf
+                                            <label class="bridge-muted" style="font-size: 12px; font-weight: 700;">Template</label>
+                                            <select name="template" class="bridge-input" style="height: 40px; min-width: 220px;">
+                                                @if ($smsTemplateCatracaEnabled)
+                                                    <option value="presence_catraca">Presença na catraca</option>
+                                                @endif
+                                                @if ($smsTemplateIeducarEnabled)
+                                                    <option value="presence_ieducar_sync">Confirmação no iEducar</option>
+                                                @endif
+                                            </select>
+                                            <button type="submit" class="gae-btn gae-btn--info" @if (count($smsGuardianMasked ?? []) === 0) disabled title="Sem telefones de responsável no payload" @endif>SMS (responsáveis)</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endif
 
                             <div class="gae-callout gae-callout--info">
                                 <strong>Porque pode diferir de “Frequência iEducar” no admin:</strong>
@@ -394,6 +455,8 @@
                                                     'retry' => 'Reenviar ao iEducar',
                                                     'requeue' => 'Reenfileirar',
                                                     'force_process' => 'Forçar processamento',
+                                                    'sms_resend_config' => 'SMS (configuração)',
+                                                    'sms_resend_guardians' => 'SMS (responsáveis)',
                                                     default => $entry['action'] ?? '?',
                                                 };
                                                 $actionCls = match ($entry['action'] ?? '') {
@@ -401,6 +464,7 @@
                                                     'retry' => 'gae-reproc-action--retry',
                                                     'requeue' => 'gae-reproc-action--requeue',
                                                     'force_process' => 'gae-reproc-action--force',
+                                                    'sms_resend_config', 'sms_resend_guardians' => 'gae-reproc-action--requeue',
                                                     default => '',
                                                 };
                                                 $details = collect($entry)->except(['action', 'at', 'user'])->filter(fn($v) => $v !== null)->toArray();

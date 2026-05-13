@@ -51,19 +51,19 @@ Para o **WhatsApp futuro**, o gatilho deve ser **idêntico** (mesmo momento do p
 
 - Registro em `integrations` com `key = sms` (criado/atualizado em `IntegrationController::sms` / `updateSms`).
 - Campos relevantes:
-  - `base_url` — base da API (padrão `config('integrations.sms.default_base_url')`, tipicamente `https://api.zenvia.com/v2`).
-  - `auth_token` — token enviado em `X-API-TOKEN`.
-  - `extra`: `provider` (`zenvia`), `from`, `sms_recipient_mode` (`alunos` | `test_numbers`), `test_phone_numbers`, `payload_map.phone` (chave no JSON do evento para o telefone do responsável).
+  - `base_url` — opcional (Twilio: em geral vazio; Zenvia: base v2).
+  - `auth_token` — **Twilio:** Auth Token (Basic Auth). **Zenvia:** token em `X-API-TOKEN`.
+  - `extra`: `provider` (`twilio` | `zenvia`), `account_sid` (Twilio), `from`, `sms_recipient_mode` (`alunos` | `test_numbers`), `test_phone_numbers`, `payload_map.phone` (chave no JSON do evento para o telefone do responsável).
 
 ### 4.2 Template e corpo da mensagem
 
-- Modelo `App\Models\SmsTemplate`, chave `presence_notification`.
+- Modelo `App\Models\SmsTemplate`, chaves `presence_catraca` e `presence_ieducar_sync`.
 - Corpo com placeholders interpretados por `App\Services\Sms\SmsTemplateRenderer` (ex.: `{{date}}`, `{{time}}`, `{{aluno_id}}`, `{{matricula_id}}`, `{{event_id}}`, `{{window}}`, `{{event_type}}`).
 - Contexto montado em `App\Services\Sms\SmsService::sendPresenceSmsToRecipient`.
 
 ### 4.3 Envio e persistência
 
-- `SmsService::sendPresenceSms` resolve destinatários (`BrPhoneNormalizer::toE164Digits`), cria/atualiza `SmsDelivery` (`firstOrCreate` por `event_id` + `template_key` + `to`), chama `ZenviaSmsClient::sendText` (`POST .../channels/sms/messages`).
+- `SmsService::sendPresenceSms` resolve destinatários (`BrPhoneNormalizer::toE164Digits`), cria/atualiza `SmsDelivery` (`firstOrCreate` por `event_id` + `template_key` + `to`), chama **`TwilioSmsClient`** (`POST …/Messages.json`, form) ou **`ZenviaSmsClient`** (`POST …/channels/sms/messages`, JSON) conforme `extra.provider`.
 - Retries: `attempts`, `next_retry_at`, `max_attempts` em `config/gide.php` — reprocessamento via `DeliveryRetryDispatcher` / `schedule` (ver `routes/console.php`).
 
 ### 4.4 UI administrativa
@@ -95,7 +95,7 @@ Variáveis do template na Meta costumam ser posicionais (`{{1}}`, `{{2}}`) ou no
 |--------|-------------|-------------------|
 | Conteúdo livre | Sim (texto do template no GIDE) | Não fora da janela 24h; template fixo na Meta |
 | Opt-in | Boas práticas / política interna | **Obrigatório** para conformidade com políticas Meta |
-| Formato do número | E.164 sem `+` no envio Zenvia | E.164 com `+` na Cloud API (`to`) |
+| Formato do número | E.164; Twilio envia com `+` | E.164 com `+` na Cloud API (`to`) |
 | Entrega | HTTP 2xx = aceito pelo provedor | Pode exigir **webhook** de status (`sent`, `delivered`, `read`, `failed`) |
 | Custo | Por segmento SMS | Por conversa / categoria de template |
 
