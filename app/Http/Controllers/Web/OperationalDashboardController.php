@@ -10,9 +10,9 @@ use App\Models\OutboundDelivery;
 use App\Models\SmsDelivery;
 use App\Models\StudentEnrichmentCache;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class OperationalDashboardController extends Controller
 {
@@ -213,15 +213,12 @@ class OperationalDashboardController extends Controller
     {
         $days = max(1, $days);
         $since = Carbon::now()->subDays($days - 1)->startOfDay();
-        $dateExpr = $this->sqlDateTrunc('created_at');
 
-        $accessMap = $this->dailyCountMap(
+        $accessMap = $this->dailyCountsByAppDay(
             GestorAccessEventDelivery::query()->where('created_at', '>=', $since),
-            $dateExpr
         );
-        $facialMap = $this->dailyCountMap(
+        $facialMap = $this->dailyCountsByAppDay(
             FacialSendRequest::query()->where('created_at', '>=', $since),
-            $dateExpr
         );
 
         $result = [];
@@ -238,57 +235,28 @@ class OperationalDashboardController extends Controller
     }
 
     /**
-     * Expressão SQL para truncar um timestamp à data (dia), por driver.
+     * Conta linhas por dia civil no fuso da aplicação (evita divergência DATE() no SQL vs. calendário local).
+     *
+     * @param  Builder<Model>  $query
+     * @return array<string, int>
      */
-    private function sqlDateTrunc(string $column): string
+    private function dailyCountsByAppDay(Builder $query): array
     {
-        return match (DB::connection()->getDriverName()) {
-            'pgsql' => "({$column})::date",
-            'sqlite' => "date({$column})",
-            default => "DATE({$column})",
-        };
-    }
-
-    /**
-     * @return array<string, int> chave Y-m-d => total
-     */
-    private function dailyCountMap(Builder $query, string $dateExpr): array
-    {
-        $rows = (clone $query)
-            ->selectRaw("{$dateExpr} as day_bucket, COUNT(*) as day_total")
-            ->groupByRaw($dateExpr)
-            ->orderByRaw("{$dateExpr} asc")
-            ->get();
-
+        $tz = config('app.timezone', 'UTC');
         $map = [];
-        foreach ($rows as $row) {
-            $key = $this->normalizeChartDay($row->day_bucket ?? null);
-            if ($key === '') {
+
+        foreach ((clone $query)->select(['created_at'])->orderBy('id')->cursor() as $row) {
+            $ca = $row->getAttribute('created_at');
+            if ($ca === null) {
                 continue;
             }
-            $map[$key] = (int) ($row->day_total ?? 0);
+            $day = $ca instanceof Carbon
+                ? $ca->copy()->timezone($tz)->format('Y-m-d')
+                : Carbon::parse($ca)->timezone($tz)->format('Y-m-d');
+            $map[$day] = ($map[$day] ?? 0) + 1;
         }
 
         return $map;
-    }
-
-    private function normalizeChartDay(mixed $value): string
-    {
-        if ($value === null || $value === '') {
-            return '';
-        }
-        if ($value instanceof Carbon) {
-            return $value->format('Y-m-d');
-        }
-        if ($value instanceof \DateTimeInterface) {
-            return Carbon::instance($value)->format('Y-m-d');
-        }
-
-        try {
-            return Carbon::parse((string) $value)->format('Y-m-d');
-        } catch (\Throwable) {
-            return '';
-        }
     }
 
     /**

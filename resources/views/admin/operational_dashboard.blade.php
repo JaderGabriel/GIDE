@@ -219,7 +219,9 @@
                             @php
                                 $accessSeries = array_column($dailyChart, 'access');
                                 $facialSeries = array_column($dailyChart, 'facial');
-                                $maxCount = max(1, max(array_merge($accessSeries, $facialSeries)));
+                                $mergedSeries = array_merge($accessSeries, $facialSeries);
+                                $maxCount = max(1, max($mergedSeries));
+                                $sumDaily = array_sum($accessSeries) + array_sum($facialSeries);
                             @endphp
                             <div class="od-chart">
                                 @foreach ($dailyChart as $day)
@@ -248,6 +250,9 @@
                                 <span><i class="od-legend--access" aria-hidden="true"></i> Acessos (webhook)</span>
                                 <span><i class="od-legend--facial" aria-hidden="true"></i> Faciais (cadastradas)</span>
                             </div>
+                            @if ($sumDaily === 0)
+                                <p class="od-chart-empty">Nenhum acesso nem facial registrado nesta janela de 14 dias (fuso: {{ config('app.timezone', 'UTC') }}).</p>
+                            @endif
                         </div>
 
                         {{-- Distribuição --}}
