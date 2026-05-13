@@ -17,6 +17,9 @@
   --radius-sm: 14px;
   /* Mais espaço em telas grandes (admin/config) */
   --container: 1360px;
+  /* Alias usados em dashboards e telas admin (equivale a cartões bridge) */
+  --surface-1: var(--card-strong);
+  --surface-2: var(--card);
   /* Cabeçalho sticky em tabelas com scroll (filas / listagens) */
   --sticky-table-head-shadow:
     0 1px 0 color-mix(in srgb, var(--text) 22%, var(--border)),

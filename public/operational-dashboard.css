@@ -1,14 +1,35 @@
-/* ── Layout ── */
-.od-container { max-width: 1320px; margin: 0 auto; padding: 0 20px; }
+/* ── Shell alinhado ao bridge (home.css) ── */
+.bridge-panel.od-page {
+    position: relative;
+    overflow: hidden;
+}
+.bridge-panel.od-page::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--accent-a) 70%, transparent),
+        color-mix(in srgb, var(--accent-c) 55%, transparent),
+        color-mix(in srgb, var(--accent-b) 40%, transparent)
+    );
+    opacity: 0.88;
+    pointer-events: none;
+}
+.od-page__footer-cta {
+    margin-top: 32px;
+    text-align: center;
+}
 
 /* ── Header da página ── */
 .od-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
-.od-hero__title { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+.od-hero__title { font-size: 24px; font-weight: 750; letter-spacing: -0.03em; margin: 0; }
 .od-hero__sub { font-size: 14px; color: var(--muted); margin: 4px 0 0; line-height: 1.45; }
 .od-hero__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ── Health banner ── */
-.od-health { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: 14px; margin-bottom: 24px; font-size: 14px; font-weight: 600; }
+.od-health { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: var(--radius-sm); margin-bottom: 24px; font-size: 14px; font-weight: 600; }
 .od-health--ok { background: color-mix(in srgb, #059669 10%, var(--surface-1)); border: 1px solid color-mix(in srgb, #059669 25%, var(--border)); color: #059669; }
 .od-health--warn { background: color-mix(in srgb, #d97706 10%, var(--surface-1)); border: 1px solid color-mix(in srgb, #d97706 25%, var(--border)); color: #d97706; }
 .od-health--bad { background: color-mix(in srgb, #dc2626 10%, var(--surface-1)); border: 1px solid color-mix(in srgb, #dc2626 25%, var(--border)); color: #dc2626; }
@@ -30,13 +51,13 @@
 .od-section__icon--amber { background: color-mix(in srgb, #d97706 15%, var(--surface-1)); color: #d97706; }
 .od-section__icon--slate { background: color-mix(in srgb, #64748b 15%, var(--surface-1)); color: #64748b; }
 .od-section__text {}
-.od-section__title { font-size: 16px; font-weight: 800; margin: 0; line-height: 1.2; }
+.od-section__title { font-size: 16px; font-weight: 750; margin: 0; line-height: 1.2; }
 .od-section__desc { font-size: 12px; color: var(--muted); margin: 2px 0 0; line-height: 1.4; }
 
 /* ── KPI Cards ── */
 .od-kpi-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
-.od-kpi { border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; background: var(--surface-1); position: relative; overflow: hidden; transition: box-shadow .2s, transform .15s; }
-.od-kpi:hover { box-shadow: 0 4px 20px color-mix(in srgb, var(--text) 6%, transparent); transform: translateY(-1px); }
+.od-kpi { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 18px; background: var(--card-strong); position: relative; overflow: hidden; transition: box-shadow .2s, transform .15s; }
+.od-kpi:hover { box-shadow: var(--shadow-soft); transform: translateY(-1px); }
 .od-kpi__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .od-kpi__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .od-kpi__icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
@@ -47,7 +68,7 @@
 .od-kpi__icon--red { background: color-mix(in srgb, #dc2626 12%, var(--surface-1)); color: #dc2626; }
 .od-kpi__icon--purple { background: color-mix(in srgb, #7c3aed 12%, var(--surface-1)); color: #7c3aed; }
 .od-kpi__icon--cyan { background: color-mix(in srgb, #0891b2 12%, var(--surface-1)); color: #0891b2; }
-.od-kpi__value { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.od-kpi__value { font-size: 30px; font-weight: 750; line-height: 1; letter-spacing: -0.03em; }
 .od-kpi__sub { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
 .od-kpi__bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
 .od-kpi__bar--blue { background: linear-gradient(90deg, #0284c7, #38bdf8); }
@@ -58,7 +79,7 @@
 .od-kpi__bar--cyan { background: linear-gradient(90deg, #0891b2, #22d3ee); }
 
 /* ── Chart ── */
-.od-panel { padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-1); }
+.od-panel { padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card-strong); box-shadow: var(--shadow-soft); }
 .od-panel__head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .od-panel__head-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-a) 12%, var(--surface-1)); color: var(--accent-a); }
 .od-panel__head-icon svg { width: 15px; height: 15px; }
@@ -84,8 +105,8 @@
 
 /* ── Distribution chips ── */
 .od-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.od-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-1); font-size: 13px; transition: box-shadow .15s; }
-.od-chip:hover { box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 5%, transparent); }
+.od-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card-strong); font-size: 13px; transition: box-shadow .15s; }
+.od-chip:hover { box-shadow: var(--shadow-soft); }
 .od-chip__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .od-chip__val { font-weight: 800; font-size: 15px; }
 .od-chip__lbl { color: var(--muted); font-weight: 500; }
@@ -99,7 +120,7 @@
 .od-dot--catraca_bearer { background: #059669; }
 
 /* ── Queue block ── */
-.od-queue { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-1); overflow: hidden; }
+.od-queue { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card-strong); overflow: hidden; box-shadow: var(--shadow-soft); }
 .od-queue__head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
 .od-queue__head-icon { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
 .od-queue__head-icon svg { width: 16px; height: 16px; }
@@ -132,13 +153,13 @@
 .od-3col { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 
 /* ── Live queue ── */
-.od-live { border: 1px solid var(--border); border-radius: 16px; background: var(--surface-1); overflow: hidden; margin-top: 16px; }
+.od-live { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-strong); overflow: hidden; margin-top: 16px; box-shadow: var(--shadow-soft); }
 .od-live__header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .od-live__header-left { display: flex; align-items: center; gap: 10px; }
 .od-live__header-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, #059669 12%, var(--surface-1)); color: #059669; }
 .od-live__header-icon svg { width: 18px; height: 18px; }
 .od-live__header-text {}
-.od-live__header-title { font-size: 15px; font-weight: 800; }
+.od-live__header-title { font-size: 15px; font-weight: 750; }
 .od-live__header-sub { font-size: 11px; color: var(--muted); }
 .od-live__badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; }
 .od-live__badge--live { background: color-mix(in srgb, #059669 12%, var(--surface-1)); color: #059669; border: 1px solid color-mix(in srgb, #059669 25%, var(--border)); }
@@ -170,7 +191,7 @@
 }
 
 /* ── Health meter ── */
-.od-meter { border: 1px solid var(--border); border-radius: 16px; background: var(--surface-1); padding: 24px; margin-bottom: 28px; }
+.od-meter { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-strong); padding: 24px; margin-bottom: 28px; box-shadow: var(--shadow-soft); }
 .od-meter__top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .od-gauge { position: relative; width: 160px; height: 90px; flex-shrink: 0; }
 .od-gauge__svg { width: 160px; height: 90px; overflow: visible; }
@@ -185,12 +206,12 @@
 .od-gauge__value--bad { color: #dc2626; }
 .od-gauge__label { position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
 .od-meter__summary { flex: 1; min-width: 200px; }
-.od-meter__title { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+.od-meter__title { font-size: 18px; font-weight: 750; margin: 0 0 4px; }
 .od-meter__desc { font-size: 13px; color: var(--muted); line-height: 1.45; margin: 0; }
 
 .od-subsystems { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 20px; }
 .od-sub { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg0); transition: box-shadow .15s; }
-.od-sub:hover { box-shadow: 0 2px 10px color-mix(in srgb, var(--text) 5%, transparent); }
+.od-sub:hover { box-shadow: var(--shadow-soft); }
 .od-sub__score { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900; flex-shrink: 0; position: relative; }
 .od-sub__score::before { content: ''; position: absolute; inset: 0; border-radius: 50%; }
 .od-sub__score--ok { color: #059669; background: color-mix(in srgb, #059669 10%, var(--surface-1)); }

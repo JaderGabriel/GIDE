@@ -43,7 +43,8 @@
             </header>
 
             <main class="bridge-main">
-                <div class="od-container">
+                <div class="bridge-container">
+                    <div class="bridge-panel od-page">
 
                     {{-- ═══ Hero ═══ --}}
                     <div class="od-hero">
@@ -633,13 +634,14 @@
                         </div>
                     </div>
 
-                    <div style="margin-top: 32px; text-align: center;">
+                    <div class="od-page__footer-cta">
                         <a class="bridge-btn" href="{{ url('/dashboard') }}">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                             Voltar ao dashboard
                         </a>
                     </div>
 
+                    </div>
                 </div>
             </main>
 
