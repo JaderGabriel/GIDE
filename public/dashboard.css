@@ -59,12 +59,12 @@
 .dash-flow-figure {
     margin: 12px 0 0;
     padding: 16px 14px 14px;
-    border: 1px solid color-mix(in srgb, var(--border) 92%, var(--text));
+    border: 1px solid color-mix(in srgb, var(--border) 88%, #94a3b8);
     border-radius: var(--radius-sm);
     background:
-        radial-gradient(520px 200px at 22% 0%, color-mix(in srgb, var(--accent-a) 12%, transparent), transparent 62%),
-        radial-gradient(420px 180px at 96% 100%, color-mix(in srgb, var(--accent-c) 10%, transparent), transparent 58%),
-        color-mix(in srgb, var(--card-strong) 82%, #ffffff);
+        radial-gradient(520px 200px at 22% 0%, color-mix(in srgb, var(--accent-a) 6%, transparent), transparent 62%),
+        radial-gradient(420px 180px at 96% 100%, color-mix(in srgb, var(--accent-c) 5%, transparent), transparent 58%),
+        #f8fafc;
     box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent);
 }
 html.dark .dash-flow-figure {
@@ -122,46 +122,46 @@ html.dark .dash-flow-figure__svg .dash-fg-mrk {
     margin: 0 auto;
 }
 .dash-flow-figure__svg .dash-fg-box {
-    fill: color-mix(in srgb, var(--surface-1) 96%, var(--surface-2));
-    stroke: color-mix(in srgb, var(--border) 88%, var(--muted));
+    fill: #ffffff;
+    stroke: rgba(15, 23, 42, 0.14);
     stroke-width: 1;
 }
 .dash-flow-figure__svg .dash-fg-box--hub {
-    stroke: color-mix(in srgb, var(--border) 72%, var(--text));
-    fill: color-mix(in srgb, var(--surface-2) 88%, var(--surface-1));
+    stroke: rgba(15, 23, 42, 0.22);
+    fill: #f1f5f9;
 }
 .dash-flow-figure__svg .dash-fg-box--sms {
-    stroke: color-mix(in srgb, var(--border) 85%, var(--muted));
-    fill: color-mix(in srgb, var(--surface-1) 94%, var(--surface-2));
+    stroke: rgba(15, 23, 42, 0.16);
+    fill: #ffffff;
 }
 .dash-flow-figure__svg .dash-fg-line {
     fill: none;
-    stroke: color-mix(in srgb, var(--muted) 55%, var(--border));
+    stroke: #94a3b8;
     stroke-width: 1.25;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
 .dash-flow-figure__svg .dash-fg-line--main {
-    stroke: color-mix(in srgb, var(--muted) 40%, var(--text));
+    stroke: #475569;
     stroke-width: 1.35;
 }
 .dash-flow-figure__svg .dash-fg-line--notify {
-    stroke: color-mix(in srgb, var(--muted) 35%, var(--text));
+    stroke: #0369a1;
     stroke-width: 1.2;
     stroke-dasharray: 4 4;
-    opacity: 0.88;
+    opacity: 0.95;
 }
 .dash-flow-figure__svg .dash-fg-line--return {
-    stroke: color-mix(in srgb, var(--muted) 48%, var(--border));
+    stroke: #64748b;
     stroke-width: 1.15;
     stroke-dasharray: 5 4;
-    opacity: 0.9;
+    opacity: 0.95;
 }
 .dash-flow-figure__svg .dash-fg-line--freq-return {
-    stroke: color-mix(in srgb, #059669 42%, var(--muted));
+    stroke: #047857;
     stroke-width: 1.3;
     stroke-dasharray: 5 3.5;
-    opacity: 0.94;
+    opacity: 1;
 }
 html.dark .dash-flow-figure__svg .dash-fg-line--freq-return {
     stroke: color-mix(in srgb, #34d399 48%, var(--muted));
@@ -169,42 +169,42 @@ html.dark .dash-flow-figure__svg .dash-fg-line--freq-return {
 .dash-flow-figure__svg .dash-fg-head {
     font-size: 11.5px;
     font-weight: 700;
-    fill: color-mix(in srgb, var(--text) 94%, var(--muted));
+    fill: #0f172a;
     letter-spacing: -0.015em;
 }
 .dash-flow-figure__svg .dash-fg-sub {
     font-size: 8.5px;
     font-weight: 600;
-    fill: color-mix(in srgb, var(--muted) 68%, var(--text));
+    fill: #334155;
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 .dash-flow-figure__svg .dash-fg-edge {
     font-size: 8px;
     font-weight: 600;
-    fill: color-mix(in srgb, var(--muted) 72%, var(--text));
+    fill: #475569;
     letter-spacing: 0.05em;
     text-transform: uppercase;
 }
 .dash-flow-figure__svg .dash-fg-mrk {
-    fill: color-mix(in srgb, var(--muted) 65%, var(--text));
-}
-html.dark .dash-flow-figure__svg .dash-fg-mrk {
-    fill: color-mix(in srgb, var(--muted) 50%, var(--text));
+    fill: #475569;
 }
 .dash-flow-figure__cap {
     margin: 12px 0 0;
     text-align: center;
     font-size: 12px;
     line-height: 1.45;
-    color: color-mix(in srgb, var(--text) 38%, var(--muted));
+    color: #334155;
 }
 .dash-flow-figure__cap strong {
-    color: var(--text);
+    color: #0f172a;
     font-weight: 700;
 }
 html.dark .dash-flow-figure__cap {
     color: color-mix(in srgb, var(--text) 58%, var(--muted));
+}
+html.dark .dash-flow-figure__cap strong {
+    color: var(--text);
 }
 
 .dash-flow { display: grid; gap: 12px; }
