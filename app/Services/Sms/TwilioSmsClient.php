@@ -50,6 +50,14 @@ class TwilioSmsClient
         }
 
         if ($custom !== '') {
+            // Evita /Accounts/AC…/Accounts/AC… quando a base gravada já inclui o segmento da conta (copiado do console Twilio).
+            if (str_contains($custom, '/Accounts/')) {
+                $p = strpos($custom, '/Accounts/');
+                if ($p !== false) {
+                    return substr($custom, 0, $p);
+                }
+            }
+
             return $custom;
         }
 
