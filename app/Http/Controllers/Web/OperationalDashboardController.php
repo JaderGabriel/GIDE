@@ -9,8 +9,10 @@ use App\Models\IeducarFrequenciaRegistroDelivery;
 use App\Models\OutboundDelivery;
 use App\Models\SmsDelivery;
 use App\Models\StudentEnrichmentCache;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class OperationalDashboardController extends Controller
 {
@@ -99,7 +101,7 @@ class OperationalDashboardController extends Controller
         $facial = $this->facialMetrics($today, $last7);
         $frequencia = $this->frequenciaMetrics($today, $last7);
         $enrichment = $this->enrichmentMetrics();
-        $dailyChart = $this->dailyAccessChart(14);
+        $dailyChart = $this->dailyVolumeChart(14);
         $statusDistribution = $this->statusDistribution();
         $channelDistribution = $this->channelDistribution();
         $health = $this->healthScore($accessEvents, $sms, $outbound, $frequencia, $enrichment);
@@ -203,27 +205,90 @@ class OperationalDashboardController extends Controller
     }
 
     /**
-     * @return array<int, array{date: string, count: int}>
+     * Contagens por dia: eventos de acesso (Gestor/catraca) e solicitações faciais criadas.
+     *
+     * @return array<int, array{date: string, access: int, facial: int}>
      */
-    private function dailyAccessChart(int $days): array
+    private function dailyVolumeChart(int $days): array
     {
-        $since = Carbon::now()->subDays($days)->startOfDay();
+        $days = max(1, $days);
+        $since = Carbon::now()->subDays($days - 1)->startOfDay();
+        $dateExpr = $this->sqlDateTrunc('created_at');
 
-        $rows = GestorAccessEventDelivery::query()
-            ->where('created_at', '>=', $since)
-            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
-            ->groupByRaw('DATE(created_at)')
-            ->orderBy('date')
-            ->get();
+        $accessMap = $this->dailyCountMap(
+            GestorAccessEventDelivery::query()->where('created_at', '>=', $since),
+            $dateExpr
+        );
+        $facialMap = $this->dailyCountMap(
+            FacialSendRequest::query()->where('created_at', '>=', $since),
+            $dateExpr
+        );
 
         $result = [];
-        for ($i = $days; $i >= 0; $i--) {
+        for ($i = $days - 1; $i >= 0; $i--) {
             $d = Carbon::now()->subDays($i)->format('Y-m-d');
-            $found = $rows->firstWhere('date', $d);
-            $result[] = ['date' => $d, 'count' => $found ? (int) $found->count : 0];
+            $result[] = [
+                'date' => $d,
+                'access' => $accessMap[$d] ?? 0,
+                'facial' => $facialMap[$d] ?? 0,
+            ];
         }
 
         return $result;
+    }
+
+    /**
+     * Expressão SQL para truncar um timestamp à data (dia), por driver.
+     */
+    private function sqlDateTrunc(string $column): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'pgsql' => "({$column})::date",
+            'sqlite' => "date({$column})",
+            default => "DATE({$column})",
+        };
+    }
+
+    /**
+     * @return array<string, int> chave Y-m-d => total
+     */
+    private function dailyCountMap(Builder $query, string $dateExpr): array
+    {
+        $rows = (clone $query)
+            ->selectRaw("{$dateExpr} as day_bucket, COUNT(*) as day_total")
+            ->groupByRaw($dateExpr)
+            ->orderByRaw("{$dateExpr} asc")
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $key = $this->normalizeChartDay($row->day_bucket ?? null);
+            if ($key === '') {
+                continue;
+            }
+            $map[$key] = (int) ($row->day_total ?? 0);
+        }
+
+        return $map;
+    }
+
+    private function normalizeChartDay(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        if ($value instanceof Carbon) {
+            return $value->format('Y-m-d');
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value)->format('Y-m-d');
+        }
+
+        try {
+            return Carbon::parse((string) $value)->format('Y-m-d');
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /**

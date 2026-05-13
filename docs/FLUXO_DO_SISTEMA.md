@@ -99,7 +99,7 @@ flowchart TD
 - `GET /integracoes/sms` / `POST /integracoes/sms`
 - `GET /sms` (lista e filtros)
 - `GET /sms/{id}` (detalhe)
-- `GET /admin/operacional` — dashboard operacional consolidado (health score com gauge por subsistema, KPIs, gráficos de volume, filas em tempo real via polling, distribuição por status/canal, detalhes técnicos)
+- `GET /admin/operacional` — dashboard operacional consolidado (health score com gauge por subsistema, KPIs, gráfico de volume diário com **acessos** e **faciais** por dia, filas em tempo real via polling, distribuição por status/canal, detalhes técnicos)
 - `GET /admin/operacional/queue-live` — endpoint JSON para polling de filas em tempo real (10s)
 - `GET /admin/timeline/{cod_aluno}` — timeline unificada do aluno (access-events, SMS, facial)
 - `POST /admin/timeline/{cod_aluno}/refresh` — força refresh dos dados do iEducar

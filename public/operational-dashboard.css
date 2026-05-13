@@ -63,14 +63,23 @@
 .od-panel__head-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-a) 12%, var(--surface-1)); color: var(--accent-a); }
 .od-panel__head-icon svg { width: 15px; height: 15px; }
 .od-panel__title { font-weight: 700; font-size: 14px; }
-.od-chart { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding: 0 2px; }
-.od-bar { flex: 1; min-width: 0; border-radius: 5px 5px 0 0; background: linear-gradient(180deg, var(--accent-a), color-mix(in srgb, var(--accent-a) 50%, var(--surface-2))); position: relative; transition: opacity .15s, transform .1s; cursor: default; }
+.od-chart { display: flex; align-items: flex-end; gap: 5px; height: 140px; padding: 0 2px; }
+.od-chart-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+.od-chart-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; flex: 1; min-height: 0; width: 100%; }
+.od-bar { flex: 1; min-width: 0; border-radius: 5px 5px 0 0; background: linear-gradient(180deg, var(--accent-a), color-mix(in srgb, var(--accent-a) 50%, var(--surface-2))); position: relative; transition: opacity .15s, transform .1s; cursor: default; align-self: flex-end; width: 100%; }
+.od-bar--access { background: linear-gradient(180deg, var(--accent-a), color-mix(in srgb, var(--accent-a) 50%, var(--surface-2))); }
+.od-bar--facial { background: linear-gradient(180deg, #8b5cf6, color-mix(in srgb, #8b5cf6 55%, var(--surface-2))); }
 .od-bar:hover { opacity: .85; transform: scaleY(1.02); transform-origin: bottom; }
 .od-bar__tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); padding: 4px 10px; border-radius: 8px; background: var(--text); color: var(--bg0); font-size: 11px; font-weight: 700; white-space: nowrap; pointer-events: none; z-index: 5; }
 .od-bar__tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 4px solid transparent; border-top-color: var(--text); }
 .od-bar:hover .od-bar__tip { display: block; }
-.od-chart-labels { display: flex; gap: 4px; margin-top: 8px; padding: 0 2px; }
+.od-chart-labels { display: flex; gap: 5px; margin-top: 8px; padding: 0 2px; }
 .od-chart-labels span { flex: 1; text-align: center; font-size: 10px; font-weight: 600; color: var(--muted); }
+.od-chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.od-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.od-chart-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.od-chart-legend i.od-legend--access { background: linear-gradient(180deg, var(--accent-a), color-mix(in srgb, var(--accent-a) 60%, #334155)); }
+.od-chart-legend i.od-legend--facial { background: linear-gradient(180deg, #8b5cf6, #6d28d9); }
 
 /* ── Distribution chips ── */
 .od-chips { display: flex; gap: 8px; flex-wrap: wrap; }

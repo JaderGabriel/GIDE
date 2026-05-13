@@ -217,14 +217,25 @@
                                 <div class="od-panel__title">Volume diário (14 dias)</div>
                             </div>
                             @php
-                                $counts = array_column($dailyChart, 'count');
-                                $maxCount = max(1, ...$counts);
+                                $accessSeries = array_column($dailyChart, 'access');
+                                $facialSeries = array_column($dailyChart, 'facial');
+                                $maxCount = max(1, max(array_merge($accessSeries, $facialSeries)));
                             @endphp
                             <div class="od-chart">
                                 @foreach ($dailyChart as $day)
-                                    @php $h = max(3, ($day['count'] / $maxCount) * 100); @endphp
-                                    <div class="od-bar" style="height: {{ $h }}%;">
-                                        <div class="od-bar__tip">{{ $day['count'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
+                                    <div class="od-chart-col">
+                                        <div class="od-chart-bars">
+                                            @php
+                                                $hAccess = $day['access'] > 0 ? max(4, ($day['access'] / $maxCount) * 100) : 0;
+                                                $hFacial = $day['facial'] > 0 ? max(4, ($day['facial'] / $maxCount) * 100) : 0;
+                                            @endphp
+                                            <div class="od-bar od-bar--access" style="height: {{ $hAccess }}%;">
+                                                <div class="od-bar__tip">Acessos: {{ $day['access'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
+                                            </div>
+                                            <div class="od-bar od-bar--facial" style="height: {{ $hFacial }}%;">
+                                                <div class="od-bar__tip">Faciais: {{ $day['facial'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -232,6 +243,10 @@
                                 @foreach ($dailyChart as $day)
                                     <span>{{ \Carbon\Carbon::parse($day['date'])->format('d') }}</span>
                                 @endforeach
+                            </div>
+                            <div class="od-chart-legend">
+                                <span><i class="od-legend--access" aria-hidden="true"></i> Acessos (webhook)</span>
+                                <span><i class="od-legend--facial" aria-hidden="true"></i> Faciais (cadastradas)</span>
                             </div>
                         </div>
 
