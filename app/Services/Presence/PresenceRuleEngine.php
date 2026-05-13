@@ -87,13 +87,30 @@ class PresenceRuleEngine
         $eventTypeKey = (string) ($payloadMap['event_type'] ?? 'type');
         $eventType = data_get($payload, $eventTypeKey);
 
-        if (($presenceCfg['ignore_exit_events'] ?? true) && is_string($eventType)) {
-            $lower = strtolower($eventType);
-            if (str_contains($lower, 'saida') || str_contains($lower, 'exit')) {
+        $wayRaw = data_get($payload, 'way');
+        if (is_string($wayRaw) && trim($wayRaw) !== '') {
+            $wayTrim = trim($wayRaw);
+            if (! $this->waySuggestsCatracaEntry($wayTrim)) {
                 return [
                     'action' => 'ignore',
-                    'reason' => 'Evento de saída ignorado.',
+                    'reason' => 'Fluxo não-entrada (way='.$wayTrim.'): evento guardado para histórico; não enviado ao iEducar.',
                     'mode' => $mode,
+                    'access_path' => 'non_entry',
+                    'access_way' => $wayTrim,
+                ];
+            }
+        }
+
+        if (($presenceCfg['ignore_exit_events'] ?? true) && is_string($eventType)) {
+            $lower = strtolower($eventType);
+            if (str_contains($lower, 'saida') || str_contains($lower, 'saída') || str_contains($lower, 'exit')
+                || str_contains($lower, 'leave') || str_contains($lower, 'egress')) {
+                return [
+                    'action' => 'ignore',
+                    'reason' => 'Evento de saída / não-entrada (tipo='.$eventType.'): guardado para histórico; não enviado ao iEducar.',
+                    'mode' => $mode,
+                    'access_path' => 'exit',
+                    'access_way' => $eventType,
                 ];
             }
         }
@@ -187,6 +204,7 @@ class PresenceRuleEngine
             'matricula_id' => $ids['matricula_id'],
             'reason' => 'Dentro da janela configurada.',
             'mode' => $mode,
+            'access_path' => 'entry',
         ];
     }
 
@@ -244,6 +262,21 @@ class PresenceRuleEngine
     }
 
     /**
+     * Caminho de entrada na catraca (campo `way` ou equivalente no JSON do equipamento).
+     */
+    private function waySuggestsCatracaEntry(string $way): bool
+    {
+        $t = mb_strtolower($way);
+        foreach (['entrance', 'entry', 'entrada', 'ingresso'] as $token) {
+            if (str_contains($t, $token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Tenta marcar presença — valida identificadores e monta retorno.
      */
     private function tryMarkPresence(array $payload, array $payloadMap, array $presenceCfg, string $mode, string $reason): array
@@ -270,6 +303,7 @@ class PresenceRuleEngine
             'matricula_id' => $ids['matricula_id'],
             'reason' => $reason,
             'mode' => $mode,
+            'access_path' => 'entry',
         ];
     }
 }

@@ -207,92 +207,88 @@
                         </div>
                     </div>
 
-                    {{-- ═══ Gráfico + Distribuição ═══ --}}
-                    <div class="od-2col" style="margin-top: 16px;">
-                        {{-- Gráfico --}}
-                        <div class="od-panel">
+                    {{-- ═══ Distribuição (linha única) + Volume diário (largura total) ═══ --}}
+                    <div class="od-distribution-row">
+                        <div class="od-panel od-panel--dist">
                             <div class="od-panel__head">
                                 <div class="od-panel__head-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>
                                 </div>
-                                <div class="od-panel__title">Volume diário (14 dias)</div>
+                                <div class="od-panel__title">Por status</div>
                             </div>
-                            @php
-                                $accessSeries = array_column($dailyChart, 'access');
-                                $facialSeries = array_column($dailyChart, 'facial');
-                                $mergedSeries = array_merge($accessSeries, $facialSeries);
-                                $maxCount = max(1, max($mergedSeries));
-                                $sumDaily = array_sum($accessSeries) + array_sum($facialSeries);
-                            @endphp
-                            <div class="od-chart">
-                                @foreach ($dailyChart as $day)
-                                    <div class="od-chart-col">
-                                        <div class="od-chart-bars">
-                                            @php
-                                                $hAccess = $day['access'] > 0 ? max(4, ($day['access'] / $maxCount) * 100) : 0;
-                                                $hFacial = $day['facial'] > 0 ? max(4, ($day['facial'] / $maxCount) * 100) : 0;
-                                            @endphp
-                                            <div class="od-bar od-bar--access" style="height: {{ $hAccess }}%;">
-                                                <div class="od-bar__tip">Acessos: {{ $day['access'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
-                                            </div>
-                                            <div class="od-bar od-bar--facial" style="height: {{ $hFacial }}%;">
-                                                <div class="od-bar__tip">Faciais: {{ $day['facial'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
-                                            </div>
-                                        </div>
+                            <div class="od-chips">
+                                @foreach ($statusDistribution as $status => $count)
+                                    <div class="od-chip">
+                                        <div class="od-chip__dot od-dot--{{ $status }}"></div>
+                                        <span class="od-chip__val">{{ number_format($count) }}</span>
+                                        <span class="od-chip__lbl">{{ $status }}</span>
                                     </div>
                                 @endforeach
                             </div>
-                            <div class="od-chart-labels">
-                                @foreach ($dailyChart as $day)
-                                    <span>{{ \Carbon\Carbon::parse($day['date'])->format('d') }}</span>
+                        </div>
+                        <div class="od-panel od-panel--dist">
+                            <div class="od-panel__head">
+                                <div class="od-panel__head-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/><circle cx="12" cy="10" r="3"/><circle cx="12" cy="12" r="10"/></svg>
+                                </div>
+                                <div class="od-panel__title">Por canal</div>
+                            </div>
+                            <div class="od-chips">
+                                @foreach ($channelDistribution as $channel => $count)
+                                    <div class="od-chip">
+                                        <div class="od-chip__dot od-dot--{{ $channel }}"></div>
+                                        <span class="od-chip__val">{{ number_format($count) }}</span>
+                                        <span class="od-chip__lbl">{{ str_replace('_', ' ', $channel) }}</span>
+                                    </div>
                                 @endforeach
                             </div>
-                            <div class="od-chart-legend">
-                                <span><i class="od-legend--access" aria-hidden="true"></i> Acessos (webhook)</span>
-                                <span><i class="od-legend--facial" aria-hidden="true"></i> Faciais (cadastradas)</span>
-                            </div>
-                            @if ($sumDaily === 0)
-                                <p class="od-chart-empty">Nenhum acesso nem facial registrado nesta janela de 14 dias (fuso: {{ config('app.timezone', 'UTC') }}).</p>
-                            @endif
                         </div>
+                    </div>
 
-                        {{-- Distribuição --}}
-                        <div style="display: flex; flex-direction: column; gap: 14px;">
-                            <div class="od-panel" style="flex: 1;">
-                                <div class="od-panel__head">
-                                    <div class="od-panel__head-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>
-                                    </div>
-                                    <div class="od-panel__title">Por status</div>
-                                </div>
-                                <div class="od-chips">
-                                    @foreach ($statusDistribution as $status => $count)
-                                        <div class="od-chip">
-                                            <div class="od-chip__dot od-dot--{{ $status }}"></div>
-                                            <span class="od-chip__val">{{ number_format($count) }}</span>
-                                            <span class="od-chip__lbl">{{ $status }}</span>
-                                        </div>
-                                    @endforeach
-                                </div>
+                    <div class="od-panel od-panel--chart-wide">
+                        <div class="od-panel__head">
+                            <div class="od-panel__head-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                             </div>
-                            <div class="od-panel" style="flex: 1;">
-                                <div class="od-panel__head">
-                                    <div class="od-panel__head-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/><circle cx="12" cy="10" r="3"/><circle cx="12" cy="12" r="10"/></svg>
-                                    </div>
-                                    <div class="od-panel__title">Por canal</div>
-                                </div>
-                                <div class="od-chips">
-                                    @foreach ($channelDistribution as $channel => $count)
-                                        <div class="od-chip">
-                                            <div class="od-chip__dot od-dot--{{ $channel }}"></div>
-                                            <span class="od-chip__val">{{ number_format($count) }}</span>
-                                            <span class="od-chip__lbl">{{ str_replace('_', ' ', $channel) }}</span>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
+                            <div class="od-panel__title">Volume diário (14 dias)</div>
                         </div>
+                        @php
+                            $accessSeries = array_column($dailyChart, 'access');
+                            $facialSeries = array_column($dailyChart, 'facial');
+                            $mergedSeries = array_merge($accessSeries, $facialSeries);
+                            $maxCount = max(1, max($mergedSeries));
+                            $sumDaily = array_sum($accessSeries) + array_sum($facialSeries);
+                        @endphp
+                        <div class="od-chart od-chart--wide">
+                            @foreach ($dailyChart as $day)
+                                <div class="od-chart-col">
+                                    <div class="od-chart-bars">
+                                        @php
+                                            $hAccess = $day['access'] > 0 ? max(4, ($day['access'] / $maxCount) * 100) : 0;
+                                            $hFacial = $day['facial'] > 0 ? max(4, ($day['facial'] / $maxCount) * 100) : 0;
+                                        @endphp
+                                        <div class="od-bar od-bar--access" style="height: {{ $hAccess }}%;">
+                                            <div class="od-bar__tip">Acessos: {{ $day['access'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
+                                        </div>
+                                        <div class="od-bar od-bar--facial" style="height: {{ $hFacial }}%;">
+                                            <div class="od-bar__tip">Faciais: {{ $day['facial'] }} — {{ \Carbon\Carbon::parse($day['date'])->format('d/m') }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="od-chart-labels">
+                            @foreach ($dailyChart as $day)
+                                <span>{{ \Carbon\Carbon::parse($day['date'])->format('d') }}</span>
+                            @endforeach
+                        </div>
+                        <div class="od-chart-legend">
+                            <span><i class="od-legend--access" aria-hidden="true"></i> Acessos (deliveries webhook)</span>
+                            <span><i class="od-legend--facial" aria-hidden="true"></i> Faciais (solicitações criadas)</span>
+                        </div>
+                        @if ($sumDaily === 0)
+                            <p class="od-chart-empty">Nenhum registo nesta janela de 14 dias (fuso: {{ config('app.timezone', 'UTC') }}; contagens por <code>created_at</code> alinhadas ao dia civil da app).</p>
+                        @endif
                     </div>
 
                     {{-- ═══ Filas e entregas ═══ --}}

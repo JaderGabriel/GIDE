@@ -85,6 +85,13 @@
 .od-panel__head-icon svg { width: 15px; height: 15px; }
 .od-panel__title { font-weight: 700; font-size: 14px; }
 .od-chart { display: flex; align-items: flex-end; gap: 5px; height: 140px; padding: 0 2px; }
+.od-chart--wide { height: 200px; gap: 6px; padding: 0 4px; }
+.od-distribution-row { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
+@media (max-width: 720px) {
+    .od-distribution-row { grid-template-columns: 1fr; }
+}
+.od-panel--dist { display: flex; flex-direction: column; min-height: 0; }
+.od-panel--chart-wide { margin-top: 14px; width: 100%; }
 .od-chart-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
 .od-chart-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; flex: 1; min-height: 0; width: 100%; }
 .od-bar { flex: 1; min-width: 0; border-radius: 5px 5px 0 0; background: linear-gradient(180deg, var(--accent-a), color-mix(in srgb, var(--accent-a) 50%, var(--surface-2))); position: relative; transition: opacity .15s, transform .1s; cursor: default; align-self: flex-end; width: 100%; }
@@ -102,6 +109,7 @@
 .od-chart-legend i.od-legend--access { background: linear-gradient(180deg, var(--accent-a), color-mix(in srgb, var(--accent-a) 60%, #334155)); }
 .od-chart-legend i.od-legend--facial { background: linear-gradient(180deg, #8b5cf6, #6d28d9); }
 .od-chart-empty { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 12px; color: var(--muted); border: 1px dashed color-mix(in srgb, var(--muted) 35%, var(--border)); background: color-mix(in srgb, var(--surface-2) 50%, transparent); }
+.od-chart-empty code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; }
 
 /* ── Distribution chips ── */
 .od-chips { display: flex; gap: 8px; flex-wrap: wrap; }

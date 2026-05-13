@@ -181,18 +181,31 @@
                                                 'facial' => 'Facial',
                                                 default => $item['type'],
                                             };
+                                            $flow = $item['data']['timeline_flow'] ?? 'neutral';
+                                            $dotTitle = $item['data']['tooltip'] ?? $item['summary'];
                                         @endphp
-                                        <div class="tl-item tl-item--{{ $item['type'] }}">
-                                            <div class="tl-item__marker" aria-hidden="true">
-                                                @if ($item['type'] === 'access_event')
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                                @elseif ($item['type'] === 'sms')
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                                @else
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                                                @endif
+                                        <div class="tl-track tl-track--{{ $item['type'] }} tl-track--flow-{{ $flow }}">
+                                            <div class="tl-track__rail">
+                                                <button type="button" class="tl-track__node" title="{{ $dotTitle }}" aria-label="{{ $dotTitle }}">
+                                                    <span class="tl-track__dot" aria-hidden="true"></span>
+                                                    <span class="tl-track__glyph" aria-hidden="true">
+                                                        @if ($item['type'] === 'access_event')
+                                                            @if ($flow === 'entry')
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                                                            @elseif ($flow === 'exit')
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                                            @else
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                                                            @endif
+                                                        @elseif ($item['type'] === 'sms')
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                                        @else
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                                        @endif
+                                                    </span>
+                                                </button>
                                             </div>
-                                            <div class="tl-item__body">
+                                            <div class="tl-item__body tl-track__panel tl-item__body--{{ $item['type'] }} tl-item__body--flow-{{ $flow }}">
                                                 <div class="tl-item__head">
                                                     <span class="tl-item__badge tl-item__badge--{{ $item['type'] }}">
                                                         @if ($item['type'] === 'access_event')
@@ -204,11 +217,17 @@
                                                         @endif
                                                         {{ $typeLabel }}
                                                     </span>
+                                                    @if ($item['type'] === 'access_event' && ! empty($item['data']['flow_label'] ?? null))
+                                                        <span class="tl-flow-pill tl-flow-pill--{{ $flow }}" title="{{ e($item['data']['flow_caption'] ?? '') }}">{{ $item['data']['flow_label'] }}</span>
+                                                    @endif
                                                     <span class="tl-item__time">
                                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                         {{ $item['at'] ? \Carbon\Carbon::parse($item['at'])->format('d/m/Y H:i:s') : '—' }}
                                                     </span>
                                                 </div>
+                                                @if ($item['type'] === 'access_event')
+                                                    <p class="tl-flow-caption">{{ $item['data']['flow_caption'] ?? '' }}</p>
+                                                @endif
                                                 <div class="tl-item__summary">{{ $item['summary'] }}</div>
                                                 @if ($item['detail_url'])
                                                     <div class="tl-item__link">

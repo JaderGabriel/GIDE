@@ -11,6 +11,7 @@ use App\Services\Enrichment\StudentEnrichmentService;
 use App\Services\Ieducar\IeducarClient;
 use App\Support\Ieducar\GideFrequenciaRegistroPlanB;
 use App\Support\Ieducar\IeducarFrequenciaPreviewMode;
+use App\Support\Presence\AccessEventOccurredAtResolver;
 use App\Support\SmsTemplateKey;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -85,7 +86,7 @@ class GestorAccessEventWebhookService
         $ieducar = Integration::query()->where('key', 'ieducar')->where('enabled', true)->first();
         $analysis = is_array($delivery->analysis_json) ? $delivery->analysis_json : [];
         $payloadForPresence = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
-        $tsInfo = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $tsInfo = AccessEventOccurredAtResolver::resolve($payloadForPresence, $delivery->inbound_channel);
         $occurredAt = $tsInfo['occurred_at'];
         $eventId = (string) $delivery->event_id;
 
@@ -147,7 +148,7 @@ class GestorAccessEventWebhookService
         array $inboundPayloadForAudit,
         array $payloadForPresence,
     ): array {
-        $tsInfo = $this->resolveOccurredAtFromPayload($payloadForPresence);
+        $tsInfo = AccessEventOccurredAtResolver::resolve($payloadForPresence, $inboundChannel);
         $occurredAt = $tsInfo['occurred_at'];
 
         $gestor = Integration::query()->where('key', 'gestor')->first();
@@ -203,6 +204,7 @@ class GestorAccessEventWebhookService
             'raw' => $tsInfo['raw'],
             'original_tz' => $tsInfo['original_tz'],
             'tz_declared' => $tsInfo['tz_declared'],
+            'interpreted_as_utc' => $tsInfo['interpreted_as_utc'],
             'normalized_br' => $tsInfo['normalized'],
         ];
 
@@ -355,50 +357,6 @@ class GestorAccessEventWebhookService
     }
 
     /**
-     * @return array{occurred_at: ?Carbon, raw: ?string, original_tz: ?string, tz_declared: bool, normalized: ?string}
-     */
-    private function resolveOccurredAtFromPayload(array $payload): array
-    {
-        $candidateTs = data_get($payload, 'occurred_at')
-            ?? data_get($payload, 'timestamp')
-            ?? data_get($payload, 'event_time')
-            ?? data_get($payload, 'creationDate')
-            ?? data_get($payload, 'creation_date');
-
-        $empty = ['occurred_at' => null, 'raw' => null, 'original_tz' => null, 'tz_declared' => false, 'normalized' => null];
-
-        if (! is_string($candidateTs) || $candidateTs === '') {
-            return $empty;
-        }
-
-        $tzDeclared = (bool) preg_match('/[Zz]$|[+\-]\d{2}:\d{2}$|[+\-]\d{4}$/', trim($candidateTs));
-
-        try {
-            $parsed = Carbon::parse($candidateTs);
-        } catch (Throwable) {
-            return array_merge($empty, ['raw' => $candidateTs]);
-        }
-
-        $appTz = config('app.timezone', 'America/Sao_Paulo');
-
-        if ($tzDeclared) {
-            $originalTz = $parsed->format('P');
-            $normalized = $parsed->copy()->timezone($appTz);
-        } else {
-            $originalTz = null;
-            $normalized = $parsed->copy()->timezone($appTz);
-        }
-
-        return [
-            'occurred_at' => $normalized,
-            'raw' => $candidateTs,
-            'original_tz' => $originalTz,
-            'tz_declared' => $tzDeclared,
-            'normalized' => $normalized->toIso8601String(),
-        ];
-    }
-
-    /**
      * @param  array<string, mixed>  $body
      * @return array<string, mixed>
      */
@@ -458,6 +416,8 @@ class GestorAccessEventWebhookService
                     'status' => 'skipped',
                     'reason' => 'Motor de presença não marcou envio ao iEducar (é necessário action=mark_presence).',
                     'analysis_action' => $action,
+                    'access_path' => $analysis['access_path'] ?? null,
+                    'access_way' => $analysis['access_way'] ?? null,
                 ]),
                 'request_json' => null,
                 'http_status' => null,

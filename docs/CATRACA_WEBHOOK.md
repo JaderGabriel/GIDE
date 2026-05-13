@@ -52,7 +52,7 @@ Campos em **camelCase**. Exemplo válido (vírgula obrigatória entre propriedad
 | Campo | Obrigatório | Uso |
 |--------|-------------|-----|
 | `eventId` | Sim | Idempotência em `access_events` com `source=catraca_bearer`. |
-| `creationDate` | Recomendado | Data/hora do acesso e motor de presença. |
+| `creationDate` | Recomendado | Data/hora do acesso e motor de presença. **Recomenda-se** sufixo `Z` ou offset (`+03:00`, etc.). Se vier **sem** fuso explícito, o GIDE **assume UTC (±0)** e converte para `APP_TIMEZONE` (ver `App\Support\Presence\AccessEventOccurredAtResolver` e `analysis_json.timestamp_info.interpreted_as_utc` na auditoria admin). |
 | `name` | Recomendado | Mapeado para análise como aluno quando não há `aluno_id` explícito. |
 | Outros | Não | Persistidos no payload bruto e na auditoria. |
 

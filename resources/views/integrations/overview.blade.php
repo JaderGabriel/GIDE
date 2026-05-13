@@ -113,9 +113,10 @@
             .integr-last-card { margin-top: 0; }
             .bar { height: 10px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg0) 55%, transparent); overflow: hidden; }
             .bar > span { display:block; height: 100%; background: color-mix(in srgb, var(--accent-c) 42%, transparent); }
-            .bridge-map { margin-top: 14px; padding: 16px 14px; border-radius: 18px; border: 1px solid var(--border); background: color-mix(in srgb, var(--card-strong) 88%, var(--bg0)); }
-            .bridge-map__title { font-weight: 850; font-size: 15px; }
-            .bridge-map__sub { margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+            .bridge-map { margin-top: 14px; padding: 18px 16px 16px; border-radius: 20px; border: 1px solid color-mix(in srgb, var(--accent-c) 18%, var(--border)); background: linear-gradient(165deg, color-mix(in srgb, var(--card-strong) 92%, var(--bg0)), color-mix(in srgb, var(--surface-2) 35%, var(--card-strong))); box-shadow: 0 10px 36px color-mix(in srgb, var(--text) 5%, transparent); }
+            .bridge-map__title { font-weight: 850; font-size: 16px; letter-spacing: -0.02em; }
+            .bridge-map__sub { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 72ch; }
+            .bridge-map__sub strong { color: color-mix(in srgb, var(--text) 90%, var(--muted)); }
             .bridge-map__row { margin-top: 14px; display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; justify-content: center; }
             .bridge-node { flex: 0 1 140px; min-height: 72px; padding: 10px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface-2); display: flex; flex-direction: column; justify-content: center; text-align: center; font-weight: 750; font-size: 13px; }
             .bridge-node--gide { border-color: color-mix(in srgb, var(--accent-c) 40%, var(--border)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-c) 18%, transparent); }
@@ -140,13 +141,44 @@
             .bridge-link--stub::after { display: none; }
             .bridge-link--stub.is-live { border-style: solid; border-color: color-mix(in srgb, var(--accent-c) 28%, var(--border)); opacity: 1; }
             .bridge-link--stub.is-live::after { display: block; content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-c) 40%, transparent), transparent); transform: translateX(-60%); animation: bridgeFlow 2.8s ease-in-out infinite; opacity: .35; }
-            .bridge-spine-grid { margin-top: 14px; display: grid; grid-template-columns: minmax(108px, 1.1fr) minmax(40px, 0.85fr) minmax(112px, 1.15fr) minmax(40px, 0.85fr) minmax(108px, 1.1fr); gap: 8px 10px; align-items: center; justify-items: stretch; }
-            .bridge-spine-grid .bridge-node { width: 100%; min-height: 76px; }
+            .bridge-spine-grid { margin-top: 16px; display: grid; grid-template-columns: minmax(108px, 1.1fr) minmax(40px, 0.85fr) minmax(112px, 1.15fr) minmax(40px, 0.85fr) minmax(108px, 1.1fr); gap: 10px 12px; align-items: center; justify-items: stretch; }
+            .bridge-spine-grid .bridge-node { width: 100%; min-height: 78px; box-shadow: 0 1px 0 color-mix(in srgb, #fff 10%, transparent); }
+            .dark .bridge-spine-grid .bridge-node { box-shadow: 0 1px 0 color-mix(in srgb, #fff 4%, transparent); }
+            .bridge-node--gide { background: linear-gradient(180deg, color-mix(in srgb, var(--accent-c) 10%, var(--surface-2)), var(--surface-2)); }
             .bridge-spine-grid .bridge-link { width: 100%; min-width: 0; flex: unset; }
             .bridge-vstub-wrap { display: flex; justify-content: center; align-items: stretch; padding: 2px 0 0; }
             .bridge-vstub { width: 3px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 50%, var(--border)); min-height: 18px; position: relative; overflow: hidden; }
+            .bridge-sms-branch { margin-top: 4px; display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%; }
             .bridge-sms-branch.is-sms-chain-ready .bridge-vstub { background: color-mix(in srgb, var(--accent-c) 38%, var(--border)); }
-            .bridge-sms-branch { margin-top: 2px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+            .bridge-notify-bundle { margin-top: 18px; padding-top: 16px; border-top: 1px dashed color-mix(in srgb, var(--accent-c) 28%, var(--border)); }
+            .bridge-notify-head { text-align: center; max-width: 640px; margin: 0 auto 14px; }
+            .bridge-notify-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 850; letter-spacing: 0.1em; text-transform: uppercase; color: color-mix(in srgb, var(--accent-c) 55%, var(--muted)); }
+            .bridge-notify-kicker::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--accent-c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-c) 22%, transparent); }
+            .bridge-notify-title { margin: 6px 0 0; font-size: 15px; font-weight: 850; letter-spacing: -0.02em; color: var(--text); }
+            .bridge-notify-lead { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+            .bridge-notify-cols { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; justify-content: center; }
+            .bridge-notify-col { flex: 1 1 280px; max-width: 400px; border-radius: 16px; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface-2) 88%, var(--card-strong)); padding: 14px 14px 12px; display: flex; flex-direction: column; min-height: 0; }
+            .bridge-notify-col--sms { border-top: 3px solid #0ea5e9; }
+            .bridge-notify-col--wa { border-top: 3px solid #16a34a; }
+            .bridge-notify-col--wa.is-wa-roadmap { opacity: 0.92; border-top-color: color-mix(in srgb, #16a34a 45%, var(--border)); }
+            .bridge-notify-col__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+            .bridge-notify-col__h { margin: 0; font-size: 14px; font-weight: 850; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+            .bridge-notify-provider { font-size: 11px; font-weight: 750; padding: 4px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, #0ea5e9 40%, var(--border)); background: color-mix(in srgb, #0ea5e9 12%, transparent); color: #0369a1; }
+            .dark .bridge-notify-provider { color: #7dd3fc; }
+            .bridge-notify-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+            .bridge-notify-chip { font-size: 10px; font-weight: 750; letter-spacing: 0.03em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+            .bridge-notify-chip--ok { border-color: color-mix(in srgb, #059669 45%, var(--border)); color: #047857; background: color-mix(in srgb, #059669 10%, transparent); }
+            .dark .bridge-notify-chip--ok { color: #6ee7b7; }
+            .bridge-notify-chip--bad { border-color: color-mix(in srgb, #dc2626 45%, var(--border)); color: #b91c1c; background: color-mix(in srgb, #dc2626 10%, transparent); }
+            .bridge-notify-chip--wait { border-color: color-mix(in srgb, #64748b 40%, var(--border)); color: var(--muted); }
+            .bridge-notify-flow { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; justify-content: center; }
+            .bridge-notify-step { flex: 1 1 76px; max-width: 118px; padding: 8px 6px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--border) 95%, transparent); background: color-mix(in srgb, var(--surface-1) 90%, transparent); text-align: center; }
+            .bridge-notify-step__n { font-size: 9px; font-weight: 850; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+            .bridge-notify-step__t { font-size: 11px; font-weight: 800; margin-top: 4px; line-height: 1.25; color: var(--text); }
+            .bridge-notify-step__d { font-size: 10px; color: var(--muted); margin-top: 5px; line-height: 1.35; }
+            .bridge-notify-chev { flex: 0 0 auto; align-self: center; font-size: 13px; font-weight: 900; color: color-mix(in srgb, var(--muted) 75%, transparent); padding: 0 2px; user-select: none; }
+            .bridge-notify-foot { margin-top: 10px; font-size: 11px; line-height: 1.45; color: var(--muted); }
+            .bridge-notify-foot code { font-size: 10px; }
             .bridge-vstub.is-live::after { content: ""; position: absolute; left: 0; right: 0; top: -50%; height: 55%; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent-c) 55%, transparent), transparent); animation: bridgeFlowY 2.6s ease-in-out infinite; opacity: .55; }
             .bridge-node__ico { display: flex; justify-content: center; margin-bottom: 6px; }
             .bridge-node__ico svg { display: block; width: 28px; height: 28px; border-radius: 8px; }
@@ -256,15 +288,17 @@
                                         $smsWaitHint = 'habilite o SMS';
                                     }
                                 }
+                                $nb = is_array($notifyBridge ?? null) ? $notifyBridge : [];
+                                $nbSms = is_array($nb['sms'] ?? null) ? $nb['sms'] : [];
+                                $nbWa = is_array($nb['whatsapp'] ?? null) ? $nb['whatsapp'] : [];
                             @endphp
                             <section class="bridge-map" id="bridge-map" aria-labelledby="bridge-map-title" data-tone="{{ $connectionTone ?? 'ok' }}" data-status-url="{{ route('integrations.overview.status') }}">
                                 <div class="bridge-map__title" id="bridge-map-title">Mapa da ponte</div>
                                 <div class="bridge-map__sub">
-                                    Os dados entram pelo <strong>iEducar</strong>, passam pelo <strong>GIDE</strong> (fila e regras) e seguem para o <strong>Gestor</strong> na catraca (SDK Kiper).
-                                    O <strong>SMS</strong> fica ligado ao GIDE (envio após presença), mas só faz sentido operacionalmente com o <strong>Gestor</strong> entregue e a integração SMS configurada.
-                                    Faixas com movimento = tronco iEducar ↔ GIDE ↔ Gestor; ramo ao SMS usa traço estático até o encadeamento estar pronto.
+                                    <strong>Tronco</strong>: iEducar → GIDE → Gestor (catraca). <strong>Notify</strong> (GIDE): após presença, fila <code class="mono">SendPresenceSms</code> + <code class="mono">SmsService</code> até o cliente SMS configurado; WhatsApp seguirá o mesmo desenho quando a integração existir.
+                                    Faixas animadas = tronco ativo; o ramo vertical abaixo liga o GIDE aos canais Notify.
                                 </div>
-                                <div class="bridge-spine-grid" role="img" aria-label="Fluxo iEducar, GIDE, Gestor e ramo SMS">
+                                <div class="bridge-spine-grid" role="img" aria-label="Fluxo iEducar, GIDE e Gestor">
                                     <div class="bridge-node">
                                         <div class="bridge-node__ico" aria-hidden="true">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="8" fill="#1b6b3a"/><path fill="#fff" d="M8 9h2.6v14H8V9zm5.3 0h4.2c3.8 0 6.1 2.1 6.1 5.6 0 3.4-2.3 5.5-6.1 5.5h-1.6V23h-2.6V9zm2.6 2.4v6.3h1.4c2.1 0 3.3-1 3.3-3.1 0-2.2-1.2-3.2-3.3-3.2h-1.4z"/></svg>
@@ -276,7 +310,7 @@
                                     <div class="bridge-node bridge-node--gide">
                                         <div class="bridge-node__ico" aria-hidden="true"><img src="/favicon.svg" width="28" height="28" alt="" /></div>
                                         <div class="bridge-node__label">GIDE</div>
-                                        <small>Meio: normaliza eventos, fila assíncrona, outbound Gestor e SMS.</small>
+                                        <small>Meio: eventos, motor de presença, fila, outbound Gestor e <strong>Notify</strong> (<code class="mono">SendPresenceSms</code> / SMS).</small>
                                     </div>
                                     <div class="bridge-link bridge-link--data bridge-link--lr" data-bridge-segment="gestor" data-segment-tone="{{ ($mapSegmentTones ?? [])['gestor'] ?? 'ok' }}" title="Tráfego típico GIDE ↔ Gestor"></div>
                                     <div class="bridge-node">
@@ -287,27 +321,122 @@
                                         <small>Ponta: eventos de acesso (HMAC). Volta: Signin, Invite, Face…</small>
                                     </div>
                                 </div>
-                                <div class="bridge-sms-branch {{ $smsChainReady ? 'is-sms-chain-ready' : '' }}">
+                                <div class="bridge-sms-branch bridge-notify-bundle {{ $smsChainReady ? 'is-sms-chain-ready' : '' }}">
                                     <div class="bridge-vstub-wrap">
-                                        <div class="bridge-vstub {{ $smsChainReady ? 'is-live' : '' }}" title="Ramo SMS a partir do GIDE"></div>
+                                        <div class="bridge-vstub {{ $smsChainReady ? 'is-live' : '' }}" title="Ramos Notify (SMS e WhatsApp) a partir do GIDE"></div>
                                     </div>
-                                    <div class="bridge-node bridge-node--sms" style="max-width: 220px; width: 100%;">
-                                        <div class="bridge-node__ico" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="8" fill="#0ea5e9"/><path fill="#fff" d="M10 11.5c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v6.5c0 1.1-.9 2-2 2h-4.2L12 22v-2.5h-2c-1.1 0-2-.9-2-2v-6z"/></svg>
+                                    <div class="bridge-notify-head">
+                                        <div class="bridge-notify-kicker">Notify no GIDE</div>
+                                        <p class="bridge-notify-title">Canais de notificação após presença</p>
+                                        <p class="bridge-notify-lead">
+                                            O mesmo gatilho do negócio alimenta SMS hoje (fila + templates). WhatsApp reutiliza o desenho; estado abaixo reflete integração <code class="mono">whatsapp</code> na base (quando existir) e testes de faixa <strong>saída</strong>/<strong>entrada</strong> dos cartões.
+                                        </p>
+                                    </div>
+                                    <div class="bridge-notify-cols">
+                                        <div class="bridge-notify-col bridge-notify-col--sms" aria-labelledby="notify-sms-title">
+                                            <div class="bridge-notify-col__head">
+                                                <h3 class="bridge-notify-col__h" id="notify-sms-title">
+                                                    <span aria-hidden="true" style="display:inline-flex;width:26px;height:26px;border-radius:8px;background:#0ea5e9;align-items:center;justify-content:center;">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                                    </span>
+                                                    SMS
+                                                </h3>
+                                                @if (! empty($nbSms['provider_label'] ?? null))
+                                                    <span class="bridge-notify-provider" title="integrations.extra.provider">{{ $nbSms['provider_label'] }}</span>
+                                                @endif
+                                            </div>
+                                            <div class="bridge-notify-chips" role="list">
+                                                @if ($smsChainReady)
+                                                    <span class="bridge-notify-chip bridge-notify-chip--ok" role="listitem">Encadeamento Gestor+SMS OK</span>
+                                                @else
+                                                    <span class="bridge-notify-chip bridge-notify-chip--wait" role="listitem">Encadeamento: {{ $smsWaitHint ?? 'pendente' }}</span>
+                                                @endif
+                                                @if (! empty($nbSms['lane_out_tested']))
+                                                    <span class="bridge-notify-chip {{ ! empty($nbSms['lane_out_ok']) ? 'bridge-notify-chip--ok' : 'bridge-notify-chip--bad' }}" role="listitem">Teste saída (cartão)</span>
+                                                @else
+                                                    <span class="bridge-notify-chip bridge-notify-chip--wait" role="listitem">Teste saída: não corrido</span>
+                                                @endif
+                                                @if (! empty($nbSms['lane_in_tested']))
+                                                    <span class="bridge-notify-chip {{ ! empty($nbSms['lane_in_ok']) ? 'bridge-notify-chip--ok' : 'bridge-notify-chip--bad' }}" role="listitem">Teste entrada (cartão)</span>
+                                                @endif
+                                            </div>
+                                            <div class="bridge-notify-flow" aria-label="Fluxo SMS via Notify">
+                                                @foreach ($nbSms['steps'] ?? [] as $i => $st)
+                                                    @if ($i > 0)
+                                                        <span class="bridge-notify-chev" aria-hidden="true">›</span>
+                                                    @endif
+                                                    <div class="bridge-notify-step" title="{{ $st['d'] ?? '' }}">
+                                                        <div class="bridge-notify-step__n">Passo {{ $st['n'] ?? $i + 1 }}</div>
+                                                        <div class="bridge-notify-step__t">{{ $st['t'] ?? '—' }}</div>
+                                                        <div class="bridge-notify-step__d">{{ $st['d'] ?? '' }}</div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            <p class="bridge-notify-foot">
+                                                Cliente HTTP em uso: <code class="mono">{{ $nbSms['provider_client_class'] ?? '—' }}</code>.
+                                                Código: <code class="mono">App\Jobs\SendPresenceSms</code> → <code class="mono">App\Services\Sms\SmsService</code>.
+                                            </p>
                                         </div>
-                                        <div class="bridge-node__label">SMS</div>
-                                        <small>
-                                            Plugado no GIDE; depende do Gestor para presença e da integração SMS.
-                                            @if (! $smsChainReady && $smsWaitHint)
-                                                <span style="display:block;margin-top:4px;color:var(--muted);">Ramo em espera ({{ $smsWaitHint }}).</span>
-                                            @endif
-                                        </small>
+                                        <div class="bridge-notify-col bridge-notify-col--wa {{ empty($nbWa['has_row'] ?? null) ? 'is-wa-roadmap' : '' }}" aria-labelledby="notify-wa-title">
+                                            <div class="bridge-notify-col__head">
+                                                <h3 class="bridge-notify-col__h" id="notify-wa-title">
+                                                    <span aria-hidden="true" style="display:inline-flex;width:26px;height:26px;border-radius:8px;background:#16a34a;align-items:center;justify-content:center;">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                                    </span>
+                                                    WhatsApp
+                                                </h3>
+                                                @if (! empty($nbWa['operational']))
+                                                    <span class="bridge-notify-provider" style="border-color:color-mix(in srgb,#16a34a 40%,var(--border));background:color-mix(in srgb,#16a34a 12%,transparent);color:#15803d;">Canal verificado</span>
+                                                @elseif (! empty($nbWa['has_row']))
+                                                    <span class="bridge-notify-provider" style="border-color:color-mix(in srgb,#64748b 40%,var(--border));">Integração na base</span>
+                                                @else
+                                                    <span class="bridge-notify-provider" style="border-color:color-mix(in srgb,var(--muted) 35%,var(--border));color:var(--muted);">Roadmap</span>
+                                                @endif
+                                            </div>
+                                            <div class="bridge-notify-chips" role="list">
+                                                @if (empty($nbWa['has_row']))
+                                                    <span class="bridge-notify-chip bridge-notify-chip--wait" role="listitem">Sem <code class="mono">integrations.key=whatsapp</code></span>
+                                                @else
+                                                    @if (! empty($nbWa['configured']))
+                                                        <span class="bridge-notify-chip {{ ! empty($nbWa['enabled']) ? 'bridge-notify-chip--ok' : 'bridge-notify-chip--wait' }}" role="listitem">{{ ! empty($nbWa['enabled']) ? 'Habilitada' : 'Desligada' }}</span>
+                                                    @else
+                                                        <span class="bridge-notify-chip bridge-notify-chip--wait" role="listitem">Credenciais incompletas</span>
+                                                    @endif
+                                                    @if (! empty($nbWa['lane_out_tested']))
+                                                        <span class="bridge-notify-chip {{ ! empty($nbWa['lane_out_ok']) ? 'bridge-notify-chip--ok' : 'bridge-notify-chip--bad' }}" role="listitem">Teste saída</span>
+                                                    @elseif (! empty($nbWa['has_row']))
+                                                        <span class="bridge-notify-chip bridge-notify-chip--wait" role="listitem">Teste saída: pendente</span>
+                                                    @endif
+                                                @endif
+                                            </div>
+                                            <div class="bridge-notify-flow" aria-label="Fluxo WhatsApp via Notify (referência)">
+                                                @foreach ($nbWa['steps'] ?? [] as $i => $st)
+                                                    @if ($i > 0)
+                                                        <span class="bridge-notify-chev" aria-hidden="true">›</span>
+                                                    @endif
+                                                    <div class="bridge-notify-step" title="{{ $st['d'] ?? '' }}">
+                                                        <div class="bridge-notify-step__n">Passo {{ $st['n'] ?? $i + 1 }}</div>
+                                                        <div class="bridge-notify-step__t">{{ $st['t'] ?? '—' }}</div>
+                                                        <div class="bridge-notify-step__d">{{ $st['d'] ?? '' }}</div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            <p class="bridge-notify-foot">
+                                                @if (! empty($nbWa['operational']))
+                                                    Fluxo de WhatsApp considerado <strong>operacional</strong> para este painel: integração presente, habilitada e último teste de <strong>saída</strong> nos cartões OK.
+                                                @elseif (! empty($nbWa['has_row']))
+                                                    Há registo de integração WhatsApp: complete credenciais, habilite e use os testes de faixa do cartão quando existir na grelha abaixo.
+                                                @else
+                                                    Estado alinhado a <code class="mono">docs/WHATSAPP_INTEGRACAO_NOTIFICACOES.md</code> — mesmo padrão Notify que o SMS quando o cliente e os jobs forem adicionados.
+                                                @endif
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="bridge-legend">
-                                    <div><span>→</span> <strong>Tronco</strong>: iEducar — GIDE — Gestor (fluxo principal animado como “canal ativo”).</div>
-                                    <div><span>↓</span> <strong>SMS</strong>: ramo a partir do GIDE; animação leve só quando Gestor + SMS estão prontos e o SMS está habilitado.</div>
-                                    <div><span>◎</span> <strong>Status da conexão</strong>: cada trecho do tronco combina configuração mínima, sinais operacionais do conector e os <strong>últimos testes por faixa</strong> (os mesmos badges dos cartões). O backlog de jobs entra no <strong>resumo geral</strong> e no trecho Gestor, sem pintar o iEducar só por fila. Para <strong>jobs, falhas e entregas</strong> numa única lista, abra <a href="{{ route('integrations.gide-queues') }}">Filas GIDE</a>. Atualização automática a cada <strong>1 minuto</strong>.</div>
+                                    <div><span>→</span> <strong>Tronco</strong>: iEducar — GIDE — Gestor (canal principal animado).</div>
+                                    <div><span>↓</span> <strong>Notify</strong>: ramos SMS e WhatsApp a partir do GIDE; o traço vertical anima quando o encadeamento Gestor+SMS está pronto (como antes).</div>
+                                    <div><span>◎</span> <strong>Status</strong>: tronco usa testes por faixa + sinais operacionais; em Notify, o <strong>cliente SMS</strong> vem de <code class="mono">integrations.extra.provider</code> e os <strong>chips</strong> espelham encadeamento e testes dos cartões. <a href="{{ route('integrations.gide-queues') }}">Filas GIDE</a> · atualização automática a cada <strong>1 minuto</strong>.</div>
                                 </div>
                                 <p class="bridge-map__status-hint" id="bridge-map-status-hint" aria-live="polite">Tom atual: <span class="mono" id="bridge-map-tone-label">{{ $connectionTone ?? 'ok' }}</span> · próxima verificação em <span id="bridge-map-countdown">60</span>s</p>
                                 @if ($integrationsOverviewAdmin ?? false)

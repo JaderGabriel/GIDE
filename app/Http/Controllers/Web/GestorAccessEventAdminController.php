@@ -12,6 +12,7 @@ use App\Services\Presence\PresenceRuleEngine;
 use App\Services\Sms\SmsService;
 use App\Support\AdminListPerPage;
 use App\Support\Ieducar\IeducarFrequenciaPreviewMode;
+use App\Support\Presence\AccessEventOccurredAtResolver;
 use App\Support\SmsTemplateKey;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -300,7 +301,7 @@ class GestorAccessEventAdminController extends Controller
         $payload = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
         $payload = $this->normalizePayloadForPresence($delivery->inbound_channel ?? null, $payload);
 
-        $occurredAt = $this->resolveOccurredAtFromPayload($payload);
+        $occurredAt = $this->resolveOccurredAtFromPayload($payload, $delivery->inbound_channel ?? null);
         $analysis = (new PresenceRuleEngine)->analyze($payload, $occurredAt, $ieducar);
 
         $gestorEnv = strtolower(trim((string) ($delivery->gestor_ie_environment ?? 'homolog')));
@@ -374,7 +375,7 @@ class GestorAccessEventAdminController extends Controller
         $payload = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
         $payload = $this->normalizePayloadForPresence($delivery->inbound_channel ?? null, $payload);
         $analysis = is_array($delivery->analysis_json) ? $delivery->analysis_json : [];
-        $occurredAt = $this->resolveOccurredAtFromPayload($payload);
+        $occurredAt = $this->resolveOccurredAtFromPayload($payload, $delivery->inbound_channel ?? null);
         $http = $delivery->ieducar_frequencia_http_status;
         $ieducarHttpLabel = $http !== null ? (string) $http : '—';
 
@@ -436,23 +437,9 @@ class GestorAccessEventAdminController extends Controller
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function resolveOccurredAtFromPayload(array $payload): ?Carbon
+    private function resolveOccurredAtFromPayload(array $payload, ?string $inboundChannel = null): ?Carbon
     {
-        $candidateTs = data_get($payload, 'occurred_at')
-            ?? data_get($payload, 'timestamp')
-            ?? data_get($payload, 'event_time')
-            ?? data_get($payload, 'creationDate')
-            ?? data_get($payload, 'creation_date');
-
-        if (! is_string($candidateTs) || $candidateTs === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($candidateTs);
-        } catch (\Throwable) {
-            return null;
-        }
+        return AccessEventOccurredAtResolver::resolve($payload, $inboundChannel)['occurred_at'];
     }
 
     /**

@@ -77,6 +77,10 @@
             .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
             .gae-json { margin-top: 10px; padding: 12px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg0) 72%, transparent); white-space: pre-wrap; word-break: break-word; max-height: min(48vh, 480px); overflow: auto; }
 
+            .gae-json-grid { margin-top: 14px; display: grid; gap: 14px; grid-template-columns: 1fr; }
+            @media (min-width: 960px) { .gae-json-grid { grid-template-columns: 1fr 1fr; } }
+            .gae-json-grid > .gae-card { margin-top: 0; }
+
             .gae-reproc-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
             .gae-reproc-table th { text-align: left; font-weight: 700; padding: 6px 8px; border-bottom: 2px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
             .gae-reproc-table td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); vertical-align: top; }
@@ -238,7 +242,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                                     <div>
                                         <div>{{ session('sms_success') }}</div>
-                                        <div class="gae-sms-flash-success__meta">Se precisar de outro envio, pode voltar a usar as ações abaixo.</div>
+                                        <div class="gae-sms-flash-success__meta">Se precisar de outro envio, pode voltar a usar o painel de reenvio SMS mais abaixo nesta página.</div>
                                     </div>
                                 </div>
                             @endif
@@ -252,6 +256,99 @@
                                 <div class="gae-callout gae-callout--danger" style="margin-top: 12px;" role="alert">{{ $errors->first('sms') }}</div>
                             @endif
 
+                            <div class="gae-callout gae-callout--info">
+                                <strong>Porque pode diferir de “Frequência iEducar” no admin:</strong>
+                                esta página reflete <strong>um POST</strong> do webhook (<span class="mono">gestor_access_event_deliveries</span>).
+                                O POST de preview ao iEducar só ocorre se (1) a integração <span class="mono">ieducar</span> existir e estiver <strong>habilitada</strong>
+                                (<span class="mono">enabled=true</span> agora: {{ $ieducarEnabled ? 'sim' : 'não' }}),
+                                (2) o motor de presença devolver <span class="mono">action=mark_presence</span>
+                                (neste evento: <span class="mono">{{ $analysisAction !== null && $analysisAction !== '' ? $analysisAction : '—' }}</span>),
+                                (3) existir <span class="mono">cod_aluno</span> válido após o mapeamento do payload.
+                                Por padrão, o motor considera presença <strong>permitida</strong> quando <span class="mono">action.mark_presence</span> não vem; ele só bloqueia quando <span class="mono">action.mark_presence=false</span> é declarado.
+                                A rota <span class="mono">/admin/frequencia-ieducar</span> lista outra tabela (<span class="mono">ieducar_frequencia_registro_deliveries</span>) — fluxos que enfileiram registo diretamente; sucesso lá não implica que este evento tenha enviado JSON ao iEducar.
+                            </div>
+
+                            <div class="gae-callout" style="margin-top: 12px;">
+                                <strong>Modo técnico:</strong> quando há POST ao iEducar, usa-se <span class="mono">meta.preview</span> conforme o setup em <span class="mono">/integracoes/gestor</span> (Presença). Aqui: <span class="mono">{{ $delivery->ieducar_preview_only ? 'true' : 'false' }}</span>.
+                            </div>
+
+                            @php $enrichment = data_get($delivery->analysis_json, 'enrichment'); @endphp
+                            @if (is_array($enrichment) && ($enrichment['nome'] ?? $enrichment['turma'] ?? $enrichment['serie'] ?? null))
+                                <div class="gae-card" style="margin-top: 14px; border-color: color-mix(in srgb, var(--accent-a) 25%, var(--border)); background: color-mix(in srgb, var(--accent-a) 4%, var(--card-strong));">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Dados do aluno (cache iEducar)</h2>
+                                            <p class="gae-card__hint">Enriquecido automaticamente via consulta ao iEducar.</p>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; font-size: 13px;">
+                                        @foreach (['nome' => 'Nome', 'curso' => 'Curso', 'turma' => 'Turma', 'serie' => 'Série', 'etapa' => 'Etapa', 'situacao' => 'Situação', 'matricula_id' => 'Matrícula'] as $key => $label)
+                                            @if ($enrichment[$key] ?? null)
+                                                <div>
+                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">{{ $label }}</div>
+                                                    <div style="font-weight: 600;">{{ $enrichment[$key] }}</div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            @php
+                                $tsInfo = data_get($delivery->analysis_json, 'timestamp_info');
+                                $interpretedUtc = is_array($tsInfo) && ($tsInfo['interpreted_as_utc'] ?? false);
+                                $tzDeclared = is_array($tsInfo) ? ($tsInfo['tz_declared'] ?? true) : true;
+                                $tsCardToneOk = $interpretedUtc || $tzDeclared;
+                            @endphp
+                            @if (is_array($tsInfo) && ($tsInfo['raw'] ?? null))
+                                <div class="gae-card" style="margin-top: 14px; border-color: color-mix(in srgb, {{ $tsCardToneOk ? '#0891b2' : '#d97706' }} 25%, var(--border)); background: color-mix(in srgb, {{ $tsCardToneOk ? '#0891b2' : '#d97706' }} 4%, var(--card-strong));">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Horário do evento</h2>
+                                            <p class="gae-card__hint">Timestamp original da catraca normalizado para o fuso da aplicação.</p>
+                                        </div>
+                                    </div>
+                                    @if ($interpretedUtc)
+                                        <div style="margin-bottom: 10px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, #0891b2 10%, transparent); border: 1px solid color-mix(in srgb, #0891b2 30%, var(--border)); font-size: 12px; color: #0e7490; line-height: 1.5;">
+                                            <strong>Fuso não declarado no JSON da catraca.</strong>
+                                            O valor de <span class="mono">creationDate</span> (ou equivalente) não traz sufixo <span class="mono">Z</span> nem offset (<span class="mono">±HH:MM</span>).
+                                            O sistema <strong>assume UTC (fuso 0)</strong> e converte para <span class="mono">{{ config('app.timezone', 'America/Sao_Paulo') }}</span>.
+                                        </div>
+                                    @elseif (! $tzDeclared)
+                                        <div style="margin-bottom: 10px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, #d97706 10%, transparent); border: 1px solid color-mix(in srgb, #d97706 30%, var(--border)); font-size: 12px; color: #92400e; line-height: 1.5;">
+                                            <strong>Fuso horário não declarado no payload original.</strong>
+                                            O valor não contém indicador de timezone (ex: <span class="mono">+00:00</span>, <span class="mono">Z</span>, <span class="mono">-03:00</span>).
+                                            O sistema assumiu que o horário já está em <span class="mono">{{ config('app.timezone', 'America/Sao_Paulo') }}</span>.
+                                            Se a origem opera noutro fuso, o horário normalizado pode estar incorreto.
+                                        </div>
+                                    @endif
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; font-size: 13px;">
+                                        <div>
+                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Valor original</div>
+                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['raw'] }}</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Fuso / interpretação</div>
+                                            <div class="mono" style="font-weight: 600;">
+                                                @if ($tzDeclared)
+                                                    {{ $tsInfo['original_tz'] }}
+                                                @elseif ($interpretedUtc)
+                                                    <span class="mono">+00:00</span> <span style="font-size: 12px; color: var(--muted); font-weight: 600;">(UTC assumido)</span>
+                                                @else
+                                                    <span style="color: #d97706;">n/d (sem fuso declarado)</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Normalizado ({{ config('app.timezone', 'America/Sao_Paulo') }})</div>
+                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['normalized_br'] ?? '—' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
                             @if (! $smsIntegrationEnabled)
                                 <div class="gae-callout" style="margin-top: 12px;">
                                     <strong>SMS:</strong> integração desligada — ative em <a href="{{ route('integrations.sms') }}">Integrações → SMS</a> para ver opções de reenvio aqui.
@@ -261,7 +358,7 @@
                                     <strong>SMS:</strong> integração ligada, mas nenhum template de presença está ativo. Ative o template desejado em <a href="{{ route('integrations.sms') }}">Integrações → SMS</a>.
                                 </div>
                             @else
-                                <div class="gae-sms-panel">
+                                <div class="gae-sms-panel" style="margin-top: 14px;">
                                     <div class="gae-sms-panel__head">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                         <div>
@@ -323,6 +420,166 @@
                                 </div>
                             @endif
 
+                            <div class="gae-grid">
+                                <div class="gae-card">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Resumo</h2>
+                                            <p class="gae-card__hint">Identificação e ligação a <span class="mono">access_events</span>.</p>
+                                        </div>
+                                    </div>
+                                    <div class="mono" style="line-height:1.65;">
+                                        <div><span class="bridge-muted">event_id</span> {{ $delivery->event_id }}</div>
+                                        <div><span class="bridge-muted">access_event novo neste POST</span> {{ $delivery->access_event_was_created ? 'sim' : 'não' }}</div>
+                                        @if ($delivery->accessEvent)
+                                            <div><span class="bridge-muted">access_events.id</span> {{ $delivery->accessEvent->id }}</div>
+                                        @endif
+                                        <div><span class="bridge-muted">processado em</span> {{ $delivery->processed_at?->timezone(config('app.timezone'))->format('d/m/Y H:i:s') ?? '—' }}</div>
+                                    </div>
+                                </div>
+                                <div class="gae-card">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Resultado iEducar (preview)</h2>
+                                            <p class="gae-card__hint">Marker interno após tentativa ou skip.</p>
+                                        </div>
+                                    </div>
+                                    <pre class="gae-json mono">{{ json_encode($marker, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                </div>
+                            </div>
+
+                            <div class="gae-json-grid">
+                                <div class="gae-card">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">JSON recebido (payload bruto)</h2>
+                                            <p class="gae-card__hint">Corpo do webhook guardado para auditoria.</p>
+                                        </div>
+                                    </div>
+                                    <pre class="gae-json mono">{{ json_encode($delivery->inbound_payload ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                </div>
+
+                                <div class="gae-card">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Análise (motor de presença)</h2>
+                                            <p class="gae-card__hint">Inclui metadados de canal e decisão do motor.</p>
+                                        </div>
+                                    </div>
+                                    <pre class="gae-json mono">{{ json_encode($delivery->analysis_json ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                </div>
+
+                                <div class="gae-card">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">JSON enviado ao iEducar (catraca-frequência)</h2>
+                                            <p class="gae-card__hint">Só existe quando foi montado o body Plan B e feito POST em preview.</p>
+                                        </div>
+                                    </div>
+                                    @if ($delivery->ieducar_frequencia_request_json)
+                                        <pre class="gae-json mono">{{ json_encode($delivery->ieducar_frequencia_request_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                        @if ($delivery->ieducar_frequencia_error)
+                                            <div class="gae-callout gae-callout--danger" style="margin-top: 12px;">
+                                                <strong>Erro ou resposta não OK:</strong> {{ $delivery->ieducar_frequencia_error }}
+                                            </div>
+                                        @endif
+                                    @elseif ($delivery->ieducar_frequencia_error)
+                                        <div class="gae-callout gae-callout--danger" style="margin-top: 0;">
+                                            <strong>Sem corpo de envio ou chamada falhou:</strong> {{ $delivery->ieducar_frequencia_error }}
+                                        </div>
+                                    @elseif ($markerStatus === 'skipped' && $markerReason)
+                                        <div class="gae-callout gae-callout--warn" style="margin-top: 0;">
+                                            <strong>Não houve POST ao iEducar neste processamento.</strong> {{ $markerReason }}
+                                        </div>
+                                    @else
+                                        <p class="bridge-muted" style="margin:0;">Sem payload de envio registado. Consulte o resumo acima e a análise do motor.</p>
+                                    @endif
+                                </div>
+
+                                <div class="gae-card">
+                                    <div class="gae-card__head">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                        <div>
+                                            <h2 class="gae-card__title">Resposta HTTP / corpo iEducar</h2>
+                                            <p class="gae-card__hint">Resposta JSON ou excerto de erro.</p>
+                                        </div>
+                                    </div>
+                                    @if ($delivery->ieducar_frequencia_response_json)
+                                        <pre class="gae-json mono">{{ json_encode($delivery->ieducar_frequencia_response_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                                    @else
+                                        <p class="bridge-muted" style="margin:0;">—</p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            @php $reprocLog = is_array($delivery->reprocessing_log) ? $delivery->reprocessing_log : []; @endphp
+                            @if (count($reprocLog) > 0)
+                            <div class="gae-card" style="margin-top: 14px;">
+                                <div class="gae-card__head">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                    <div>
+                                        <h2 class="gae-card__title">Histórico de reprocessamentos ({{ count($reprocLog) }})</h2>
+                                        <p class="gae-card__hint">Ações administrativas aplicadas a esta entrega.</p>
+                                    </div>
+                                </div>
+                                <table class="gae-reproc-table mono">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Ação</th>
+                                            <th>Quando</th>
+                                            <th>Usuário</th>
+                                            <th>Detalhes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($reprocLog as $idx => $entry)
+                                            @php
+                                                $actionLabel = match ($entry['action'] ?? '?') {
+                                                    'reevaluate_presence' => 'Reavaliar presença',
+                                                    'retry' => 'Reenviar ao iEducar',
+                                                    'requeue' => 'Reenfileirar',
+                                                    'force_process' => 'Forçar processamento',
+                                                    'sms_resend_config' => 'SMS (configuração)',
+                                                    'sms_resend_guardians' => 'SMS (responsáveis)',
+                                                    default => $entry['action'] ?? '?',
+                                                };
+                                                $actionCls = match ($entry['action'] ?? '') {
+                                                    'reevaluate_presence' => 'gae-reproc-action--reevaluate',
+                                                    'retry' => 'gae-reproc-action--retry',
+                                                    'requeue' => 'gae-reproc-action--requeue',
+                                                    'force_process' => 'gae-reproc-action--force',
+                                                    'sms_resend_config', 'sms_resend_guardians' => 'gae-reproc-action--requeue',
+                                                    default => '',
+                                                };
+                                                $details = collect($entry)->except(['action', 'at', 'user'])->filter(fn($v) => $v !== null)->toArray();
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $idx + 1 }}</td>
+                                                <td><span class="gae-reproc-action {{ $actionCls }}">{{ $actionLabel }}</span></td>
+                                                <td>{{ isset($entry['at']) ? \Carbon\Carbon::parse($entry['at'])->timezone(config('app.timezone'))->format('d/m/Y H:i:s') : '—' }}</td>
+                                                <td>{{ $entry['user'] ?? '—' }}</td>
+                                                <td>
+                                                    @if (count($details) > 0)
+                                                        @foreach ($details as $k => $v)
+                                                            <span class="bridge-muted">{{ $k }}:</span> {{ is_bool($v) ? ($v ? 'true' : 'false') : $v }}@if (! $loop->last), @endif
+                                                        @endforeach
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @endif
+
                             @php
                                 $smsTriggerLabels = [
                                     'automated' => 'Disparo automático (fila)',
@@ -340,7 +597,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                                     <div>
                                         <h2 class="gae-card__title">SMS enviados neste evento</h2>
-                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> feitos pelos botões acima. O histórico cronológico usa <span class="mono">context.send_log</span> (até 50 entradas por destinatário/template).</p>
+                                        <p class="gae-card__hint">Ligação por <span class="mono">event_id</span> igual a <span class="mono">{{ $delivery->event_id }}</span> na tabela <span class="mono">sms_deliveries</span>. Inclui envios pela <strong>fila</strong> (<span class="mono">SendPresenceSms</span>) e <strong>reenvios</strong> do painel nesta página. O histórico cronológico usa <span class="mono">context.send_log</span> (até 50 entradas por destinatário/template).</p>
                                     </div>
                                 </div>
 
@@ -440,245 +697,6 @@
                                     @else
                                         <p class="bridge-muted" style="margin-top: 14px;">Sem linha de tempo detalhada: só passamos a gravar o histórico em <span class="mono">send_log</span> após esta versão, ou ainda não houve tentativa concluída (enviado ou erro final).</p>
                                     @endif
-                                @endif
-                            </div>
-
-                            <div class="gae-callout gae-callout--info">
-                                <strong>Porque pode diferir de “Frequência iEducar” no admin:</strong>
-                                esta página reflete <strong>um POST</strong> do webhook (<span class="mono">gestor_access_event_deliveries</span>).
-                                O POST de preview ao iEducar só ocorre se (1) a integração <span class="mono">ieducar</span> existir e estiver <strong>habilitada</strong>
-                                (<span class="mono">enabled=true</span> agora: {{ $ieducarEnabled ? 'sim' : 'não' }}),
-                                (2) o motor de presença devolver <span class="mono">action=mark_presence</span>
-                                (neste evento: <span class="mono">{{ $analysisAction !== null && $analysisAction !== '' ? $analysisAction : '—' }}</span>),
-                                (3) existir <span class="mono">cod_aluno</span> válido após o mapeamento do payload.
-                                Por padrão, o motor considera presença <strong>permitida</strong> quando <span class="mono">action.mark_presence</span> não vem; ele só bloqueia quando <span class="mono">action.mark_presence=false</span> é declarado.
-                                A rota <span class="mono">/admin/frequencia-ieducar</span> lista outra tabela (<span class="mono">ieducar_frequencia_registro_deliveries</span>) — fluxos que enfileiram registo diretamente; sucesso lá não implica que este evento tenha enviado JSON ao iEducar.
-                            </div>
-
-                            <div class="gae-callout" style="margin-top: 12px;">
-                                <strong>Modo técnico:</strong> quando há POST ao iEducar, usa-se <span class="mono">meta.preview</span> conforme o setup em <span class="mono">/integracoes/gestor</span> (Presença). Aqui: <span class="mono">{{ $delivery->ieducar_preview_only ? 'true' : 'false' }}</span>.
-                            </div>
-
-                            @php $enrichment = data_get($delivery->analysis_json, 'enrichment'); @endphp
-                            @if (is_array($enrichment) && ($enrichment['nome'] ?? $enrichment['turma'] ?? $enrichment['serie'] ?? null))
-                                <div class="gae-card" style="margin-top: 14px; border-color: color-mix(in srgb, var(--accent-a) 25%, var(--border)); background: color-mix(in srgb, var(--accent-a) 4%, var(--card-strong));">
-                                    <div class="gae-card__head">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                        <div>
-                                            <h2 class="gae-card__title">Dados do aluno (cache iEducar)</h2>
-                                            <p class="gae-card__hint">Enriquecido automaticamente via consulta ao iEducar.</p>
-                                        </div>
-                                    </div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; font-size: 13px;">
-                                        @foreach (['nome' => 'Nome', 'curso' => 'Curso', 'turma' => 'Turma', 'serie' => 'Série', 'etapa' => 'Etapa', 'situacao' => 'Situação', 'matricula_id' => 'Matrícula'] as $key => $label)
-                                            @if ($enrichment[$key] ?? null)
-                                                <div>
-                                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">{{ $label }}</div>
-                                                    <div style="font-weight: 600;">{{ $enrichment[$key] }}</div>
-                                                </div>
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            @php $tsInfo = data_get($delivery->analysis_json, 'timestamp_info'); @endphp
-                            @if (is_array($tsInfo) && ($tsInfo['raw'] ?? null))
-                                @php $tzDeclared = $tsInfo['tz_declared'] ?? true; @endphp
-                                <div class="gae-card" style="margin-top: 14px; border-color: color-mix(in srgb, {{ $tzDeclared ? '#0891b2' : '#d97706' }} 25%, var(--border)); background: color-mix(in srgb, {{ $tzDeclared ? '#0891b2' : '#d97706' }} 4%, var(--card-strong));">
-                                    <div class="gae-card__head">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                        <div>
-                                            <h2 class="gae-card__title">Horário do evento</h2>
-                                            <p class="gae-card__hint">Timestamp original da catraca normalizado para o fuso da aplicação.</p>
-                                        </div>
-                                    </div>
-                                    @if (! $tzDeclared)
-                                        <div style="margin-bottom: 10px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, #d97706 10%, transparent); border: 1px solid color-mix(in srgb, #d97706 30%, var(--border)); font-size: 12px; color: #92400e; line-height: 1.5;">
-                                            <strong>Fuso horário não declarado no payload original.</strong>
-                                            O valor não contém indicador de timezone (ex: <span class="mono">+00:00</span>, <span class="mono">Z</span>, <span class="mono">-03:00</span>).
-                                            O sistema assumiu que o horário já está em <span class="mono">{{ config('app.timezone', 'America/Sao_Paulo') }}</span>.
-                                            Se a catraca opera em outro fuso, o horário normalizado pode estar incorreto.
-                                        </div>
-                                    @endif
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; font-size: 13px;">
-                                        <div>
-                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Valor original</div>
-                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['raw'] }}</div>
-                                        </div>
-                                        <div>
-                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Fuso original</div>
-                                            <div class="mono" style="font-weight: 600;">
-                                                @if ($tzDeclared)
-                                                    {{ $tsInfo['original_tz'] }}
-                                                @else
-                                                    <span style="color: #d97706;">n/d (sem fuso declarado)</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);">Normalizado ({{ config('app.timezone', 'America/Sao_Paulo') }})</div>
-                                            <div class="mono" style="font-weight: 600;">{{ $tsInfo['normalized_br'] ?? '—' }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-
-                            <div class="gae-grid">
-                                <div class="gae-card">
-                                    <div class="gae-card__head">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                        <div>
-                                            <h2 class="gae-card__title">Resumo</h2>
-                                            <p class="gae-card__hint">Identificação e ligação a <span class="mono">access_events</span>.</p>
-                                        </div>
-                                    </div>
-                                    <div class="mono" style="line-height:1.65;">
-                                        <div><span class="bridge-muted">event_id</span> {{ $delivery->event_id }}</div>
-                                        <div><span class="bridge-muted">access_event novo neste POST</span> {{ $delivery->access_event_was_created ? 'sim' : 'não' }}</div>
-                                        @if ($delivery->accessEvent)
-                                            <div><span class="bridge-muted">access_events.id</span> {{ $delivery->accessEvent->id }}</div>
-                                        @endif
-                                        <div><span class="bridge-muted">processado em</span> {{ $delivery->processed_at?->timezone(config('app.timezone'))->format('d/m/Y H:i:s') ?? '—' }}</div>
-                                    </div>
-                                </div>
-                                <div class="gae-card">
-                                    <div class="gae-card__head">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                        <div>
-                                            <h2 class="gae-card__title">Resultado iEducar (preview)</h2>
-                                            <p class="gae-card__hint">Marker interno após tentativa ou skip.</p>
-                                        </div>
-                                    </div>
-                                    <pre class="gae-json mono">{{ json_encode($marker, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                                </div>
-                            </div>
-
-                            <div class="gae-card" style="margin-top: 14px;">
-                                <div class="gae-card__head">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                    <div>
-                                        <h2 class="gae-card__title">JSON recebido (payload bruto)</h2>
-                                        <p class="gae-card__hint">Corpo do webhook guardado para auditoria.</p>
-                                    </div>
-                                </div>
-                                <pre class="gae-json mono">{{ json_encode($delivery->inbound_payload ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                            </div>
-
-                            <div class="gae-card" style="margin-top: 14px;">
-                                <div class="gae-card__head">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                                    <div>
-                                        <h2 class="gae-card__title">Análise (motor de presença)</h2>
-                                        <p class="gae-card__hint">Inclui metadados de canal e decisão do motor.</p>
-                                    </div>
-                                </div>
-                                <pre class="gae-json mono">{{ json_encode($delivery->analysis_json ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                            </div>
-
-                            <div class="gae-card" style="margin-top: 14px;">
-                                <div class="gae-card__head">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                    <div>
-                                        <h2 class="gae-card__title">JSON enviado ao iEducar (catraca-frequência)</h2>
-                                        <p class="gae-card__hint">Só existe quando foi montado o body Plan B e feito POST em preview.</p>
-                                    </div>
-                                </div>
-                                @if ($delivery->ieducar_frequencia_request_json)
-                                    <pre class="gae-json mono">{{ json_encode($delivery->ieducar_frequencia_request_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                                    @if ($delivery->ieducar_frequencia_error)
-                                        <div class="gae-callout gae-callout--danger" style="margin-top: 12px;">
-                                            <strong>Erro ou resposta não OK:</strong> {{ $delivery->ieducar_frequencia_error }}
-                                        </div>
-                                    @endif
-                                @elseif ($delivery->ieducar_frequencia_error)
-                                    <div class="gae-callout gae-callout--danger" style="margin-top: 0;">
-                                        <strong>Sem corpo de envio ou chamada falhou:</strong> {{ $delivery->ieducar_frequencia_error }}
-                                    </div>
-                                @elseif ($markerStatus === 'skipped' && $markerReason)
-                                    <div class="gae-callout gae-callout--warn" style="margin-top: 0;">
-                                        <strong>Não houve POST ao iEducar neste processamento.</strong> {{ $markerReason }}
-                                    </div>
-                                @else
-                                    <p class="bridge-muted" style="margin:0;">Sem payload de envio registado. Consulte o resumo acima e a análise do motor.</p>
-                                @endif
-                            </div>
-
-                            @php $reprocLog = is_array($delivery->reprocessing_log) ? $delivery->reprocessing_log : []; @endphp
-                            @if (count($reprocLog) > 0)
-                            <div class="gae-card" style="margin-top: 14px;">
-                                <div class="gae-card__head">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                    <div>
-                                        <h2 class="gae-card__title">Histórico de reprocessamentos ({{ count($reprocLog) }})</h2>
-                                        <p class="gae-card__hint">Ações administrativas aplicadas a esta entrega.</p>
-                                    </div>
-                                </div>
-                                <table class="gae-reproc-table mono">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Ação</th>
-                                            <th>Quando</th>
-                                            <th>Usuário</th>
-                                            <th>Detalhes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($reprocLog as $idx => $entry)
-                                            @php
-                                                $actionLabel = match ($entry['action'] ?? '?') {
-                                                    'reevaluate_presence' => 'Reavaliar presença',
-                                                    'retry' => 'Reenviar ao iEducar',
-                                                    'requeue' => 'Reenfileirar',
-                                                    'force_process' => 'Forçar processamento',
-                                                    'sms_resend_config' => 'SMS (configuração)',
-                                                    'sms_resend_guardians' => 'SMS (responsáveis)',
-                                                    default => $entry['action'] ?? '?',
-                                                };
-                                                $actionCls = match ($entry['action'] ?? '') {
-                                                    'reevaluate_presence' => 'gae-reproc-action--reevaluate',
-                                                    'retry' => 'gae-reproc-action--retry',
-                                                    'requeue' => 'gae-reproc-action--requeue',
-                                                    'force_process' => 'gae-reproc-action--force',
-                                                    'sms_resend_config', 'sms_resend_guardians' => 'gae-reproc-action--requeue',
-                                                    default => '',
-                                                };
-                                                $details = collect($entry)->except(['action', 'at', 'user'])->filter(fn($v) => $v !== null)->toArray();
-                                            @endphp
-                                            <tr>
-                                                <td>{{ $idx + 1 }}</td>
-                                                <td><span class="gae-reproc-action {{ $actionCls }}">{{ $actionLabel }}</span></td>
-                                                <td>{{ isset($entry['at']) ? \Carbon\Carbon::parse($entry['at'])->timezone(config('app.timezone'))->format('d/m/Y H:i:s') : '—' }}</td>
-                                                <td>{{ $entry['user'] ?? '—' }}</td>
-                                                <td>
-                                                    @if (count($details) > 0)
-                                                        @foreach ($details as $k => $v)
-                                                            <span class="bridge-muted">{{ $k }}:</span> {{ is_bool($v) ? ($v ? 'true' : 'false') : $v }}@if (! $loop->last), @endif
-                                                        @endforeach
-                                                    @else
-                                                        —
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            @endif
-
-                            <div class="gae-card" style="margin-top: 14px;">
-                                <div class="gae-card__head">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                                    <div>
-                                        <h2 class="gae-card__title">Resposta HTTP / corpo iEducar</h2>
-                                        <p class="gae-card__hint">Resposta JSON ou excerto de erro.</p>
-                                    </div>
-                                </div>
-                                @if ($delivery->ieducar_frequencia_response_json)
-                                    <pre class="gae-json mono">{{ json_encode($delivery->ieducar_frequencia_response_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                                @else
-                                    <p class="bridge-muted" style="margin:0;">—</p>
                                 @endif
                             </div>
                         </div>

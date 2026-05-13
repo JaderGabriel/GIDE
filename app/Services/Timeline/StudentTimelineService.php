@@ -84,33 +84,46 @@ class StudentTimelineService
     private function countAccessDeliveriesForAluno(int $codAluno): int
     {
         return GestorAccessEventDelivery::query()
-            ->where(function ($q) use ($codAluno) {
-                $q->where('analysis_json->aluno_id', $codAluno)
-                    ->orWhere('inbound_payload->aluno_id', $codAluno);
-            })
+            ->whereNotNull('analysis_json')
+            ->get()
+            ->filter(fn (GestorAccessEventDelivery $d) => $this->codAlunoFromDelivery($d) === $codAluno)
             ->count();
     }
 
     private function appendAccessEvents(Collection &$events, int $codAluno, int $limit): void
     {
         $deliveries = GestorAccessEventDelivery::query()
+            ->with('accessEvent')
             ->whereNotNull('analysis_json')
-            ->latest()
+            ->latest('id')
             ->limit($limit * 3)
             ->get();
 
         foreach ($deliveries as $delivery) {
-            if ($this->extractCodAluno($delivery) !== $codAluno) {
+            if ($this->codAlunoFromDelivery($delivery) !== $codAluno) {
                 continue;
             }
 
-            $action = data_get($delivery->analysis_json, 'action', 'unknown');
-            $status = $delivery->processing_status;
+            $analysis = is_array($delivery->analysis_json) ? $delivery->analysis_json : [];
+            $payload = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
+            $action = (string) data_get($analysis, 'action', 'unknown');
+            $status = (string) $delivery->processing_status;
+            $way = data_get($payload, 'way');
+            $wayStr = is_string($way) ? $way : null;
+            $accessPath = data_get($analysis, 'access_path');
+            $accessWay = data_get($analysis, 'access_way');
+
+            $atIso = $delivery->accessEvent?->occurred_at?->toIso8601String()
+                ?? (string) data_get($analysis, 'timestamp_info.normalized_br')
+                ?: ($delivery->created_at?->toIso8601String() ?? '');
+
+            $timelineFlow = $this->resolveTimelineFlow($action, $accessPath);
+            $tooltip = $this->buildAccessEventTooltip($wayStr, $accessPath, $accessWay, $action, $status, $delivery->inbound_channel);
 
             $events->push([
                 'type' => 'access_event',
-                'at' => $delivery->created_at?->toIso8601String() ?? '',
-                'summary' => "Evento de acesso — motor: {$action}, status: {$status}",
+                'at' => $atIso,
+                'summary' => $this->buildAccessEventSummary($wayStr, $accessPath, $action, $status, $delivery->inbound_channel),
                 'detail_url' => route('admin.gestor-access-events.show', ['id' => $delivery->id]),
                 'data' => [
                     'delivery_id' => $delivery->id,
@@ -118,6 +131,21 @@ class StudentTimelineService
                     'status' => $status,
                     'channel' => $delivery->inbound_channel,
                     'http_status' => $delivery->ieducar_frequencia_http_status,
+                    'way' => $wayStr,
+                    'access_path' => $accessPath,
+                    'access_way' => is_string($accessWay) ? $accessWay : null,
+                    'timeline_flow' => $timelineFlow,
+                    'flow_label' => match ($timelineFlow) {
+                        'entry' => 'Entrada',
+                        'exit' => 'Saída / não-entrada',
+                        default => 'Acesso',
+                    },
+                    'flow_caption' => match ($timelineFlow) {
+                        'entry' => 'Fluxo de entrada — pode registar presença no iEducar.',
+                        'exit' => 'Não envia ao iEducar — fica só no histórico GIDE.',
+                        default => 'Evento de acesso sem classificação de sentido explícita.',
+                    },
+                    'tooltip' => $tooltip,
                 ],
             ]);
         }
@@ -142,6 +170,8 @@ class StudentTimelineService
                     'template_key' => $sms->template_key,
                     'status' => $sms->status,
                     'to' => $sms->to,
+                    'timeline_flow' => 'neutral',
+                    'tooltip' => "SMS {$sms->template_key} — {$sms->status}",
                 ],
             ]);
         }
@@ -168,6 +198,8 @@ class StudentTimelineService
                     'event_type' => $facial->event_type,
                     'ok' => $facial->ok,
                     'http_status' => $facial->http_status,
+                    'timeline_flow' => 'neutral',
+                    'tooltip' => "Facial {$facial->event_type} — HTTP {$facial->http_status}",
                 ],
             ]);
         }
@@ -175,16 +207,98 @@ class StudentTimelineService
 
     private function extractCodAluno(GestorAccessEventDelivery $delivery): int
     {
-        $fromAnalysis = data_get($delivery->analysis_json, 'aluno_id');
-        if (is_numeric($fromAnalysis) && (int) $fromAnalysis > 0) {
-            return (int) $fromAnalysis;
+        return $this->codAlunoFromDelivery($delivery);
+    }
+
+    private function codAlunoFromDelivery(GestorAccessEventDelivery $delivery): int
+    {
+        $analysis = is_array($delivery->analysis_json) ? $delivery->analysis_json : [];
+        $payload = is_array($delivery->inbound_payload) ? $delivery->inbound_payload : [];
+
+        foreach ([data_get($analysis, 'aluno_id'), data_get($payload, 'aluno_id')] as $raw) {
+            if (is_numeric($raw) && (int) $raw > 0) {
+                return (int) $raw;
+            }
+            if (is_string($raw) && preg_match('/(\d+)/', $raw, $m) && (int) $m[1] > 0) {
+                return (int) $m[1];
+            }
         }
 
-        $fromPayload = data_get($delivery->inbound_payload, 'aluno_id');
-        if (is_numeric($fromPayload) && (int) $fromPayload > 0) {
-            return (int) $fromPayload;
+        $fromName = data_get($payload, 'name');
+        if (is_numeric($fromName) && (int) $fromName > 0) {
+            return (int) $fromName;
+        }
+        if (is_string($fromName) && preg_match('/(\d+)/', $fromName, $m) && (int) $m[1] > 0) {
+            return (int) $m[1];
         }
 
         return 0;
+    }
+
+    private function resolveTimelineFlow(string $action, mixed $accessPath): string
+    {
+        if ($action === 'mark_presence') {
+            return 'entry';
+        }
+        if (in_array($accessPath, ['exit', 'non_entry'], true)) {
+            return 'exit';
+        }
+
+        return 'neutral';
+    }
+
+    private function buildAccessEventTooltip(
+        ?string $way,
+        mixed $accessPath,
+        mixed $accessWay,
+        string $action,
+        string $status,
+        ?string $channel,
+    ): string {
+        $parts = [];
+        if ($way !== null && $way !== '') {
+            $parts[] = 'Sentido no equipamento (way): '.$way;
+        }
+        if (is_string($accessWay) && $accessWay !== '' && $accessWay !== $way) {
+            $parts[] = 'Referência motor: '.$accessWay;
+        }
+        if ($accessPath === 'non_entry') {
+            $parts[] = 'Não-entrada: registo apenas para histórico (sem POST ao iEducar).';
+        } elseif ($accessPath === 'exit') {
+            $parts[] = 'Saída / não-entrada: registo apenas para histórico (sem POST ao iEducar).';
+        } elseif ($action === 'mark_presence') {
+            $parts[] = 'Entrada reconhecida: fluxo pode enviar presença ao iEducar conforme configuração.';
+        }
+        $parts[] = 'Motor: '.$action.' · Estado: '.$status;
+        if ($channel) {
+            $parts[] = 'Canal: '.$channel;
+        }
+
+        return implode(' ', $parts);
+    }
+
+    private function buildAccessEventSummary(
+        ?string $way,
+        mixed $accessPath,
+        string $action,
+        string $status,
+        ?string $channel,
+    ): string {
+        $bits = [];
+        if ($way !== null && $way !== '') {
+            $bits[] = 'way '.$way;
+        }
+        if ($accessPath === 'non_entry') {
+            $bits[] = 'não-entrada (histórico)';
+        } elseif ($accessPath === 'exit') {
+            $bits[] = 'saída / não-entrada (histórico)';
+        }
+        $bits[] = 'motor '.$action;
+        $bits[] = 'estado '.$status;
+        if ($channel === GestorAccessEventDelivery::CHANNEL_CATRACA_BEARER) {
+            $bits[] = 'catraca';
+        }
+
+        return 'Acesso — '.implode(' · ', $bits);
     }
 }

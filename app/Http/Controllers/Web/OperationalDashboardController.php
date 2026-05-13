@@ -212,18 +212,14 @@ class OperationalDashboardController extends Controller
     private function dailyVolumeChart(int $days): array
     {
         $days = max(1, $days);
-        $since = Carbon::now()->subDays($days - 1)->startOfDay();
+        $tz = config('app.timezone', 'UTC');
 
-        $accessMap = $this->dailyCountsByAppDay(
-            GestorAccessEventDelivery::query()->where('created_at', '>=', $since),
-        );
-        $facialMap = $this->dailyCountsByAppDay(
-            FacialSendRequest::query()->where('created_at', '>=', $since),
-        );
+        $accessMap = $this->dailyCountsPerCalendarDay(GestorAccessEventDelivery::query(), $days, $tz);
+        $facialMap = $this->dailyCountsPerCalendarDay(FacialSendRequest::query(), $days, $tz);
 
         $result = [];
         for ($i = $days - 1; $i >= 0; $i--) {
-            $d = Carbon::now()->subDays($i)->format('Y-m-d');
+            $d = Carbon::now($tz)->subDays($i)->format('Y-m-d');
             $result[] = [
                 'date' => $d,
                 'access' => $accessMap[$d] ?? 0,
@@ -235,25 +231,28 @@ class OperationalDashboardController extends Controller
     }
 
     /**
-     * Conta linhas por dia civil no fuso da aplicação (evita divergência DATE() no SQL vs. calendário local).
+     * Contagens por dia civil no fuso da app (comparando `created_at` em UTC na base).
      *
      * @param  Builder<Model>  $query
      * @return array<string, int>
      */
-    private function dailyCountsByAppDay(Builder $query): array
+    private function dailyCountsPerCalendarDay(Builder $query, int $days, string $tz): array
     {
-        $tz = config('app.timezone', 'UTC');
-        $map = [];
+        $days = max(1, $days);
+        $sinceUtc = Carbon::now($tz)->subDays($days - 1)->startOfDay()->utc();
+        $base = (clone $query)->where('created_at', '>=', $sinceUtc);
 
-        foreach ((clone $query)->select(['created_at'])->orderBy('id')->cursor() as $row) {
-            $ca = $row->getAttribute('created_at');
-            if ($ca === null) {
-                continue;
-            }
-            $day = $ca instanceof Carbon
-                ? $ca->copy()->timezone($tz)->format('Y-m-d')
-                : Carbon::parse($ca)->timezone($tz)->format('Y-m-d');
-            $map[$day] = ($map[$day] ?? 0) + 1;
+        $map = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $startLocal = Carbon::now($tz)->subDays($i)->startOfDay();
+            $endLocal = Carbon::now($tz)->subDays($i)->endOfDay();
+            $key = $startLocal->format('Y-m-d');
+            $startUtc = $startLocal->copy()->utc();
+            $endUtc = $endLocal->copy()->utc();
+            $map[$key] = (clone $base)
+                ->where('created_at', '>=', $startUtc)
+                ->where('created_at', '<=', $endUtc)
+                ->count();
         }
 
         return $map;

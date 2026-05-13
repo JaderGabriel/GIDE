@@ -7,6 +7,8 @@ Este repositório contém o **GIDE**, um serviço (Laravel 13) que atua como **p
 
 Premissa central: **todo o tráfego é via API** (sem conexão direta ao banco dos sistemas externos) e **biometria/imagem não é persistida no GIDE** (somente trafega em memória/stream quando necessário).
 
+**Versão da aplicação:** definida por `APP_VERSION` no `.env` (ver também `config/app.php`, chave `version`). O valor padrão no repositório é **0.2.0**.
+
 ## Documentação
 
 - **Fluxo ponta-a-ponta**: `docs/FLUXO_DO_SISTEMA.md`

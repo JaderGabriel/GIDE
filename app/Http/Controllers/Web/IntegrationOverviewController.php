@@ -118,6 +118,13 @@ class IntegrationOverviewController extends Controller
             $laneTestsForBridge,
         );
 
+        $notifyBridge = $this->buildNotifyBridgePresentation(
+            $byKey->get('sms'),
+            $smsChainReady,
+            $laneTests,
+            $byKey->get('whatsapp'),
+        );
+
         $integrationCards = collect(['ieducar', 'gestor', 'sms'])
             ->map(fn (string $k) => $byKey->get($k))
             ->filter()
@@ -150,6 +157,7 @@ class IntegrationOverviewController extends Controller
             'gestorConfigured' => $gestorConfigured,
             'gestorEnabled' => $gestorEnabled,
             'smsEnabled' => $smsEnabled,
+            'notifyBridge' => $notifyBridge,
             'integrationsOverviewAdmin' => (bool) $request->user()->is_admin,
         ]);
     }
@@ -265,6 +273,77 @@ class IntegrationOverviewController extends Controller
         $r = max($this->bridgeToneRank($a), $this->bridgeToneRank($b));
 
         return $this->bridgeToneFromRank($r);
+    }
+
+    /**
+     * Dados para o mapa da ponte: fluxo Notify (SMS com cliente atual; WhatsApp alinhado ao mesmo desenho).
+     *
+     * @param  array<string, mixed>  $laneTests
+     * @return array<string, mixed>
+     */
+    private function buildNotifyBridgePresentation(?Integration $sms, bool $smsChainReady, array $laneTests, ?Integration $whatsapp): array
+    {
+        $provRaw = strtolower(trim((string) data_get($sms?->extra, 'provider', config('integrations.sms.default_provider', 'twilio'))));
+        $provider = in_array($provRaw, ['twilio', 'zenvia'], true) ? $provRaw : 'twilio';
+        $providerLabel = $provider === 'zenvia' ? 'Zenvia' : 'Twilio';
+        $clientClass = $provider === 'zenvia' ? 'App\\Services\\Sms\\ZenviaSmsClient' : 'App\\Services\\Sms\\TwilioSmsClient';
+
+        $smsOut = is_array($laneTests['sms:out'] ?? null) ? $laneTests['sms:out'] : null;
+        $smsIn = is_array($laneTests['sms:in'] ?? null) ? $laneTests['sms:in'] : null;
+
+        $waHasRow = $whatsapp && $whatsapp->exists;
+        $waConfigured = $this->integrationLooksConfigured($whatsapp);
+        $waEnabled = (bool) ($whatsapp?->enabled ?? false);
+        $waOut = is_array($laneTests['whatsapp:out'] ?? null) ? $laneTests['whatsapp:out'] : null;
+        $waIn = is_array($laneTests['whatsapp:in'] ?? null) ? $laneTests['whatsapp:in'] : null;
+
+        return [
+            'sms' => [
+                'provider' => $provider,
+                'provider_label' => $providerLabel,
+                'provider_client_class' => $clientClass,
+                'chain_ready' => $smsChainReady,
+                'lane_out_ok' => (bool) ($smsOut['ok'] ?? false),
+                'lane_out_tested' => $smsOut !== null,
+                'lane_in_ok' => (bool) ($smsIn['ok'] ?? false),
+                'lane_in_tested' => $smsIn !== null,
+                'steps' => [
+                    ['n' => 1, 't' => 'Gestor', 'd' => 'Evento de acesso (payload com telefones quando previsto).'],
+                    ['n' => 2, 't' => 'GIDE', 'd' => 'Motor de presença e decisão de notificar.'],
+                    ['n' => 3, 't' => 'Notify', 'd' => 'Fila: job SendPresenceSms (ShouldBeUnique por evento).'],
+                    ['n' => 4, 't' => 'SmsService', 'd' => 'Template ativo + resolução de destinatários.'],
+                    ['n' => 5, 't' => $providerLabel, 'd' => 'HTTP ao provedor via '.$clientClass.'.'],
+                ],
+            ],
+            'whatsapp' => [
+                'has_row' => $waHasRow,
+                'configured' => $waConfigured,
+                'enabled' => $waEnabled,
+                'lane_out_ok' => (bool) ($waOut['ok'] ?? false),
+                'lane_out_tested' => $waOut !== null,
+                'lane_in_ok' => (bool) ($waIn['ok'] ?? false),
+                'lane_in_tested' => $waIn !== null,
+                'operational' => $waHasRow && $waConfigured && $waEnabled && $waOut !== null && (bool) ($waOut['ok'] ?? false),
+                'steps' => [
+                    ['n' => 1, 't' => 'Gestor', 'd' => 'Mesmo momento do pipeline que o SMS.'],
+                    ['n' => 2, 't' => 'GIDE', 'd' => 'Motor de presença + fila (paridade com SMS).'],
+                    ['n' => 3, 't' => 'Notify', 'd' => 'Job dedicado ao canal (planeado: SendPresenceWhatsApp ou equivalente).'],
+                    ['n' => 4, 't' => 'Provedor WA', 'd' => 'Cloud API (Meta) ou BSP (Twilio, Zenvia, …) com templates aprovados.'],
+                ],
+            ],
+        ];
+    }
+
+    private function integrationLooksConfigured(?Integration $integration): bool
+    {
+        if (! $integration) {
+            return false;
+        }
+        $hasBase = is_string($integration->base_url ?? null) && (string) $integration->base_url !== '';
+        $hasAuthToken = is_string($integration->auth_token ?? null) && (string) $integration->auth_token !== '';
+        $hasHmac = is_string($integration->hmac_secret ?? null) && (string) $integration->hmac_secret !== '';
+
+        return $hasBase || $hasAuthToken || $hasHmac || ! empty($integration->extra);
     }
 
     /**

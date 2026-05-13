@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application version (GIDE)
+    |--------------------------------------------------------------------------
+    |
+    | Versão semântica exposta em documentação e, se desejar, na UI via
+    | config('app.version'). Sobrescreva com APP_VERSION no .env.
+    |
+    */
+
+    'version' => env('APP_VERSION', '0.2.0'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |
