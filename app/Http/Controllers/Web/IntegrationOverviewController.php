@@ -558,9 +558,9 @@ class IntegrationOverviewController extends Controller
                     throw new \RuntimeException('Auth Token Twilio vazio (integrations.auth_token).');
                 }
 
-                $accountSid = trim((string) data_get($integration->extra, 'account_sid', ''));
-                if ($accountSid === '') {
-                    throw new \RuntimeException('Account SID Twilio não configurado (integrations.extra.account_sid).');
+                $accountSid = TwilioSmsClient::normalizeTwilioAccountSid((string) data_get($integration->extra, 'account_sid', ''));
+                if ($accountSid === '' || ! preg_match('/^AC[0-9a-f]{32}$/i', $accountSid)) {
+                    throw new \RuntimeException('Account SID Twilio não configurado ou inválido (integrations.extra.account_sid).');
                 }
 
                 $url = TwilioSmsClient::accountJsonProbeUrl($integration);
@@ -935,9 +935,9 @@ class IntegrationOverviewController extends Controller
                         if ($token === '') {
                             throw new \RuntimeException('Auth Token Twilio vazio (integrations.auth_token).');
                         }
-                        $sid = trim((string) data_get($integration->extra, 'account_sid', ''));
-                        if ($sid === '') {
-                            throw new \RuntimeException('Account SID Twilio não configurado (integrations.extra.account_sid).');
+                        $sid = TwilioSmsClient::normalizeTwilioAccountSid((string) data_get($integration->extra, 'account_sid', ''));
+                        if ($sid === '' || ! preg_match('/^AC[0-9a-f]{32}$/i', $sid)) {
+                            throw new \RuntimeException('Account SID Twilio não configurado ou inválido (integrations.extra.account_sid).');
                         }
                         $url = TwilioSmsClient::accountJsonProbeUrl($integration);
                         $resp = Http::timeout($timeout)

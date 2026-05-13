@@ -42,6 +42,29 @@ class TwilioSmsClientUrlTest extends TestCase
     }
 
     #[Test]
+    public function resolve_api_root_funciona_com_accounts_em_minusculas(): void
+    {
+        $i = new Integration([
+            'base_url' => 'https://api.twilio.com/2010-04-01/accounts/ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            'extra' => ['account_sid' => 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'],
+        ]);
+
+        $this->assertSame('https://api.twilio.com/2010-04-01', TwilioSmsClient::resolveApiRootFromIntegration($i));
+    }
+
+    #[Test]
+    public function normalize_account_sid_extrai_de_url(): void
+    {
+        $this->assertSame(
+            'ACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            TwilioSmsClient::normalizeTwilioAccountSid(
+                'https://api.twilio.com/2010-04-01/Accounts/ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Messages.json',
+            ),
+        );
+        $this->assertSame('ACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', TwilioSmsClient::normalizeTwilioAccountSid('Accounts/ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'));
+    }
+
+    #[Test]
     public function account_json_probe_url_inclui_sid(): void
     {
         $i = new Integration([
@@ -50,7 +73,7 @@ class TwilioSmsClientUrlTest extends TestCase
         ]);
 
         $url = TwilioSmsClient::accountJsonProbeUrl($i);
-        $this->assertStringContainsString('/Accounts/ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json', $url);
+        $this->assertStringContainsString('/Accounts/ACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.json', $url);
         $this->assertStringNotContainsString('/Accounts/Accounts/', $url);
     }
 }

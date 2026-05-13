@@ -7,6 +7,7 @@ use App\Models\Integration;
 use App\Models\SmsTemplate;
 use App\Services\Gestor\GestorClient;
 use App\Services\Presence\PresenceRuleEngine;
+use App\Services\Sms\TwilioSmsClient;
 use App\Services\UserAuditLogger;
 use App\Support\BrPhoneNormalizer;
 use App\Support\GestorCatracaAccessToken;
@@ -495,7 +496,7 @@ class IntegrationController extends Controller
             $data = $request->validate([
                 'enabled' => ['nullable'],
                 'provider' => ['required', Rule::in(['twilio', 'zenvia'])],
-                'account_sid' => ['nullable', 'string', 'regex:/^(|AC[0-9a-f]{32})$/i'],
+                'account_sid' => ['nullable', 'string', 'max:512'],
                 'base_url' => ['nullable', 'string'],
                 'api_token' => ['nullable', 'string'],
                 'from' => ['nullable', 'string'],
@@ -510,6 +511,15 @@ class IntegrationController extends Controller
 
             $enabled = (bool) $request->boolean('enabled');
             $provider = (string) $data['provider'];
+
+            $sidIn = trim((string) ($data['account_sid'] ?? ''));
+            if ($provider === 'twilio' && $sidIn !== '') {
+                $normSid = TwilioSmsClient::normalizeTwilioAccountSid($sidIn);
+                if (! preg_match('/^AC[0-9a-f]{32}$/i', $normSid)) {
+                    return back()->withErrors(['account_sid' => 'Account SID inválido: informe AC seguido de 32 caracteres hexadecimais, ou um URL da consola Twilio que contenha o SID.'])->withInput();
+                }
+                $data['account_sid'] = $normSid;
+            }
 
             if ($enabled && $provider === 'twilio') {
                 if (trim((string) ($data['account_sid'] ?? '')) === '') {
@@ -536,7 +546,11 @@ class IntegrationController extends Controller
             if ($provider === 'zenvia') {
                 $integration->base_url = $data['base_url'] !== '' ? $data['base_url'] : (string) config('integrations.sms.default_base_url');
             } else {
-                $integration->base_url = $data['base_url'] !== '' ? $data['base_url'] : '';
+                $twilioBase = trim((string) ($data['base_url'] ?? ''));
+                if ($twilioBase !== '') {
+                    $twilioBase = TwilioSmsClient::resolveApiRootFromIntegration(new Integration(['base_url' => $twilioBase]));
+                }
+                $integration->base_url = $twilioBase;
             }
             $integration->auth_type = 'api_token';
 
@@ -546,7 +560,9 @@ class IntegrationController extends Controller
 
             $extra = (array) ($integration->extra ?? []);
             $extra['provider'] = $provider;
-            $extra['account_sid'] = $data['account_sid'] !== '' ? $data['account_sid'] : null;
+            $extra['account_sid'] = $provider === 'twilio' && ($data['account_sid'] ?? '') !== ''
+                ? (string) $data['account_sid']
+                : null;
             $extra['from'] = $data['from'] !== '' ? $data['from'] : null;
             $extra['sms_recipient_mode'] = $data['sms_recipient_mode'];
             $testPhones = BrPhoneNormalizer::parseLinesToE164((string) ($data['test_phone_numbers'] ?? ''));

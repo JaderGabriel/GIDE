@@ -26,11 +26,28 @@ class TwilioSmsClient
         return $token;
     }
 
+    /**
+     * Extrai o SID `AC`…32 hex a partir do valor gravado (evita colar URL ou `Accounts/AC…`).
+     */
+    public static function normalizeTwilioAccountSid(string $raw): string
+    {
+        $s = trim($raw);
+        if ($s === '') {
+            return '';
+        }
+
+        if (preg_match('/\b(AC[0-9a-f]{32})\b/i', $s, $m)) {
+            return strtoupper($m[1]);
+        }
+
+        return $s;
+    }
+
     private function accountSid(): string
     {
-        $sid = (string) data_get($this->integration->extra, 'account_sid', '');
-        if ($sid === '') {
-            throw new \RuntimeException('Account SID Twilio não configurado (integrations.extra.account_sid).');
+        $sid = self::normalizeTwilioAccountSid((string) data_get($this->integration->extra, 'account_sid', ''));
+        if ($sid === '' || ! preg_match('/^AC[0-9a-f]{32}$/i', $sid)) {
+            throw new \RuntimeException('Account SID Twilio não configurado ou inválido (esperado AC + 32 hex em integrations.extra.account_sid).');
         }
 
         return $sid;
@@ -42,20 +59,18 @@ class TwilioSmsClient
     public static function resolveApiRootFromIntegration(Integration $integration): string
     {
         $custom = rtrim((string) ($integration->base_url ?? ''), '/');
-        if ($custom !== '' && str_contains($custom, 'Messages.json')) {
-            $p = strpos($custom, '/Accounts/');
+        if ($custom !== '' && str_contains(strtolower($custom), 'messages.json')) {
+            $p = stripos($custom, '/accounts/');
             if ($p !== false) {
                 return substr($custom, 0, $p);
             }
         }
 
         if ($custom !== '') {
-            // Evita /Accounts/AC…/Accounts/AC… quando a base gravada já inclui o segmento da conta (copiado do console Twilio).
-            if (str_contains($custom, '/Accounts/')) {
-                $p = strpos($custom, '/Accounts/');
-                if ($p !== false) {
-                    return substr($custom, 0, $p);
-                }
+            // Evita /Accounts/…/Accounts/… (base com conta ou variação de maiúsculas).
+            $p = stripos($custom, '/accounts/');
+            if ($p !== false) {
+                return rtrim(substr($custom, 0, $p), '/');
             }
 
             return $custom;
@@ -71,9 +86,9 @@ class TwilioSmsClient
      */
     public static function accountJsonProbeUrl(Integration $integration): string
     {
-        $sid = trim((string) data_get($integration->extra, 'account_sid', ''));
-        if ($sid === '') {
-            throw new \RuntimeException('Account SID Twilio não configurado (integrations.extra.account_sid).');
+        $sid = self::normalizeTwilioAccountSid((string) data_get($integration->extra, 'account_sid', ''));
+        if ($sid === '' || ! preg_match('/^AC[0-9a-f]{32}$/i', $sid)) {
+            throw new \RuntimeException('Account SID Twilio não configurado ou inválido (integrations.extra.account_sid).');
         }
 
         return self::resolveApiRootFromIntegration($integration).'/Accounts/'.$sid.'.json';
